@@ -20,7 +20,6 @@ struct CompendiumView:View {
     @State private var browserWidth:CGFloat = 0
     @State private var expandedDetail = false
     @AppStorage("compendiumInspectorWidth") private var inspectorWidth:Double = 360
-    @State private var inspectorDragStart:Double?
     private var fittedInspectorWidth:CGFloat { min(max(300,inspectorWidth),min(540,max(300,browserWidth-560))) }
     @State private var spellClass = "All classes"
     @AppStorage("compendiumInspectorEnabled") private var inspectorEnabled = false
@@ -47,7 +46,7 @@ struct CompendiumView:View {
             HStack(spacing:0) {
                 libraryContent.frame(maxWidth:.infinity,maxHeight:.infinity)
                 if canInspect {
-                    inspectorDivider
+                    InspectorResizeHandle(width:$inspectorWidth,maximum:min(540,max(300,browserWidth-560)))
                     Group {
                         if let selected { referenceDetails(selected) }
                         else { ContentUnavailableView("Select a reference",systemImage:"sidebar.right",description:Text("Preview an entry here while keeping your search and filters visible.")) }
@@ -59,6 +58,7 @@ struct CompendiumView:View {
                     DismissibleDetail(dismiss:{ if !canInspect { self.selected = nil }; expandedDetail = false; message = "" }) { referenceDetails(selected) }
                 }
             }
+            .coordinateSpace(name:"compendiumViewport")
             .onAppear { browserWidth = viewport.size.width }
             .onChange(of:viewport.size.width) { _,width in browserWidth = width }
         }
@@ -78,16 +78,6 @@ struct CompendiumView:View {
         }
         .sheet(item:$creation) { session in CompendiumCreator(session:session,classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name),hero:store.heroes.first(where:{ $0.id == store.selected }) ?? Hero(),save:{ store.upsertTemplate($0); selected = nil }) }
     }
-    private var inspectorDivider:some View {
-        Rectangle().fill(ink.opacity(0.12)).frame(width:5).contentShape(Rectangle())
-            .onHover { inside in if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() } }
-            .gesture(DragGesture(minimumDistance:1).onChanged { value in
-                if inspectorDragStart == nil { inspectorDragStart = fittedInspectorWidth }
-                inspectorWidth = min(min(540,max(300,browserWidth-560)),max(300,(inspectorDragStart ?? 360)-value.translation.width))
-            }.onEnded { _ in inspectorDragStart = nil })
-            .help("Drag to resize the detail inspector").accessibilityLabel("Detail inspector width")
-            .accessibilityAdjustableAction { direction in inspectorWidth = min(min(540,max(300,browserWidth-560)),max(300,fittedInspectorWidth+(direction == .increment ? 20:-20))) }
-    }
     private var libraryContent:some View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Compendium",subtitle:"\(store.compendium.count.formatted()) reference entries",searchTitle:"Search compendium…",query:$query,focus:$searchFocused) {
@@ -102,7 +92,7 @@ struct CompendiumView:View {
                     Divider()
                     Toggle("Search descriptions too",isOn:$searchDescriptions)
                     Button("Clear search and category filters") { clearCategoryFilters() }
-                    Button("Reset all filters") { sourceScope = .all; includeUA = false; includeHomebrew = false; clearCategoryFilters() }
+                    Button("Clear all filters") { clearAllFilters() }
                 } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden)
                     .frame(width:34,height:34).background(surface,in:RoundedRectangle(cornerRadius:8)).help("Compendium options").accessibilityLabel("Compendium options")
             }
@@ -140,6 +130,8 @@ struct CompendiumView:View {
     private var classChoices:[String] {
         Array(Set(sourceEntries.filter { $0.category == .spell }.flatMap(CompendiumSearch.classNames) + store.library.flatMap { ($0.classes ?? "").components(separatedBy:",").map { $0.trimmingCharacters(in:.whitespacesAndNewlines) }.filter { !$0.isEmpty } })).sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
+    private var hasActiveFilters:Bool { !query.isEmpty || subgroup != "All" || school != "All schools" || spellClass != "All classes" || sourceScope != .all || includeUA || includeHomebrew }
+    private func clearAllFilters() { sourceScope = .all; includeUA = false; includeHomebrew = false; clearCategoryFilters() }
     private func clearCategoryFilters() { query = ""; subgroup = "All"; school = "All schools"; spellClass = "All classes" }
     var categoryFilters:some View {
         VStack(alignment:.leading,spacing:8) {
@@ -160,7 +152,8 @@ struct CompendiumView:View {
 
                 }.padding(.vertical,1)
             }
-            HStack {
+            HStack(spacing:10) {
+                Button("Clear all filters") { clearAllFilters() }.buttonStyle(.plain).foregroundStyle(accent).disabled(!hasActiveFilters)
                 if sourceScope == .curated { Toggle("Include UA",isOn:$includeUA); Toggle("Include homebrew",isOn:$includeHomebrew) }
                 Spacer(minLength:0)
                 Text("\((matches.count+(category == .spell ? extraSpells.count:0)).formatted()) results"+(searchDescriptions ? " · includes descriptions":"")).font(.caption2).foregroundStyle(.secondary)
@@ -169,7 +162,7 @@ struct CompendiumView:View {
     }
     var customSpells:some View {
         LazyVGrid(columns:[GridItem(.adaptive(minimum:280))],spacing:10) {
-            ForEach(extraSpells) { spell in Button { if selectionMode { choose(CompendiumPick(spell:spell)) } else if let hero = store.heroes.first(where:{ $0.id == store.selected }) { store.openSpell(spell,hero:hero,library:true,ids:extraSpells.map(\.id)) } } label: { HStack(spacing:6) { if selectionMode { Image(systemName:picks.contains { $0.id == spell.id } ? "checkmark.circle.fill":"circle").foregroundStyle(accent) }; entryLabel(spell.name,"\(spell.level == 0 ? "Cantrip":"Level \(spell.level)") · \(spell.school)") } }.buttonStyle(.plain) }
+            ForEach(extraSpells) { spell in Button { if selectionMode { choose(CompendiumPick(spell:spell)) } else { var entry=TemplateFactory.spell(spell);entry.id=spell.id;open(entry) } } label: { HStack(spacing:6) { if selectionMode { Image(systemName:picks.contains { $0.id == spell.id } ? "checkmark.circle.fill":"circle").foregroundStyle(accent) }; entryLabel(spell.name,"\(spell.level == 0 ? "Cantrip":"Level \(spell.level)") · \(spell.school)") } }.buttonStyle(.plain).accessibilityLabel("Preview "+spell.name) }
         }
     }
     func entryLabel(_ name:String,_ subtitle:String,source:String? = nil) -> some View {
@@ -182,7 +175,7 @@ struct CompendiumView:View {
     func openExpanded(_ entry:CompendiumEntry) {
         if entry.category == .spell, let spell = store.library.first(where:{ $0.id == entry.id }), let hero = store.heroes.first(where:{ $0.id == store.selected }) {
             expandedDetail = false
-            let known = Set(store.library.map(\.id)); store.openSpell(spell,hero:hero,library:true,ids:matches.filter { known.contains($0.id) }.map(\.id))
+            let known = Set(store.library.map(\.id)); let ids=matches.filter { known.contains($0.id) }.map(\.id)+extraSpells.map(\.id); store.openSpell(spell,hero:hero,library:true,ids:ids)
         } else { expandedDetail = true; selected = entry; message = ""; throughLevel = min(20,max(1,store.heroes.first(where:{ $0.id == store.selected })?.level ?? 1)) }
     }
     func referenceDetails(_ entry:CompendiumEntry) -> some View {
