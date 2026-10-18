@@ -28,13 +28,13 @@ struct CharacterBanner: View {
         ZStack(alignment:.bottomLeading) {
             Rectangle().fill(surface.gradient)
             CroppedImage(data:hero.portrait,crop:hero.bannerCrop ?? BannerCrop())
-            LinearGradient(colors:[paper.opacity(0.88),paper.opacity(0.3),.clear],startPoint:.leading,endPoint:.trailing)
+            LinearGradient(colors:[Color.black.opacity(0.88),Color.black.opacity(0.3),.clear],startPoint:.leading,endPoint:.trailing)
             LinearGradient(colors:[.clear,.black.opacity(0.6)],startPoint:.top,endPoint:.bottom)
             HStack(alignment:.bottom) {
                 VStack(alignment:.leading,spacing:8) {
                     Text(hero.name).font(.system(size:27,weight:.semibold)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.65)
                     Text("\(hero.ancestry) · \(hero.characterClass) · Level \(hero.level)").font(.system(size:12)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
-                    if !hero.canAct { Label("Actions unavailable · active condition",systemImage:"exclamationmark.circle").font(.caption).foregroundStyle(gold) }
+                    if !hero.canAct { Label("Actions unavailable · active condition",systemImage:"exclamationmark.circle").font(.caption).foregroundStyle(Color(red:0.88,green:0.69,blue:0.42)) }
                 }
                 Spacer()
             }.padding(20)
@@ -51,10 +51,10 @@ struct CharacterBanner: View {
                     Divider()
                     more
                 } label: { Image(systemName:"ellipsis").frame(width:30,height:30) }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().tint(.white)
                     .help("Character actions").accessibilityLabel("Character actions")
             }.font(.system(size:12,weight:.medium)).foregroundStyle(.white.opacity(0.9))
-                .padding(5).background(paper.opacity(0.85),in:RoundedRectangle(cornerRadius:10))
+                .padding(5).background(Color.black.opacity(0.85),in:RoundedRectangle(cornerRadius:10))
                 .overlay(RoundedRectangle(cornerRadius:10).stroke(.white.opacity(0.08))).padding(12)
         }.clipShape(RoundedRectangle(cornerRadius:12)).overlay(RoundedRectangle(cornerRadius:12).stroke(.white.opacity(0.08)))
         .sheet(isPresented:$cropping) { BannerEditor(hero:$hero,previewAspectRatio:previewAspectRatio) }
@@ -89,13 +89,13 @@ struct CreatureBanner:View {
         ZStack(alignment:.bottomLeading) {
             Rectangle().fill(sky.opacity(0.08).gradient)
             CroppedImage(data:creature.image,crop:creature.bannerCrop ?? BannerCrop())
-            LinearGradient(colors:[paper.opacity(0.8),paper.opacity(0.12)],startPoint:.leading,endPoint:.trailing)
+            LinearGradient(colors:[Color.black.opacity(0.8),Color.black.opacity(0.12)],startPoint:.leading,endPoint:.trailing)
             LinearGradient(colors:[.clear,.black.opacity(0.65)],startPoint:.top,endPoint:.bottom)
             HStack(alignment:.bottom) {
                 VStack(alignment:.leading,spacing:7) {
                     Text(creature.name).font(.system(size:24,weight:.semibold)).foregroundStyle(.white)
                     Text(creature.type.isEmpty ? "Custom creature":creature.type).font(.caption).foregroundStyle(.white.opacity(0.8))
-                    HStack(spacing:14) { Label("AC \(creature.ac)",systemImage:"shield"); Label("\(creature.speed) ft",systemImage:"figure.walk") }.font(.system(size:11)).foregroundStyle(sky)
+                    HStack(spacing:14) { Label("AC \(creature.ac)",systemImage:"shield"); Label("\(creature.speed) ft",systemImage:"figure.walk") }.font(.system(size:11)).foregroundStyle(Color(red:0.50,green:0.71,blue:0.88))
                 }; Spacer()
                 Button { framing = true } label: { Image(systemName:"crop") }.help("Frame creature banner")
                 Button("Edit",action:edit)

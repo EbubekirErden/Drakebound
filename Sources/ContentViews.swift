@@ -104,7 +104,7 @@ struct PartySidebar: View {
                         .frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,10).padding(.top,8)
                 }
             }.font(.system(size:13)).foregroundStyle(ink.opacity(0.7)).padding(10).padding(.bottom,6)
-        }.frame(maxHeight:.infinity).background(Color(red:0.12,green:0.14,blue:0.155))
+        }.frame(maxHeight:.infinity).background(paper)
     }
 
     private var importControl: some View {
@@ -206,32 +206,44 @@ struct PartySidebar: View {
 
 struct JournalPanel: View {
     @Binding var hero: Hero
+    @Environment(\.colorScheme) private var colorScheme
     @State var expanded: Set<UUID> = []
     @State var search = ""
     @State private var editing:JournalEntry?
+    @State private var selectedTag:String?
+    var availableTags:[String] { JournalEntry.parseTags(entries.wrappedValue.flatMap(\.normalizedTags).joined(separator:",")).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     var entries: Binding<[JournalEntry]> { Binding(get:{ hero.journalEntries ?? [] },set:{ hero.journalEntries = $0 }) }
-    var visibleNotes:[JournalEntry] { hero.orderedJournalEntries.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.description.localizedCaseInsensitiveContains(search) } }
+    var visibleNotes:[JournalEntry] { hero.orderedJournalEntries.filter { $0.matchesJournalSearch(search,tag:selectedTag) } }
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · \(entries.wrappedValue.filter { $0.pinned == true }.count) pinned",color:journalTint,searchTitle:"Search notes",query:$search) {
                 Button { editing = JournalEntry() } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
             }
+            if !availableTags.isEmpty || selectedTag != nil {
+                ControlFlowLayout(spacing:8) {
+                    PagePicker(title:"Tag",selectionTitle:selectedTag ?? "All tags",selection:$selectedTag) {
+                        Text("All tags").tag(String?.none)
+                        ForEach(availableTags,id:\.self) { Text($0).tag(Optional($0)) }
+                    }
+                    if let selectedTag { ActiveFilterChip(title:selectedTag) { self.selectedTag = nil } }
+                }
+            }
             if entries.wrappedValue.isEmpty { CenteredEmptyState("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea."),height:300) }
-            if !entries.wrappedValue.isEmpty && !entries.wrappedValue.contains(where: { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.description.localizedCaseInsensitiveContains(search) }) {
-                CenteredEmptyState("No matching notes",systemImage:"book.closed",description:Text("Try another title or text from your notes."),height:300)
+            if !entries.wrappedValue.isEmpty && visibleNotes.isEmpty {
+                CenteredEmptyState("No matching notes",systemImage:"book.closed",description:Text("Try another title, text, or tag."),height:300)
             }
             ForEach(visibleNotes) { entry in
                 let siblings=visibleNotes.filter { ($0.pinned == true) == (entry.pinned == true) }.map(\.id)
                 let position=siblings.firstIndex(of:entry.id) ?? 0
-                if search.isEmpty || entry.title.localizedCaseInsensitiveContains(search) || entry.description.localizedCaseInsensitiveContains(search) {
+                if entry.matchesJournalSearch(search,tag:selectedTag) {
                     VStack(alignment:.leading,spacing:0) {
                         DisclosureGroup(isExpanded:Binding(get:{ expanded.contains(entry.id) },set:{ isOpen in withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if isOpen { expanded.insert(entry.id) } else { expanded.remove(entry.id) } } })) {
                             VStack(alignment:.leading,spacing:12) {
                                 if entry.description.isEmpty {
                                     Text("No note text yet.").font(.system(size:13)).foregroundStyle(.secondary)
                                 } else {
-                                    Text(AttributedString(JournalText.read(entry.richText,plain:entry.description)))
+                                    Text(AttributedString(JournalText.read(entry.richText,plain:entry.description,dark:colorScheme == .dark)))
                                         .textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading)
                                 }
                                 if let data = entry.image, let image = NSImage(data:data) {
@@ -265,6 +277,16 @@ struct JournalPanel: View {
                                 .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:6))
                                 .help("Note options").accessibilityLabel("Note options")
                             }
+                        }
+                        if !entry.normalizedTags.isEmpty {
+                            ControlFlowLayout(spacing:6) {
+                                ForEach(entry.normalizedTags,id:\.self) { tag in
+                                    Button { selectedTag = tag } label: {
+                                        Label(tag,systemImage:"tag").font(.system(size:10)).padding(.horizontal,7).padding(.vertical,4)
+                                            .foregroundStyle(journalTint).background(journalTint.opacity(0.08),in:Capsule())
+                                    }.buttonStyle(.plain).help("Show notes tagged \(tag)")
+                                }
+                            }.padding(.top,8)
                         }
                     }.padding(16).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.06)))
                     .modifier(ListReorderDropTarget { token in hero.reorderJournal(token,onto:entry.id,visibleIDs:visibleNotes.map(\.id)) })

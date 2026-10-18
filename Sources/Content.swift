@@ -7,6 +7,20 @@ struct JournalEntry: Codable, Identifiable, Equatable {
     var image: Data?
     var richText: Data?
     var pinned: Bool?
+    var tags: [String]?
+    var normalizedTags:[String] { Self.parseTags((tags ?? []).joined(separator:",")) }
+    static func parseTags(_ text:String) -> [String] {
+        var seen = Set<String>()
+        return text.split(separator:",").compactMap { part in
+            let tag = part.trimmingCharacters(in:.whitespacesAndNewlines).trimmingCharacters(in:CharacterSet(charactersIn:"#"))
+            guard !tag.isEmpty,seen.insert(tag.folding(options:[.caseInsensitive,.diacriticInsensitive],locale:Locale(identifier:"en_US_POSIX"))).inserted else { return nil }
+            return tag
+        }
+    }
+    func matchesJournalSearch(_ search:String,tag:String? = nil) -> Bool {
+        (tag == nil || normalizedTags.contains { $0.localizedCaseInsensitiveCompare(tag!) == .orderedSame }) &&
+        (search.isEmpty || title.localizedCaseInsensitiveContains(search) || description.localizedCaseInsensitiveContains(search) || normalizedTags.contains { $0.localizedCaseInsensitiveContains(search) })
+    }
 }
 struct CreatureAttack: Codable, Identifiable, Equatable {
     var id = UUID()

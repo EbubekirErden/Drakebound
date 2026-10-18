@@ -3,7 +3,10 @@ import AppKit
 // RTF is optional; the plain description remains the searchable, portable fallback.
 enum JournalText {
     static var font:NSFont { .systemFont(ofSize:13) }
-    static var color:NSColor { NSColor(calibratedRed:0.89,green:0.90,blue:0.89,alpha:1) }
+    static var appearance:NSAppearance { NSApp?.effectiveAppearance ?? NSAppearance(named:.darkAqua)! }
+    static var isDark:Bool { appearance.bestMatch(from:[.aqua,.darkAqua]) == .darkAqua }
+    static var color:NSColor { color(dark:isDark) }
+    static func color(dark:Bool) -> NSColor { dark ? NSColor(srgbRed:0.89,green:0.90,blue:0.89,alpha:1) : NSColor(srgbRed:0.14,green:0.18,blue:0.20,alpha:1) }
     static var attributes:[NSAttributedString.Key:Any] {
         let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 4; paragraph.paragraphSpacing = 6
         return [.font:font,.foregroundColor:color,.paragraphStyle:paragraph]
@@ -30,12 +33,14 @@ enum JournalText {
         for (part,style) in paragraphs { text.addAttribute(.paragraphStyle,value:style,range:part) }
     }
     // Pasted RTF can carry fixed black ink even though the editor uses a dark surface.
-    static func readableColor(_ input:NSColor?) -> NSColor {
+    static func readableColor(_ input:NSColor?,dark:Bool? = nil) -> NSColor {
+        let isDark = dark ?? Self.isDark
+        let color = Self.color(dark:isDark)
         guard let input else { return color }
         var rgb:NSColor?
-        NSAppearance(named:.darkAqua)!.performAsCurrentDrawingAppearance { rgb = input.usingColorSpace(.sRGB) }
+        appearance.performAsCurrentDrawingAppearance { rgb = input.usingColorSpace(.sRGB) }
         guard let rgb else { return color }
-        let background:[CGFloat] = [0.105,0.125,0.14]
+        let background:[CGFloat] = isDark ? [0.105,0.125,0.14] : [0.995,0.995,0.985]
         func luminance(_ values:[CGFloat]) -> CGFloat {
             let linear = values.map { $0 <= 0.04045 ? $0/12.92:pow(($0+0.055)/1.055,2.4) }
             return linear[0]*0.2126+linear[1]*0.7152+linear[2]*0.0722
@@ -45,24 +50,25 @@ enum JournalText {
         let contrast = (max(foreground,surface)+0.05)/(min(foreground,surface)+0.05)
         return contrast >= 4.5 ? input:color
     }
-    static func ensureReadableColors(_ text:NSMutableAttributedString) {
+    static func ensureReadableColors(_ text:NSMutableAttributedString,dark:Bool? = nil) {
         var changes:[(NSRange,NSColor)] = []
         text.enumerateAttribute(.foregroundColor,in:NSRange(location:0,length:text.length)) { value,range,_ in
             let original = value as? NSColor
-            let readable = readableColor(original)
+            let readable = readableColor(original,dark:dark)
             if original == nil || !readable.isEqual(original) { changes.append((range,readable)) }
         }
         for (range,color) in changes { text.addAttribute(.foregroundColor,value:color,range:range) }
     }
-    static func read(_ data:Data?,plain:String) -> NSAttributedString {
+    static func read(_ data:Data?,plain:String,dark:Bool? = nil) -> NSAttributedString {
         if let data,data.count <= 5_000_000,let text = try? NSAttributedString(data:data,options:[.documentType:NSAttributedString.DocumentType.rtf],documentAttributes:nil),text.string == plain {
             let result = NSMutableAttributedString(attributedString:text)
             result.removeAttribute(.attachment,range:NSRange(location:0,length:result.length))
-            ensureReadableColors(result)
+            ensureReadableColors(result,dark:dark)
             ensureReadableTypography(result)
             return result
         }
-        return NSAttributedString(string:plain,attributes:attributes)
+        var displayAttributes = attributes;displayAttributes[.foregroundColor] = color(dark:dark ?? isDark)
+        return NSAttributedString(string:plain,attributes:displayAttributes)
     }
     static func write(_ text:NSAttributedString) -> Data? {
         let clean = NSMutableAttributedString(attributedString:text)

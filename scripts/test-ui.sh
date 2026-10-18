@@ -20,3 +20,7 @@ build/SheetCardTests
 # Equal row heights/footer geometry at responsive column counts; no Store or live data.
 xcrun swiftc -module-cache-path build/ui-module-cache Sources/EqualHeightGridLayout.swift Tests/EqualHeightGridTests.swift -o build/EqualHeightGridTests -framework SwiftUI -framework AppKit
 build/EqualHeightGridTests
+
+# Palette and rich-text appearance checks never instantiate a Store.
+xcrun swiftc -module-cache-path build/ui-module-cache Sources/Appearance.swift Sources/JournalText.swift Tests/AppearanceTests.swift -o build/AppearanceTests -framework SwiftUI -framework AppKit
+build/AppearanceTests

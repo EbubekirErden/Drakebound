@@ -24,7 +24,7 @@ import SwiftUI
         let host = NSHostingView(rootView:DiceAnimation(roll:result,onDismiss:{ [weak self] in
             guard self?.currentID == result.id else { return }
             self?.dismiss(); onDismiss()
-        }).fixedSize().preferredColorScheme(.dark))
+        }).fixedSize().preferredColorScheme(AppAppearance.selected.colorScheme))
         panel.contentView = host
         let size = host.fittingSize
         panel.setContentSize(size)

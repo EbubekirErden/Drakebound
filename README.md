@@ -274,3 +274,9 @@ The Abilities step identifies the source of origin increases. Under 2024 rules t
 Under 2014 rules, unambiguous complete fixed ancestry bonuses are filled from the XML ability field. A flexible ability-increase trait takes precedence over a conflicting legacy summary. Unknown or nonstandard origins use an explicit Custom / table rule option. Normal patterns validate their distribution, allowed abilities, and the ability-score cap of 20; Custom intentionally permits table overrides. Changing the relevant origin or edition resets its allocation. These rules affect creation drafts, never existing characters or level-up origin scores. Longer explanations live in a dismissible question-mark popover.
 
 Reference: [Official 2024 character creation rules](https://www.dndbeyond.com/sources/dnd/br-2024/creating-a-character).
+
+## Appearance and journal tags
+
+Appearance can be set to Light, Dark, or System from the Drakebound app menu. Dark remains the default. This preference changes colors only.
+
+Journal notes can have optional tags, entered as comma-separated names in the note editor. Click a tag or use the tag filter to browse related notes; note search also matches tags. Tags are saved with the note and included in JSON backups. Existing notes do not need tags.

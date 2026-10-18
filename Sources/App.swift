@@ -2,15 +2,6 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
-let ink = Color(red:0.89,green:0.90,blue:0.89)
-let accent = Color(red:0.43,green:0.75,blue:0.68)
-let paper = Color(red:0.105,green:0.125,blue:0.14)
-let surface = Color(red:0.145,green:0.165,blue:0.18)
-let gold = Color(red:0.88,green:0.69,blue:0.42)
-let sky = Color(red:0.50,green:0.71,blue:0.88)
-let coral = Color(red:0.89,green:0.54,blue:0.47)
-let leaf = Color(red:0.49,green:0.76,blue:0.52)
-let journalTint = Color(red:0.76,green:0.61,blue:0.70)
 func tabColor(_ title:String) -> Color {
     switch title {
     case "Actions":return coral
@@ -188,6 +179,7 @@ enum AppBrand {
 }
 final class DrakeboundAppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.appearance = AppAppearance.selected.native
         if let icon = AppBrand.icon { NSApplication.shared.applicationIconImage = icon }
     }
 }
@@ -195,9 +187,11 @@ final class DrakeboundAppDelegate: NSObject, NSApplicationDelegate {
 @main struct DrakeboundApp: App {
     @NSApplicationDelegateAdaptor(DrakeboundAppDelegate.self) private var appDelegate
     @StateObject var store = Store()
+    @AppStorage("appAppearance") private var appearance = "dark"
     var body: some Scene {
         WindowGroup {
-            RootView(store:store).environment(\.templateSaveAction,{ store.upsertTemplate($0) }).frame(minWidth:900,maxWidth:.infinity,minHeight:620,maxHeight:.infinity).preferredColorScheme(.dark)
+            RootView(store:store).environment(\.templateSaveAction,{ store.upsertTemplate($0) }).frame(minWidth:900,maxWidth:.infinity,minHeight:620,maxHeight:.infinity).preferredColorScheme((AppAppearance(rawValue:appearance) ?? .dark).colorScheme)
+                .onChange(of:appearance) { _, value in NSApp.appearance = (AppAppearance(rawValue:value) ?? .dark).native }
                 .onReceive(NotificationCenter.default.publisher(for:NSWindow.willBeginSheetNotification)) { _ in store.openEditorSheets += 1 }
                 .onReceive(NotificationCenter.default.publisher(for:NSWindow.didEndSheetNotification)) { _ in store.openEditorSheets = max(0,store.openEditorSheets-1) }
                 .onReceive(NotificationCenter.default.publisher(for:NSApplication.willTerminateNotification)) { _ in store.save() }

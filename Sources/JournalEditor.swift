@@ -4,6 +4,7 @@ import AppKit
 struct NativeJournalEditor:NSViewRepresentable {
     @Binding var entry:JournalEntry
     @ObservedObject var controller:JournalEditorController
+    @Environment(\.colorScheme) private var colorScheme
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeNSView(context:Context) -> NSScrollView {
         let scroll = NSScrollView();scroll.hasVerticalScroller = true;scroll.drawsBackground = false;scroll.borderType = .noBorder
@@ -13,25 +14,31 @@ struct NativeJournalEditor:NSViewRepresentable {
         view.minSize = NSSize(width:0,height:0);view.maxSize = NSSize(width:CGFloat.greatestFiniteMagnitude,height:CGFloat.greatestFiniteMagnitude)
         view.isVerticallyResizable = true;view.isHorizontallyResizable = false;view.autoresizingMask = .width
         view.textContainer?.containerSize = NSSize(width:0,height:CGFloat.greatestFiniteMagnitude);view.textContainer?.widthTracksTextView = true
-        view.textContainerInset = NSSize(width:8,height:10);view.textColor = JournalText.color;view.insertionPointColor = .white
-        view.typingAttributes = JournalText.attributes
-        view.textStorage?.setAttributedString(JournalText.read(entry.richText,plain:entry.description));view.delegate = context.coordinator
+        view.textContainerInset = NSSize(width:8,height:10);view.textColor = JournalText.color(dark:colorScheme == .dark);view.insertionPointColor = .labelColor
+        var typingAttributes = JournalText.attributes;typingAttributes[.foregroundColor] = JournalText.color(dark:colorScheme == .dark);view.typingAttributes = typingAttributes
+        view.textStorage?.setAttributedString(JournalText.read(entry.richText,plain:entry.description,dark:colorScheme == .dark));view.delegate = context.coordinator
         view.setAccessibilityLabel("Journal note body")
         view.shortcut = { key in controller.trait(key == "b" ? .boldFontMask:.italicFontMask) }
-        scroll.documentView = view;controller.view = view;context.coordinator.lastText = entry.description;context.coordinator.lastData = entry.richText
+        scroll.documentView = view;controller.view = view;context.coordinator.lastText = entry.description;context.coordinator.lastData = entry.richText;context.coordinator.lastScheme = colorScheme
         return scroll
     }
     func updateNSView(_ scroll:NSScrollView,context:Context) {
         context.coordinator.parent = self
         guard let view = scroll.documentView as? NSTextView else { return }
+        if context.coordinator.lastScheme != colorScheme {
+            // Recolor the existing draft without replacing its text, selection, or undo history.
+            if let storage = view.textStorage { JournalText.ensureReadableColors(storage,dark:colorScheme == .dark) }
+            var attributes = view.typingAttributes;attributes[.foregroundColor] = JournalText.color(dark:colorScheme == .dark);view.typingAttributes = attributes
+            context.coordinator.lastScheme = colorScheme
+        }
         if entry.description != context.coordinator.lastText || entry.richText != context.coordinator.lastData {
-            let selection = view.selectedRange();view.textStorage?.setAttributedString(JournalText.read(entry.richText,plain:entry.description))
+            let selection = view.selectedRange();view.textStorage?.setAttributedString(JournalText.read(entry.richText,plain:entry.description,dark:colorScheme == .dark))
             view.setSelectedRange(NSRange(location:min(selection.location,view.string.utf16.count),length:0));view.undoManager?.removeAllActions()
             context.coordinator.lastText = entry.description;context.coordinator.lastData = entry.richText
         }
     }
     final class Coordinator:NSObject,NSTextViewDelegate {
-        var parent:NativeJournalEditor;var lastText = "";var lastData:Data?
+        var parent:NativeJournalEditor;var lastText = "";var lastData:Data?;var lastScheme:ColorScheme?
         init(_ parent:NativeJournalEditor) { self.parent = parent }
         func textDidChange(_ notification:Notification) {
             guard let view = notification.object as? NSTextView,let data = JournalText.write(view.attributedString()),data.count <= 5_000_000 else { return }

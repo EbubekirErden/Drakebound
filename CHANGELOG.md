@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Appearance offers Light, Dark, and System choices in the app menu. The adaptive palette covers existing pages, sheets, popovers, and dice results without changing character rules or layouts; Dark remains the default. Journal rich text stays readable in either appearance.
+- Journal notes support optional comma-separated tags, clickable tag chips, and a tag filter. Search includes tags; existing notes, pinning, ordering, and explicit Save/Cancel remain supported.
+
 - Action cards share the tallest natural height in each responsive row, with aligned footers. Spell range/duration tiles also match heights when text wraps; row sizing preserves each card’s natural content height.
 
 - Journal notes support pinning and drag-to-reorder within pinned/unpinned groups. Pins and manual order persist in saves and JSON backups; older notes load unpinned.

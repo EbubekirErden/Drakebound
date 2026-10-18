@@ -6,6 +6,7 @@ final class TestJournalView:JournalTextView {
 }
 @main struct JournalTests {
     static func main() throws {
+        _ = NSApplication.shared;NSApp.appearance = NSAppearance(named:.darkAqua)
         let source = "🌙 Moon gate\nFind the keeper\nBring the silver key\n"
         let text = NSMutableAttributedString(string:source,attributes:JournalText.attributes)
         let view = TestJournalView(frame:NSRect(x:0,y:0,width:400,height:200))

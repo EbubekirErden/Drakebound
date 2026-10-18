@@ -26,8 +26,16 @@ extension Store {
 }
 struct DrakeboundCommands:Commands {
     @ObservedObject var store:Store
+    @AppStorage("appAppearance") private var appearance = "dark"
     var body:some Commands {
         CommandGroup(replacing:.appInfo) { Button("About Drakebound") { AppBrand.showAbout() } }
+        CommandGroup(after:.appInfo) {
+            Menu("Appearance") {
+                Picker("Appearance",selection:$appearance) {
+                    ForEach(AppAppearance.allCases,id:\.self) { Text($0.title).tag($0.rawValue) }
+                }.pickerStyle(.inline)
+            }
+        }
         CommandGroup(replacing:.newItem) { Button("New Character") { if store.canPerformMenuAction { store.addHero() } }.keyboardShortcut("n").disabled(!store.menusAvailable) }
         CommandGroup(after:.newItem) {
             Button("Import Backup or Fight Club XML…") { if store.canPerformMenuAction { store.importBackup() } }.keyboardShortcut("i",modifiers:[.command,.shift]).disabled(!store.menusAvailable)
