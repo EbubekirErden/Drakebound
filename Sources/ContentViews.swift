@@ -206,6 +206,7 @@ struct PartySidebar: View {
 
 struct JournalPanel: View {
     @Binding var hero: Hero
+    var quickNote:(()->Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
     @State var expanded: Set<UUID> = []
     @State var search = ""
@@ -218,6 +219,10 @@ struct JournalPanel: View {
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · \(entries.wrappedValue.filter { $0.pinned == true }.count) pinned",color:journalTint,searchTitle:"Search notes",query:$search) {
+                if let quickNote {
+                    Button(action:quickNote) { Label("Quick note",systemImage:"square.and.pencil") }
+                        .buttonStyle(PageButtonStyle()).help("Quick note · ⇧⌘J")
+                }
                 Button { editing = JournalEntry() } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
             }
             if !availableTags.isEmpty || selectedTag != nil {

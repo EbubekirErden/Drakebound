@@ -253,6 +253,7 @@ struct DiceDock: View {
             Picker("D20 mode",selection:$store.rollMode) { ForEach(RollMode.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.labelsHidden().pickerStyle(.menu).frame(width:88).help("Combines with condition advantage/disadvantage for typed rolls")
             Spacer(minLength:0)
             if let r = store.rolls.first { VStack(alignment:.trailing,spacing:3) { Text(r.label).font(.system(size:11)).lineLimit(1).frame(maxWidth:120); if r.event { Text(r.expression).font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1) } }; if !r.event { Text("\(r.total)").font(.system(size:21,weight:.semibold,design:.rounded)).foregroundStyle(accent).fixedSize() } }
+            QuickNoteButton(store:store)
             ActivityButton(store:store)
             RollHistory(rolls:store.rolls)
         }.padding(.horizontal,18).padding(.vertical,12).background(surface)

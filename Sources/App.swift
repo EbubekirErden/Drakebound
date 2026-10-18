@@ -35,6 +35,9 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
     @Published var compendiumRevision = 0
     @Published var showPDFExport = false
     @Published var compendiumAdd:CompendiumAddRequest?
+    var quickNoteDrafts:[UUID:QuickNoteDraft] = [:]
+    @Published var quickNoteHeroID:UUID?
+    @Published var quickNoteOpen = false
     @Published var showHelp = false
     @Published var showCompendium = false
     @Published var activeTab = "Sheet"
@@ -267,6 +270,9 @@ struct RootView: View {
         .sheet(item:$store.compendiumAdd) { request in CompendiumDestination(store:store,request:request) }
         .sheet(isPresented:$store.showPDFExport) { if let hero = store.heroes.first(where:{ $0.id == store.selected }) { PDFExportView(hero:hero) } }
         .sheet(isPresented:$store.showHelp) { TipsLibrary() }
+        .onChange(of:store.selected) { _,_ in store.quickNoteOpen=false }
+        .onChange(of:store.characterGuide?.id) { _,_ in store.quickNoteOpen=false }
+        .onChange(of:store.openEditorSheets) { _, count in if count > 0 { store.quickNoteOpen=false } }
         .onChange(of:store.heroes) { _,_ in store.captureActivity(); store.scheduleSave() }
         .alert("Drakebound",isPresented:Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }
@@ -357,7 +363,7 @@ struct HeroView: View {
                         case "Sheet": character
                         case "Equipment": equipment
                         case "Spells": spellbook
-                        case "Journal": JournalPanel(hero:$hero)
+                        case "Journal": JournalPanel(hero:$hero,quickNote:{ store.beginQuickNote() })
                         default: CreaturesPanel(hero:$hero,store:store)
                         }
                     }.padding(18).frame(maxWidth:.infinity).background(paper).clipShape(UnevenRoundedRectangle(topLeadingRadius:18,topTrailingRadius:18)).zIndex(1)

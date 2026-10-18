@@ -280,3 +280,5 @@ Reference: [Official 2024 character creation rules](https://www.dndbeyond.com/so
 Appearance can be set to Light, Dark, or System from the Drakebound app menu. Dark remains the default. This preference changes colors only.
 
 Journal notes can have optional tags, entered as comma-separated names in the note editor. Click a tag or use the tag filter to browse related notes; note search also matches tags. Tags are saved with the note and included in JSON backups. Existing notes do not need tags.
+
+Quick note is available beside New note in Journal, from the pencil icon in the bottom dock, and with ⇧⌘J. Enter text and optional comma-separated tags, then choose Add note or press ⌘Return. The first nonempty line becomes the title; the full text remains in the note. Saved entries use the normal journal editor, storage, and JSON backups. Closing the popover keeps the draft for its character while the app is open; restarting the app clears unfinished drafts.

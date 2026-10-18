@@ -54,6 +54,7 @@ struct DrakeboundCommands:Commands {
             Button("Level Up…") { if store.characterCommandsAvailable && store.canPerformMenuAction,let hero = store.heroes.first(where:{ $0.id == store.selected }) { store.beginLevelUp(hero) } }.keyboardShortcut("l",modifiers:[.command,.shift]).disabled(!store.characterCommandsAvailable || (store.heroes.first(where:{ $0.id == store.selected })?.level ?? 20) >= 20)
             Divider()
             Button("Add Equipment…") { store.request(.addItem) }.keyboardShortcut("n",modifiers:[.command,.shift]).disabled(!store.characterCommandsAvailable)
+            Button("Quick Note…") { store.beginQuickNote() }.keyboardShortcut("j",modifiers:[.command,.shift]).disabled(!store.characterCommandsAvailable || store.importingCompendium)
             Button("Add Spell…") { store.request(.addSpell) }.keyboardShortcut("n",modifiers:[.command,.option]).disabled(!store.characterCommandsAvailable)
             Button("Activity Log…") { if store.canPerformMenuAction { store.captureActivity(); store.showActivity = true } }.disabled(!store.characterCommandsAvailable)
             Button("Rest & Recovery…") { store.request(.rest) }.keyboardShortcut("r",modifiers:[.command,.shift]).disabled(!store.characterCommandsAvailable)
