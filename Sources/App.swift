@@ -302,6 +302,7 @@ struct HeroView: View {
     @AppStorage("characterBannerExpanded") private var bannerExpanded = false
     @State var edit = false
     @State var adding: String?
+    @State private var browsingSpells = false
     @State var rest = false
     @State var delete = false
     @State var hitDice = false
@@ -322,7 +323,7 @@ struct HeroView: View {
             switch request.action {
             case .edit: edit = true
             case .addItem: itemEditor = Item(name:"",kind:.gear)
-            case .addSpell: adding = "Spell"
+            case .addSpell: browsingSpells = true
             case .rest: rest = true
             case .search: searchFocused = true
             case .diceInput: break
@@ -397,7 +398,13 @@ struct HeroView: View {
         VStack(spacing:16) {
             PageToolbar(title:"Spells",subtitle:"\(hero.spells.count) spells in your spellbook",color:sky,searchTitle:"Search spells",query:$search,focus:$searchFocused) {
                 Menu { Button("Prepare all") { for i in hero.spells.indices { hero.spells[i].prepared=true } };Button("Unprepare all level 1+") { for i in hero.spells.indices where hero.spells[i].level > 0 { hero.spells[i].prepared=false } } } label: { Text("Preparation") }.modifier(PageMenuStyle()).fixedSize().help("Changes your whole spellbook, including spells hidden by filters.")
-                Button { adding = "Spell" } label: { Label("Add spell",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:sky,prominent:true))
+                Button { browsingSpells = true } label: { Label("Add spell",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:sky,prominent:true))
+                    .popover(isPresented:$browsingSpells) {
+                        GuideSpellBrowser(catalog:GuideCatalog(compendium:store.compendium,library:store.library),className:hero.characterClass,alreadyKnown:hero.spells,hero:hero,onAdd:{ spell in
+                            var copy = spell; copy.id = UUID(); copy.castingAbility = nil; copy.sourceClassID = nil; copy.sourceClassName = nil; copy.prepared = copy.level == 0
+                            hero.spells.append(copy)
+                        },onCustom:{ browsingSpells = false; adding = "Spell" })
+                    }
             }
             HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); Button("Manage slots") { managingSlots = true } }
             Card(title:"Spell slots") {

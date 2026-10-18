@@ -54,6 +54,7 @@ struct GuideSpellBrowser:View {
     var onAdd:(Spell)->Void
     var buildDraft:CharacterBuildDraft? = nil
     var onSlots:(([Int])->Void)? = nil
+    var onCustom:(()->Void)? = nil
     @Environment(\.dismiss) var dismiss
     @State private var search = ""
     @State private var level = 0
@@ -76,7 +77,7 @@ struct GuideSpellBrowser:View {
     var referenceMatches:[CompendiumEntry] { catalog.unleveledSpells.filter { entry in (search.isEmpty || entry.name.localizedCaseInsensitiveContains(search)) && (!classOnly || entry.value("classes").localizedCaseInsensitiveContains(baseClass)) } }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
-            HStack { VStack(alignment:.leading,spacing:3) { Text("Choose spells").font(.title2.bold()); Text("Adding to \(className)").font(.caption).foregroundStyle(sky) }; Spacer(); Button("Features") { featuresOpen=true }; if buildDraft != nil { Button("Caster table…") { casterLevel=min(20,buildDraft!.resultingClasses.reduce(0) { $0+$1.casting.contribution($1.level,edition:hero.edition) });casterOpen=true } }; Button("Done") { dismiss() } }
+            HStack { VStack(alignment:.leading,spacing:3) { Text("Choose spells").font(.title2.bold()); Text("Adding to \(className)").font(.caption).foregroundStyle(sky) }; Spacer(); if let onCustom { Button("Custom spell") { dismiss(); onCustom() } }; Button("Features") { featuresOpen=true }; if buildDraft != nil { Button("Caster table…") { casterLevel=min(20,buildDraft!.resultingClasses.reduce(0) { $0+$1.casting.contribution($1.level,edition:hero.edition) });casterOpen=true } }; Button("Done") { dismiss() } }
             TextField("Search spells",text:$search).textFieldStyle(.roundedBorder)
             ScrollViewReader { scroll in
                 HStack {

@@ -81,20 +81,10 @@ struct PageToolbar<Actions: View>: View {
     @ViewBuilder var actions: () -> Actions
 
     var body: some View {
-        ViewThatFits(in:.horizontal) {
-            HStack(spacing:12) {
-                heading.fixedSize(horizontal:true,vertical:false)
-                Spacer(minLength:8)
-                PageSearchField(title:searchTitle,query:$query,focus:focus).frame(width:200)
-                actions().fixedSize(horizontal:true,vertical:false)
-            }
-            VStack(alignment:.leading,spacing:10) {
-                heading
-                HStack(spacing:10) {
-                    PageSearchField(title:searchTitle,query:$query,focus:focus)
-                    actions().fixedSize(horizontal:true,vertical:false)
-                }
-            }
+        PageToolbarLayout {
+            heading.fixedSize(horizontal:true,vertical:false)
+            PageSearchField(title:searchTitle,query:$query,focus:focus)
+            HStack(spacing:12) { actions() }.fixedSize(horizontal:true,vertical:false)
         }.controlSize(.regular).tint(color)
     }
 
@@ -103,5 +93,30 @@ struct PageToolbar<Actions: View>: View {
             Text(title).font(.system(size:19,weight:.semibold))
             Text(subtitle).font(.system(size:11)).foregroundStyle(.secondary)
         }
+    }
+}
+
+// Keep one copy of the actions so popovers have one stable presentation anchor.
+private struct PageToolbarLayout: Layout {
+    private func sizes(_ subviews:Subviews) -> (CGSize,CGSize) {
+        (subviews[0].sizeThatFits(.unspecified),subviews[2].sizeThatFits(.unspecified))
+    }
+    func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) -> CGSize {
+        let (heading,actions) = sizes(subviews)
+        let width = proposal.width ?? heading.width+200+actions.width+32
+        let inline = width >= heading.width+200+actions.width+32
+        let rowHeight = max(PageControl.height,actions.height)
+        return CGSize(width:width,height:inline ? max(heading.height,rowHeight):heading.height+10+rowHeight)
+    }
+    func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
+        let (heading,actions) = sizes(subviews)
+        let inline = bounds.width >= heading.width+200+actions.width+32
+        let rowHeight = max(PageControl.height,actions.height)
+        let rowY = inline ? bounds.minY+(bounds.height-rowHeight)/2:bounds.minY+heading.height+10
+        subviews[0].place(at:CGPoint(x:bounds.minX,y:inline ? bounds.minY+(bounds.height-heading.height)/2:bounds.minY),anchor:.topLeading,proposal:ProposedViewSize(heading))
+        let searchWidth = inline ? 200:max(140,bounds.width-actions.width-12)
+        let searchX = inline ? bounds.maxX-actions.width-12-searchWidth:bounds.minX
+        subviews[1].place(at:CGPoint(x:searchX,y:rowY+(rowHeight-PageControl.height)/2),anchor:.topLeading,proposal:ProposedViewSize(width:searchWidth,height:PageControl.height))
+        subviews[2].place(at:CGPoint(x:bounds.maxX-actions.width,y:rowY+(rowHeight-actions.height)/2),anchor:.topLeading,proposal:ProposedViewSize(actions))
     }
 }
