@@ -61,7 +61,7 @@ struct SkillsPanel: View {
     @Binding var hero: Hero
     @ObservedObject var store: Store
     var body: some View {
-        Card(title:"Skills") {
+        SheetCard(title:"Skills",summary:"\(skills.filter { hero.effectiveSkillRank($0.0) > 0 }.count) trained · \(skills.filter { hero.effectiveSkillRank($0.0) == 2 }.count) expertise") {
             LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:18),count:3),spacing:2) {
                 ForEach(skills,id:\.0) { name,ability in
                     HStack(spacing:8) {
@@ -84,7 +84,7 @@ struct CounterPanel: View {
     @State private var editingRef:ResourceRef?
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     var body: some View {
-        Card(title:"Resources",tip:.inventory) {
+        SheetCard(title:"Resources",tip:.inventory,summary:hero.resourceChoices.map { "\($0.counter.name) \($0.counter.current)/\($0.counter.maximum)" }.joined(separator:" · ")) {
             ScrollView(.horizontal) {
                 LazyHStack(spacing:10) {
                 ForEach(hero.resourceChoices) { choice in
@@ -144,7 +144,7 @@ struct BonusPanel: View {
     @Binding var hero: Hero
     @State var editing: Bonus?
     var body: some View {
-        Card(title:"Feats & bonuses") {
+        SheetCard(title:"Feats & bonuses",summary:"\(hero.activeBonuses.count) active effects") {
             ForEach(hero.bonuses ?? []) { bonus in
                 HStack {
                     Toggle("",isOn:Binding(get:{ bonus.enabled },set:{ flag in if let i = hero.bonuses?.firstIndex(where:{ $0.id == bonus.id }) { hero.bonuses?[i].enabled = flag } })).labelsHidden().toggleStyle(.checkbox)

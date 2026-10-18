@@ -64,7 +64,7 @@ struct FeaturePanel: View {
     @State private var browseFeats=false
     @State private var expanded:Set<UUID> = []
     var body: some View {
-        Card(title:"Features & traits") {
+        SheetCard(title:"Features & traits",summary:"\((hero.featureEntries ?? []).count) features") {
             ControlFlowLayout(spacing:8) {
                 Button("All") { filter = nil }.buttonStyle(PageButtonStyle(prominent:filter == nil))
                 ForEach(FeatureCategory.allCases,id:\.self) { category in Button(category.rawValue) { filter = category }.buttonStyle(PageButtonStyle(prominent:filter == category)) }

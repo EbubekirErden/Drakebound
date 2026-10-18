@@ -7,7 +7,7 @@ struct AttacksPanel: View {
     @State private var details:Attack?
     @State private var showStowed = false
     var body: some View {
-        Card(title:"Attacks") {
+        SheetCard(title:"Attacks",summary:"\(hero.readyAttacks.count) ready · \(hero.stowedAttacks.count) stowed") {
             LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:12),count:min(3,max(1,hero.readyAttacks.count))),spacing:12) {
                 ForEach(hero.readyAttacks) { attack in
                     let unavailable = hero.attackUnavailableReason(attack)

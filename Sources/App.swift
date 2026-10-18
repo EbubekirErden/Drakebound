@@ -347,6 +347,7 @@ struct HeroView: View {
                     GeometryReader { position in
                         let y = position.frame(in:.named("heroScroll")).minY
                         CharacterBanner(hero:$hero,expanded:$bannerExpanded,previewAspectRatio:max(1,(viewport.size.width-36)/bannerHeight),edit:{ edit = true },more:AnyView(Group {
+                            if tab == "Sheet" { SheetDisplayMenu();Divider() }
                             Button("Rest & recovery") { rest = true }
                             Button("Hit dice") { hitDice = true }
                             Button("Duplicate character") { var copy = hero; copy.id = UUID(); copy.name += " copy"; store.heroes.append(copy); store.selected = copy.id; store.save() }

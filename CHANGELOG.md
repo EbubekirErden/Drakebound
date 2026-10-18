@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Empty Frequent/Recent Actions and filtered action lists offer Show all actions, which clears view filters without changing favorites or usage history.
+- Sheet sections fold from their headers, retaining key summaries and independent interface preferences. Health stays expanded; the banner menu offers Compact Sheet and Expand all Sheet sections. Compact Sheet keeps attacks, resources, and conditions visible.
+
 - Compendium filters wrap into visible rows and expose removable active-filter chips, result totals, and shown-reference counts. Preview controls distinguish viewing beside results from a larger detail view.
 - Shared page toolbars move search and actions onto separate rows when needed, retaining stable popover anchors. Actions, Equipment, and spell filters wrap, with direct reset controls and filtered-result counts.
 - Sheet statistics use compact equal-height tiles; feature cards adapt their column count to available width, preserving rolls, feature controls, and existing character rules.

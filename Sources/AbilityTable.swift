@@ -4,6 +4,7 @@ struct AbilityTable:View {
     @Binding var hero:Hero
     @ObservedObject var store:Store
     var body:some View {
+        SheetCard(title:"Abilities & saves",summary:(0..<6).map { String(hero.effectiveScore($0)) }.joined(separator:" / ")) {
         HStack(spacing:0) {
             VStack(alignment:.leading,spacing:0) {
                 rowLabel("Ability",height:24)
@@ -26,7 +27,8 @@ struct AbilityTable:View {
                     }
                 }.frame(maxWidth:.infinity).overlay(alignment:.leading) { Rectangle().fill(ink.opacity(0.06)).frame(width:1) }
             }
-        }.padding(10).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.08)))
+        }
+        }
     }
     func rowLabel(_ label:String,height:CGFloat) -> some View {
         Text(label).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).frame(height:height)

@@ -136,14 +136,32 @@ struct QuickActionsPanel:View {
     }
     @ViewBuilder private var actionContents:some View {
         if actions.isEmpty {
-            if fullPage { CenteredEmptyState("No matching actions",systemImage:"bolt",description:Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All."),height:240) }
-            else { Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All.").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity).multilineTextAlignment(.center).padding(.vertical,4) }
+            VStack(spacing:10) {
+                if fullPage { CenteredEmptyState(emptyTitle,systemImage:"bolt",description:Text(emptyMessage),height:190) }
+                else { Text(emptyMessage).font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity).multilineTextAlignment(.center).padding(.vertical,4) }
+                if filter != .all || timing != nil || category != .all || !query.isEmpty {
+                    Button("Show all actions") { filter = .all;timing=nil;category = .all;query="";expanded=true }.buttonStyle(PageButtonStyle(prominent:true)).accessibilityLabel("Show all actions")
+                }
+            }.frame(maxWidth:.infinity).padding(.bottom,8)
         }
         LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8)],spacing:8) {
             ForEach(fullPage || expanded ? actions:Array(actions.prefix(6))) { action in GroupedActionCard(hero:$hero,store:store,action:action) }
         }
         if !fullPage && actions.count > 6 { Button(expanded ? "Show fewer":"Show all \(actions.count)") { expanded.toggle() }.font(.caption).buttonStyle(.plain).foregroundStyle(accent) }
     }
+    private var emptyTitle:String {
+        if timing != nil || category != .all || !query.isEmpty { return "No matching actions" }
+        switch filter { case .frequent:return "No frequent actions yet";case .recent:return "No recent actions yet";case .all:return "No actions available" }
+    }
+    private var emptyMessage:String {
+        if timing != nil || category != .all || !query.isEmpty { return "Try another search, type, or timing, or show all actions." }
+        switch filter {
+        case .frequent:return "Use an action or star it in All to keep it here."
+        case .recent:return "Actions you use will appear here. Browse All to get started."
+        case .all:return "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here."
+        }
+    }
+
 }
 
 struct GroupedActionCard:View {

@@ -3,8 +3,13 @@ import SwiftUI
 struct ConditionsPanel: View {
     @Binding var hero: Hero
     @State var manage = false
+    private var conditionSummary:String {
+        var names=hero.conditions
+        if (hero.exhaustionLevel ?? 0) > 0 { names.append("Exhaustion \(hero.exhaustionLevel ?? 0)") }
+        return names.isEmpty ? "No active conditions":names.joined(separator:", ")
+    }
     var body: some View {
-        Card(title:"Conditions") {
+        SheetCard(title:"Conditions",summary:conditionSummary) {
             HStack {
                 Text(hero.conditions.isEmpty && (hero.exhaustionLevel ?? 0) == 0 ? "No active conditions":"Effects update tracked stats and typed rolls").font(.system(size:11)).foregroundStyle(.secondary)
                 Spacer()
