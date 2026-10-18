@@ -17,8 +17,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>Drakebound</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleIconFile</key><string>DrakeboundD20.icns</string>
-<key>CFBundleVersion</key><string>30</string>
-<key>CFBundleShortVersionString</key><string>0.30.0</string>
+<key>CFBundleVersion</key><string>36</string>
+<key>CFBundleShortVersionString</key><string>0.31.2</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>

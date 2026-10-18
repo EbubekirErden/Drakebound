@@ -8,6 +8,10 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 
 ## Included
 
+- Feature editor → Applied effects supports recognized rules, custom flat/per-level modifiers, and reference-only entries. Tough from Compendium automatically grants +2 maximum HP per total character level. Imported Fight Club feats require explicit opt-in to avoid duplicating effects already included in saved stats. Other feat descriptions do not automatically apply arbitrary rules.
+- Hover maximum HP to inspect its sources. Choose Reference only if a feat bonus is already included in base HP; keep base HP separate when using recognized effects.
+
+
 - Equipment → Add item opens a searchable compendium popover with type/source filters and a Custom item option.
 - Click the currency balance to manage standard coins and custom currencies with Add, Spend, or Set. Amounts accept a dot or comma and at most two decimal places. Balances are independent and included in JSON backups; currencies are not automatically converted.
 - Creature menu → Image layout offers Banner, Left portrait, or Right portrait. Crop framing preserves the original image.

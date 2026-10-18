@@ -313,7 +313,7 @@ struct HeroView: View {
     }
     @ViewBuilder var page:some View {
         GeometryReader { viewport in
-            let bannerHeight = min(300,max(215,(viewport.size.width-36)/4.4))
+            let bannerHeight = min(380,max(275,(viewport.size.width-36)/3.5))
             ScrollView {
                 VStack(alignment:.leading,spacing:-24) {
                     GeometryReader { position in

@@ -45,6 +45,7 @@ struct Creature: Codable, Identifiable, Equatable {
 }
 extension Hero {
     mutating func migrateContent() {
+        migrateRecognizedFeatureEffects()
         migrateEquipmentContainers()
         for i in attacks.indices where attacks[i].equipmentID == nil && attacks[i].isSpell != true {
             let matches = items.filter { $0.name.caseInsensitiveCompare(attacks[i].name) == .orderedSame }

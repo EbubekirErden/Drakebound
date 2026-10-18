@@ -86,7 +86,7 @@ private final class PDFSheetWriter {
         topic = heading; page += 1; context.beginPDFPage(nil)
         context.saveGState(); context.translateBy(x:0,y:size.height); context.scaleBy(x:1,y:-1)
         NSGraphicsContext.saveGraphicsState(); NSGraphicsContext.current = NSGraphicsContext(cgContext:context,flipped:true)
-        draw("FELLOWSHIP 5E  /  "+heading,in:CGRect(x:margin,y:22,width:width,height:15),size:8,bold:true,color:.darkGray)
+        draw("DRAKEBOUND  /  "+heading,in:CGRect(x:margin,y:22,width:width,height:15),size:8,bold:true,color:.darkGray)
         y = 48
     }
     func endPage() {

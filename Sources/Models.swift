@@ -224,6 +224,7 @@ func validate(_ archive: Archive) throws {
     guard archive.version == 1, !archive.heroes.isEmpty,
           Set(archive.heroes.map(\.id)).count == archive.heroes.count else { throw CocoaError(.fileReadCorruptFile) }
     for h in archive.heroes {
+        guard (h.featureEntries ?? []).allSatisfy(validFeatureEffects) else { throw CocoaError(.fileReadCorruptFile) }
         try validateCurrency(h)
         try validateInventory(h)
         try validateContent(h)

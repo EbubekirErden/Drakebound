@@ -41,7 +41,7 @@ enum CompendiumTransfer {
                         if existing.contains(where:{ $0.name == feature.name && $0.source == feature.source && $0.text == feature.text }) { summary.skipped += 1 }
                         else { existing.append(feature); summary.features += 1 }
                     }
-                    hero.featureEntries = existing
+                    hero.replaceFeatures(existing)
                 }
             }
         }

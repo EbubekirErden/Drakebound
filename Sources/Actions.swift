@@ -23,6 +23,8 @@ struct CharacterFeature: Codable, Identifiable, Equatable {
     var timing:ActionTiming?
     var resourceCost:ResourceCost?
     var parentFeatureID:UUID?
+    var effectMode:FeatureEffectMode?
+    var effects:[FeatureEffect]?
 }
 struct HitDicePool: Codable, Identifiable, Equatable {
     var id = UUID()

@@ -61,13 +61,14 @@ struct FeaturePanel: View {
     @ObservedObject var store: Store
     @State var editing: CharacterFeature?
     @State private var filter:FeatureCategory?
+    @State private var browseFeats=false
     @State private var expanded:Set<UUID> = []
     var body: some View {
         Card(title:"Features & traits") {
             HStack(spacing:6) {
                 Button("All") { filter = nil }.tint(filter == nil ? accent:Color.gray)
                 ForEach(FeatureCategory.allCases,id:\.self) { category in Button(category.rawValue) { filter = category }.tint(filter == category ? accent:Color.gray) }
-                Spacer(); Button { editing = CharacterFeature(category:filter ?? .other) } label: { Label("Feature",systemImage:"plus") }.buttonStyle(.plain).foregroundStyle(accent)
+                Spacer();Button { browseFeats=true } label: { Label("Browse feats",systemImage:"books.vertical") }.popover(isPresented:$browseFeats) { FeatQuickAdd(hero:$hero,entries:store.compendium.filter { $0.category == .feat }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) }; Button { editing = CharacterFeature(category:filter ?? .other) } label: { Label("Feature",systemImage:"plus") }.buttonStyle(.plain).foregroundStyle(accent)
             }.font(.system(size:10))
             ForEach(FeatureCategory.allCases,id:\.self) { category in
                 let entries = (hero.featureEntries ?? []).filter { ($0.category ?? .other) == category }
@@ -84,6 +85,7 @@ struct FeaturePanel: View {
                                     Button { editing = feature } label: { Image(systemName:"pencil") }.buttonStyle(.plain).help("Edit feature, source, uses, and rolls")
                                 }
                                 if !feature.text.isEmpty { Text(feature.text).font(.system(size:11)).foregroundStyle(expanded.contains(feature.id) ? ink:Color.secondary).lineLimit(expanded.contains(feature.id) ? nil:2).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
+                                ForEach(feature.resolvedEffects.filter(\.enabled)) { effect in Text(featureEffectSummary(effect,level:hero.level)).font(.caption).foregroundStyle(leaf) }
                                 if let counter = feature.counter {
                                     HStack(spacing:8) { Text("Uses \(counter.current) / \(counter.maximum)").font(.caption).foregroundStyle(gold); Button { changeUses(feature,-1) } label: { Image(systemName:"minus") }.disabled(counter.current == 0); Button { changeUses(feature,1) } label: { Image(systemName:"plus") }.disabled(counter.current >= counter.maximum); Spacer(minLength:0) }.font(.caption)
                                     Text(counter.resetSummary).font(.caption2).foregroundStyle(.secondary)
@@ -95,7 +97,7 @@ struct FeaturePanel: View {
                     }
                 }
             }
-        }.sheet(item:$editing) { feature in FeatureEditor(feature:feature,hero:hero,onSave:{ updated in var all = hero.featureEntries ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.featureEntries = all },onDelete:{ hero.featureEntries?.removeAll { $0.id == feature.id } }) }
+        }.sheet(item:$editing) { feature in FeatureEditor(feature:feature,hero:hero,onSave:{ updated in var all = hero.featureEntries ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.replaceFeatures(all) },onDelete:{ hero.replaceFeatures((hero.featureEntries ?? []).filter { $0.id != feature.id }) }) }
     }
     func changeUses(_ feature:CharacterFeature,_ delta:Int) { guard let i = hero.featureEntries?.firstIndex(where:{ $0.id == feature.id }), let counter = feature.counter else { return }; hero.featureEntries?[i].counter?.current = min(counter.maximum,max(0,counter.current+delta)) }
 }
@@ -108,7 +110,7 @@ struct FeatureEditor:View {
     @State private var saveToCompendium = false
     @Environment(\.templateSaveAction) private var saveTemplate
     @Environment(\.dismiss) var dismiss
-    var valid:Bool { !feature.name.trimmingCharacters(in:.whitespaces).isEmpty && validRolls(feature.rolls,hero:hero) && (feature.counter == nil || ((1...999).contains(feature.counter!.maximum) && (0...max(0,feature.counter!.maximum)).contains(feature.counter!.current))) }
+    var valid:Bool { validFeatureEffects(feature) && !feature.name.trimmingCharacters(in:.whitespaces).isEmpty && validRolls(feature.rolls,hero:hero) && (feature.counter == nil || ((1...999).contains(feature.counter!.maximum) && (0...max(0,feature.counter!.maximum)).contains(feature.counter!.current))) }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
             HStack { Text("Feature").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save") { if saveToCompendium { saveTemplate?(TemplateFactory.feature(feature)) }; onSave(feature); dismiss() }.buttonStyle(.borderedProminent).disabled(!valid) }
@@ -121,6 +123,7 @@ struct FeatureEditor:View {
                 }.help("Groups this feature visually under another feature. Resources and effects remain independent.")
                 ActionTimingPicker(timing:$feature.timing)
                 EditorGroup(title:"Description") { BorderedTextEditor(text:$feature.text,height:120) }
+                FeatureEffectsEditor(feature:$feature,hero:hero)
                 EditorGroup(title:"Uses & recovery") { Toggle("Track uses",isOn:Binding(get:{ feature.counter != nil },set:{ feature.counter = $0 ? ResourceCounter(name:feature.name):nil })); if feature.counter != nil { let counter = Binding(get:{ feature.counter ?? ResourceCounter() },set:{ feature.counter = $0 }); HStack { EditorField(title:"Maximum") { TextField("Maximum",value:counter.maximum,format:.number) }; EditorField(title:"Remaining") { TextField("Remaining",value:counter.current,format:.number) } }; CounterResetPicker(counter:counter) } }
                 EditorGroup(title:"Linked resource") { ResourceCostPicker(cost:$feature.resourceCost,hero:hero); Text("Use feature spends this cost and one tracked use, if enabled. Custom rolls spend only the resource configured on that roll.").font(.caption2).foregroundStyle(.secondary) }
                 TrainingGrantEditor(grants:$feature.training,source:feature.name)

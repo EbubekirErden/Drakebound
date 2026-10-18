@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.31.2
+
+- Creatures → Add creature opens compact compendium search with type, CR, and source filters, previews, a role choice, and direct addition to the current character. Custom creature creation stays available in the same popover.
+- Creature empty states use the measured results width for explicit centering.
+
+## 0.31.1
+
+- Centered the Creatures empty state across the full results area and added a matching centered no-search-results state.
+
+## 0.31.0
+
+- Structured feature effects with flat and per-character-level modifiers, active toggles, and recognized/custom/reference-only modes.
+- Recognized Tough feats from compendium apply +2 maximum HP per total character level, including future level-ups; duplicate recognized Tough grants do not stack.
+- Feature cards show applied effects; health hover explains maximum HP sources.
+- Existing compendium Tough entries receive an idempotent upgrade. Imported Fight Club features remain unchanged unless explicitly enabled; recognizable legacy manual Tough bonuses are not doubled.
+- Adding effects keeps full-health characters full, preserves wounded/zero current HP, and clamps HP when the maximum falls.
+- Feature-effect edits form activity undo boundaries; custom template copies have independent effects.
+
+## 0.30.3
+
+- Browse compendium feats directly from Features & traits, with search, source filters, prerequisites, full previews, and duplicate-aware Add controls for the current character.
+
+## 0.30.2
+
+- Taller character banners across all sheet tabs (275–380 pt) and creature banners (250 pt), with matching crop previews.
+
+## 0.30.1
+
+- Creature cards expand/collapse with an arrow or their header name. Folded cards retain name, HP, AC, active status, and dismiss/deactivate controls.
+- Folding respects Reduce Motion and preserves creature data and expanded trait choices.
+
 ## 0.30.0
 
 - Add item opens a compact compendium search with type/source filters, preview, Add, and Custom item options.

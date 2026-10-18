@@ -54,7 +54,27 @@ struct PartySidebar: View {
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
-            HStack(spacing:8) { Image(systemName:"shield.lefthalf.filled").foregroundStyle(accent); VStack(alignment:.leading,spacing:3) { Text("FELLOWSHIP").font(.system(size:12,weight:.bold,design:.serif)).tracking(1); Text("CHARACTER COMPANION").font(.system(size:7,weight:.medium)).tracking(0.8).foregroundStyle(.secondary) } }.padding(.horizontal,16).padding(.vertical,22)
+            HStack(spacing:8) {
+                if let icon = AppBrand.icon {
+                    Image(nsImage:icon)
+                        .resizable()
+                        .interpolation(.high)
+                        .scaledToFit()
+                        .frame(width:40,height:40)
+                        .accessibilityHidden(true)
+                }
+                VStack(alignment:.leading,spacing:3) {
+                    Text("Drakebound")
+                        .font(.custom("Palatino-Bold",size:18,relativeTo:.headline))
+                        .tracking(0.3)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                    Text("CHARACTER COMPANION")
+                        .font(.system(size:7,weight:.medium))
+                        .tracking(0.8)
+                        .foregroundStyle(.secondary)
+                }
+            }.padding(.horizontal,12).padding(.vertical,19)
             HStack { Text("CHARACTERS").font(.system(size:9,weight:.semibold)).tracking(1.2).foregroundStyle(.secondary); Spacer(); Text("\(store.heroes.count)").font(.system(size:9)).foregroundStyle(.secondary) }.padding(.horizontal,16).padding(.top,16).padding(.bottom,10)
             ScrollView {
                 VStack(spacing:6) {
@@ -127,13 +147,15 @@ struct CreaturesPanel: View {
     @ObservedObject var store: Store
     @State var editing: Creature?
     @State var search = ""
+    @State private var browsing=false
     var creatures: Binding<[Creature]> { Binding(get:{ hero.creatures ?? [] },set:{ hero.creatures = $0 }) }
     var body: some View {
         VStack(alignment:.leading,spacing:16) {
-            HStack { VStack(alignment:.leading,spacing:4) { Text("Creatures").font(.system(size:18,weight:.semibold)); Text("Companions, summons, and encounters").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button { editing = Creature() } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent) }
+            HStack { VStack(alignment:.leading,spacing:4) { Text("Creatures").font(.system(size:18,weight:.semibold)); Text("Companions, summons, and encounters").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) } }
             TextField("Search name, type, or role",text:$search).textFieldStyle(.roundedBorder)
-            if creatures.wrappedValue.isEmpty { ContentUnavailableView("Make room for a companion",systemImage:"pawprint",description:Text("Create custom creature records with portraits, stats, HP, and rollable attacks.")) }
+            if creatures.wrappedValue.isEmpty { creatureEmptyState("Make room for a companion","Browse the compendium or create a custom creature with portraits, stats, HP, and attacks.") }
             let matching = creatures.wrappedValue.filter { matches($0) }
+            if !creatures.wrappedValue.isEmpty && matching.isEmpty { creatureEmptyState("No matching creatures","Try another name, type, or role.") }
             if !matching.isEmpty {
                 HStack { Text("Active · \(matching.filter(\.isActive).count)").font(.caption).foregroundStyle(accent); Spacer(); Text("Inactive creatures keep their HP, attacks, and notes.").font(.caption2).foregroundStyle(.secondary) }
             }
@@ -159,6 +181,7 @@ struct CreaturesPanel: View {
             }
         }.sheet(item:$editing) { creature in CreatureEditor(creature:creature) { updated in var all = hero.creatures ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.creatures = all } }
     }
+    func creatureEmptyState(_ title:String,_ message:String) -> some View { GeometryReader { area in ContentUnavailableView(title,systemImage:"pawprint",description:Text(message)).frame(width:area.size.width,height:area.size.height,alignment:.center) }.frame(height:300) }
     func matches(_ creature:Creature) -> Bool { search.isEmpty || [creature.name,creature.kind,creature.type].contains { $0.localizedCaseInsensitiveContains(search) } }
 }
 
@@ -171,9 +194,16 @@ struct CreatureCard: View {
     @State private var detail:CreatureAttack?
     @State private var health:HealthAdjustment?
     @State private var expanded:Set<UUID> = []
+    @State private var cardExpanded=true
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body:some View {
         Card(title:creature.kind,tip:.creatures) {
-            HStack { Label("Active in play",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(accent); Spacer(); Button(action:deactivate) { Label(creature.isSummon ? "Dismiss":"Deactivate",systemImage:"moon.zzz").padding(.horizontal,6).frame(minHeight:28).contentShape(Rectangle()) }.buttonStyle(.bordered).tint(gold).font(.caption).help("Move to Inactive without changing HP or notes").accessibilityLabel((creature.isSummon ? "Dismiss ":"Deactivate ")+creature.name) }
+            HStack(spacing:12) {
+                Button { health=nil;detail=nil;withAnimation(reduceMotion ? nil:.easeInOut(duration:0.18)) { cardExpanded.toggle() } } label: {
+                    HStack(spacing:8) { Image(systemName:cardExpanded ? "chevron.down":"chevron.right").font(.system(size:11,weight:.semibold)).frame(width:16);Text(creature.name).font(.system(size:13,weight:.semibold));if !cardExpanded { Text("\(creature.hp)/\(creature.maximumHP) HP · AC \(creature.ac)").font(.caption).foregroundStyle(.secondary) } }.contentShape(Rectangle())
+                }.buttonStyle(.plain).help(cardExpanded ? "Collapse creature card":"Expand creature card").accessibilityLabel((cardExpanded ? "Collapse ":"Expand ")+creature.name).accessibilityValue(cardExpanded ? "Expanded":"Collapsed")
+                Spacer();Label("Active in play",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(accent);Button(action:deactivate) { Label(creature.isSummon ? "Dismiss":"Deactivate",systemImage:"moon.zzz").padding(.horizontal,6).frame(minHeight:28).contentShape(Rectangle()) }.buttonStyle(.bordered).tint(gold).font(.caption).help("Move to Inactive without changing HP or notes").accessibilityLabel((creature.isSummon ? "Dismiss ":"Deactivate ")+creature.name) }
+            if cardExpanded {
             if creature.imageLayout == nil || creature.imageLayout == .banner { CreatureBanner(creature:$creature,edit:edit,remove:remove) }
             if creature.imageLayout == nil || creature.imageLayout == .banner { creatureDetails }
             else { HStack(alignment:.top,spacing:16) {
@@ -181,6 +211,7 @@ struct CreatureCard: View {
                 VStack(alignment:.leading,spacing:12) { CreatureCompactHeader(creature:$creature,edit:edit,remove:remove);creatureDetails }.frame(maxWidth:.infinity)
                 if creature.imageLayout == .right { sidePortrait }
             } }
+            }
         }.popover(item:$detail) { attack in AttackDescription(name:attack.name,text:attack.description ?? "",edit:{ detail = nil; edit() }) }
     }
     var sidePortrait:some View { CroppedImage(data:creature.image,crop:creature.bannerCrop ?? BannerCrop()).frame(width:150,height:250).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).accessibilityLabel(creature.name+" portrait") }

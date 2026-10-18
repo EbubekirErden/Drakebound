@@ -27,7 +27,7 @@ struct HealthPanel: View {
             HStack(alignment:.center,spacing:16) {
                 HStack(alignment:.firstTextBaseline,spacing:5) {
                     Text("\(hero.hp)").font(.system(size:36,weight:.semibold,design:.rounded)).foregroundStyle(healthColor(hero.hp,hero.maximumHP)).contentTransition(.numericText())
-                    Text("/ \(hero.maximumHP)").font(.system(size:16)).foregroundStyle(.secondary)
+                    Text("/ \(hero.maximumHP)").font(.system(size:16)).foregroundStyle(.secondary).help(hero.maximumHPExplanation)
                 }
                 Spacer()
                 DeathSaveControl(hero:$hero,store:store)

@@ -37,7 +37,7 @@ func allowsBonusDice(_ target: String) -> Bool {
 }
 extension Hero {
     var activeBonuses: [Bonus] {
-        (bonuses ?? []).filter(\.enabled) + items.filter { $0.equipped && $0.quantity > 0 && (!($0.requiresAttunement ?? false) || ($0.attuned ?? false)) }.flatMap { ($0.bonuses ?? []).filter(\.enabled) }
+        featureEffectBonuses + (bonuses ?? []).filter(\.enabled) + items.filter { $0.equipped && $0.quantity > 0 && (!($0.requiresAttunement ?? false) || ($0.attuned ?? false)) }.flatMap { ($0.bonuses ?? []).filter(\.enabled) }
     }
     func flat(_ targets: [String]) -> Int { activeBonuses.filter { targets.contains($0.target) }.reduce(0) { $0 + $1.amount } }
     func effectiveScore(_ i: Int) -> Int { min(30,max(1,scores[i] + flat(["score.\(i)"]))) }

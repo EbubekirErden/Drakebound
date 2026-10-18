@@ -30,6 +30,9 @@ struct CharacterPlayState:Codable,Equatable {
         boundary = [String(h.level),String(h.maxHP),String(h.hitDie),h.scores.description,h.slots.description,h.edition]
         boundary += (h.classLevels ?? []).map { "class:\($0.id):\($0.level)" }
         boundary += h.items.map { "item:\($0.id)" }
+        boundary += (h.featureEntries ?? []).map { feature in
+            "effects:"+feature.id.uuidString+":"+(feature.effectMode?.rawValue ?? "legacy")+":"+feature.resolvedEffects.map { effect in "\(effect.id):\(effect.target):\(effect.amount):\(effect.perLevel):\(effect.enabled)" }.joined(separator:";")
+        }
         boundary += h.spells.map { "spell:\($0.id):\($0.freeUses ?? 0)" }
         boundary += (h.creatures ?? []).map { "creature:\($0.id):\($0.maximumHP)" }
         boundary += (h.counters ?? []).map { "counter:\($0.id):\($0.maximum)" }

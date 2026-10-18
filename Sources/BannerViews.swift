@@ -51,7 +51,7 @@ struct BannerEditor: View {
     var body: some View {
         VStack(alignment:.leading,spacing:18) {
             Text("Banner framing").font(.headline)
-            CroppedImage(data:hero.portrait,crop:crop).aspectRatio(4.4,contentMode:.fit).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
+            CroppedImage(data:hero.portrait,crop:crop).aspectRatio(3.5,contentMode:.fit).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
             if hero.portrait == nil { Text("Add a character image in Edit → Portrait to create a banner.").font(.caption).foregroundStyle(.secondary) }
             HStack { Text("Left / right").frame(width:90,alignment:.leading); Slider(value:$crop.x,in:0...1) }
             HStack { Text("Top / bottom").frame(width:90,alignment:.leading); Slider(value:$crop.y,in:0...1) }
@@ -83,7 +83,7 @@ struct CreatureBanner:View {
                 Button("Edit",action:edit)
                 Menu { CreatureLayoutPicker(creature:$creature);Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20)
             }.padding(18)
-        }.frame(height:190).contentShape(Rectangle()).clipShape(RoundedRectangle(cornerRadius:10))
+        }.frame(height:250).contentShape(Rectangle()).clipShape(RoundedRectangle(cornerRadius:10))
         .sheet(isPresented:$framing) { CreatureBannerEditor(creature:$creature) }
     }
 }
@@ -95,7 +95,7 @@ struct CreatureBannerEditor:View {
     var body:some View {
         VStack(alignment:.leading,spacing:16) {
             Text("\(creature.name) · image framing").font(.headline)
-            CroppedImage(data:creature.image,crop:crop).frame(width:creature.imageLayout == nil || creature.imageLayout == .banner ? 612:150,height:creature.imageLayout == nil || creature.imageLayout == .banner ? 190:250).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
+            CroppedImage(data:creature.image,crop:crop).frame(width:creature.imageLayout == nil || creature.imageLayout == .banner ? 612:150,height:creature.imageLayout == nil || creature.imageLayout == .banner ? 250:250).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
             if creature.image == nil { Text("Add an image in the creature editor.").font(.caption).foregroundStyle(.secondary) }
             HStack { Text("Left / right").frame(width:90,alignment:.leading); Slider(value:$crop.x,in:0...1) }
             HStack { Text("Top / bottom").frame(width:90,alignment:.leading); Slider(value:$crop.y,in:0...1) }
