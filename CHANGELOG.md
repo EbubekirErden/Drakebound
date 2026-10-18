@@ -15,6 +15,11 @@
 
 ## Unreleased
 
+- Detail panels retain their dimensions after dragging; the corner control also expands/restores on click. The compendium inspector has a draggable width divider.
+- Source attribution moves into a collapsed Sources section below reference content.
+- Spell identity fits in one row, casting panels match heights, and roll fields group formula, effects, and scaling with manual level options in a disclosure.
+- Main descriptions support basic Markdown previews, bold/italic and bullet lists; Enter continues a bullet and a second Enter ends the list. Text stays portable through imports and exports.
+
 - Custom editors keep identity and descriptions full-width, with wider adaptive settings columns, consistent Save/Cancel controls, and alternating repeated rows.
 - Compendium filters sit together with a spell class-list filter. Multi-term, accent-insensitive search includes classes and sources, with optional description search and closer name matches first.
 - Optional right detail inspector keeps browsing visible; expanded details remain available. Detail resize handles have reserved space below action buttons.

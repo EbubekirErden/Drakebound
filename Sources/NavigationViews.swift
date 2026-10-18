@@ -6,49 +6,6 @@ struct SpellPresentation {
     var library = false
     var ids:[UUID]
 }
-struct DismissibleDetail<Content:View>:View {
-    var dismiss:()->Void
-    @ViewBuilder var content:()->Content
-    // Content never determines the panel size. Only the viewport or an explicit resize does.
-    @State private var requestedSize = CGSize(width:660,height:580)
-    @State private var resizeStart:CGSize?
-    var body:some View {
-        GeometryReader { viewport in
-            let size = fitted(requestedSize,in:viewport.size)
-            ZStack {
-                Button(action:dismiss) { Color.black.opacity(0.48).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Close details")
-                content().padding(.bottom,28).frame(width:size.width,height:size.height)
-                    .background(surface).clipShape(RoundedRectangle(cornerRadius:14))
-                    .overlay(RoundedRectangle(cornerRadius:14).stroke(ink.opacity(0.12)))
-                    .contentShape(Rectangle()).onTapGesture { }
-                    .overlay(alignment:.bottomTrailing) {
-                        Button { requestedSize = CGSize(width:660,height:580) } label: {
-                            Image(systemName:"arrow.up.left.and.arrow.down.right").font(.system(size:10,weight:.semibold)).foregroundStyle(.secondary)
-                                .frame(width:24,height:24).background(paper.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:5)).contentShape(Rectangle())
-                        }.buttonStyle(.plain).padding(3)
-                            .help("Drag to resize details · click to reset")
-                            .accessibilityLabel("Resize details")
-                            .accessibilityAdjustableAction { direction in
-                                let change:CGFloat = direction == .increment ? 40:-40
-                                requestedSize = fitted(CGSize(width:size.width+change,height:size.height+change),in:viewport.size)
-                            }
-                            .simultaneousGesture(DragGesture(minimumDistance:2,coordinateSpace:.named("detailViewport")).onChanged { value in
-                                if resizeStart == nil { resizeStart = size }
-                                let start = resizeStart ?? size
-                                requestedSize = fitted(CGSize(width:start.width+value.translation.width*2,height:start.height+value.translation.height*2),in:viewport.size)
-                            }.onEnded { _ in resizeStart = nil })
-                    }
-                    .shadow(color:.black.opacity(0.5),radius:28,y:10)
-            }.frame(width:viewport.size.width,height:viewport.size.height)
-                .coordinateSpace(name:"detailViewport")
-        }.onExitCommand(perform:dismiss)
-    }
-    private func fitted(_ requested:CGSize,in viewport:CGSize) -> CGSize {
-        let maximum = CGSize(width:max(1,viewport.width-32),height:max(1,viewport.height-32))
-        return CGSize(width:min(maximum.width,max(540,requested.width)),height:min(maximum.height,max(440,requested.height)))
-    }
-}
-
 struct CompendiumView:View {
     @ObservedObject var store:Store
     @FocusState private var searchFocused:Bool
@@ -62,6 +19,9 @@ struct CompendiumView:View {
     @State private var selected:CompendiumEntry?
     @State private var browserWidth:CGFloat = 0
     @State private var expandedDetail = false
+    @AppStorage("compendiumInspectorWidth") private var inspectorWidth:Double = 360
+    @State private var inspectorDragStart:Double?
+    private var fittedInspectorWidth:CGFloat { min(max(300,inspectorWidth),min(540,max(300,browserWidth-560))) }
     @State private var spellClass = "All classes"
     @AppStorage("compendiumInspectorEnabled") private var inspectorEnabled = false
     @AppStorage("compendiumSearchDescriptions") private var searchDescriptions = false
@@ -87,11 +47,11 @@ struct CompendiumView:View {
             HStack(spacing:0) {
                 libraryContent.frame(maxWidth:.infinity,maxHeight:.infinity)
                 if canInspect {
-                    Divider()
+                    inspectorDivider
                     Group {
                         if let selected { referenceDetails(selected) }
                         else { ContentUnavailableView("Select a reference",systemImage:"sidebar.right",description:Text("Preview an entry here while keeping your search and filters visible.")) }
-                    }.frame(width:360).frame(maxHeight:.infinity).background(surface.opacity(0.5))
+                    }.frame(width:fittedInspectorWidth).frame(maxHeight:.infinity).background(surface.opacity(0.5))
                 }
             }
             .overlay {
@@ -117,6 +77,16 @@ struct CompendiumView:View {
             guard !Task.isCancelled else { return }; matches = found; limit = 100
         }
         .sheet(item:$creation) { session in CompendiumCreator(session:session,classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name),hero:store.heroes.first(where:{ $0.id == store.selected }) ?? Hero(),save:{ store.upsertTemplate($0); selected = nil }) }
+    }
+    private var inspectorDivider:some View {
+        Rectangle().fill(ink.opacity(0.12)).frame(width:5).contentShape(Rectangle())
+            .onHover { inside in if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() } }
+            .gesture(DragGesture(minimumDistance:1).onChanged { value in
+                if inspectorDragStart == nil { inspectorDragStart = fittedInspectorWidth }
+                inspectorWidth = min(min(540,max(300,browserWidth-560)),max(300,(inspectorDragStart ?? 360)-value.translation.width))
+            }.onEnded { _ in inspectorDragStart = nil })
+            .help("Drag to resize the detail inspector").accessibilityLabel("Detail inspector width")
+            .accessibilityAdjustableAction { direction in inspectorWidth = min(min(540,max(300,browserWidth-560)),max(300,fittedInspectorWidth+(direction == .increment ? 20:-20))) }
     }
     private var libraryContent:some View {
         VStack(alignment:.leading,spacing:14) {
@@ -222,7 +192,6 @@ struct CompendiumView:View {
                 Button { if !expandedDetail || !canInspect { selected = nil }; expandedDetail = false; message = "" } label: { Image(systemName:"xmark") }.buttonStyle(PageButtonStyle()).help("Close details").accessibilityLabel("Close details")
             }
             Text(entry.category.rawValue+" · "+entry.summary).font(.caption).foregroundStyle(sky)
-            Text(entry.sourceDescription).font(.caption2).foregroundStyle(gold)
             HStack(spacing:8) {
                 Button(entry.custom == true ? "Edit":"Edit copy") { creation = CompendiumCreation(category:entry.category,original:entry) }.buttonStyle(PageButtonStyle())
                 Spacer(minLength:0)
@@ -232,7 +201,14 @@ struct CompendiumView:View {
                     Button { inspectorEnabled = true; expandedDetail = false } label: { Image(systemName:"sidebar.right") }.buttonStyle(PageButtonStyle()).disabled(browserWidth < 950).help("Open in the right inspector").accessibilityLabel("Open in right inspector")
                 }
             }
-            ScrollView { ReferenceBody(entry:entry).padding(.trailing,4) }.frame(maxHeight:.infinity)
+            ScrollView {
+                VStack(alignment:.leading,spacing:18) {
+                    ReferenceBody(entry:entry)
+                    DisclosureGroup("Sources") {
+                        Text(entry.sourceDescription).font(.system(size:11)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal:false,vertical:true).padding(.top,6)
+                    }.font(.caption).foregroundStyle(.secondary)
+                }.padding(.trailing,4)
+            }.frame(maxHeight:.infinity)
             Divider()
             if entry.category == .classEntry { VStack(alignment:.leading,spacing:6) { Stepper("Features through level \(throughLevel)",value:$throughLevel,in:1...20); Text("\(entry.featureCopies(through:throughLevel).count) separate entries").font(.caption).foregroundStyle(.secondary) } }
             HStack { Spacer(); Button("Add to character…") { add(entry) }.buttonStyle(PageButtonStyle(prominent:true)).disabled(store.heroes.isEmpty) }

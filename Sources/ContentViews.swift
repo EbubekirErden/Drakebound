@@ -400,7 +400,7 @@ struct CreatureEditor:View {
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity") { TextField("Creature name",text:$creature.name); HStack { Picker("Role",selection:$creature.kind) { ForEach(["Companion","Familiar","Summon","Encounter","Reference"],id:\.self) { Text($0).tag($0) } }; TextField("Size / type / challenge",text:$creature.type) }; DisclosureGroup("Image") { PictureControls(data:$creature.image,label:"Creature image") } }
-                EditorGroup(title:"Notes & full source") { BorderedTextEditor(text:$creature.description,height:90) }
+                EditorGroup(title:"Notes & full source") { BorderedTextEditor(text:$creature.description,height:90,markdown:true) }
                 EditorColumns {
                 EditorGroup(title:"Combat stats") {
                     HStack { EditorField(title:"HP") { TextField("Current HP",value:$creature.hp,format:.number) }; EditorField(title:"Maximum") { TextField("Maximum HP",value:$creature.maximumHP,format:.number) }; EditorField(title:"AC") { TextField("Armor class",value:$creature.ac,format:.number) }; EditorField(title:"Speed · ft") { TextField("Speed",value:$creature.speed,format:.number) } }

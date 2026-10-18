@@ -9,23 +9,8 @@ struct RollListEditor: View {
     var body: some View {
         VStack(alignment:.leading,spacing:12) {
             ForEach(list) { $roll in
-                VStack(alignment:.leading,spacing:6) {
-                    HStack { TextField("Roll name",text:$roll.name); Button { let id = roll.id; rolls?.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain).help("Remove roll") }
-                    DiceFormulaField(value:$roll.expression,hero:hero,spell:spell,slot:roll.slotLevel ?? spell?.level ?? 0,allowTokens:true)
-                    EditorField(title:"Damage type") { OptionField(title:"Damage type",value:Binding(get:{ roll.damageType ?? "None" },set:{ roll.damageType = $0 == "None" ? nil:$0 }),choices:damageTypeChoices) }
-                    if let spell, spell.level > 0 {
-                        SpellUpcastEditor(roll:$roll,spell:spell)
-                    }
-                    if let spell {
-                        if spell.level == 0 { Stepper("Character level \(roll.minimumCharacterLevel ?? 1)+",value:Binding(get:{ roll.minimumCharacterLevel ?? 1 },set:{ roll.minimumCharacterLevel = $0 }),in:1...20); Toggle("Use as cantrip scaling tier",isOn:Binding(get:{ roll.minimumCharacterLevel != nil },set:{ roll.minimumCharacterLevel = $0 ? 1:nil })) }
-                        else { Stepper("Slot level \(roll.slotLevel ?? spell.level)",value:Binding(get:{ roll.slotLevel ?? spell.level },set:{ roll.slotLevel = $0 }),in:max(1,spell.level)...9); Toggle("Label as slot-level option",isOn:Binding(get:{ roll.slotLevel != nil },set:{ roll.slotLevel = $0 ? max(1,spell.level):nil })) }
-                    }
-                    EditorField(title:"Condition effects") { Picker("Condition effects",selection:$roll.kind) { Text("Generic · no automatic conditions").tag(Optional<D20Kind>.none); ForEach(D20Kind.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) } }.labelsHidden() }
-                    if roll.kind == .save || roll.kind == .check { Picker("Ability",selection:$roll.ability) { Text("Unspecified").tag(Optional<Int>.none); ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag(Optional($0)) } } }
-                    if allowsResourceCosts { ResourceCostPicker(cost:$roll.resourceCost,hero:hero) }
-                    if let resolved = try? hero.resolveRoll(roll.expression,spell:spell,slot:spell?.level ?? 0) { Text("Preview: \(resolved)").font(.caption2).foregroundStyle(.secondary) }
-                    else { Text("Invalid formula or unknown token").font(.caption2).foregroundStyle(coral) }
-                }.modifier(EditorRowStyle(index:list.wrappedValue.firstIndex { $0.id == roll.id } ?? 0))
+                RollEditorRow(roll:$roll,hero:hero,spell:spell,allowsResourceCosts:allowsResourceCosts,remove:{ let id=roll.id;rolls?.removeAll { $0.id == id } })
+                    .modifier(EditorRowStyle(index:list.wrappedValue.firstIndex { $0.id == roll.id } ?? 0))
             }
             HStack {
                 Button("Add custom roll") { rolls = (rolls ?? []) + [NamedRoll()] }.help("Build a formula with dice and character values. Custom rolls do not apply HP or other effects automatically.")
@@ -99,7 +84,7 @@ struct FeaturePanel: View {
                                     }.buttonStyle(.plain)
                                     Button { editing = feature } label: { Image(systemName:"pencil") }.buttonStyle(.plain).help("Edit feature, source, uses, and rolls")
                                 }
-                                if !feature.text.isEmpty { Text(feature.text).font(.system(size:11)).foregroundStyle(expanded.contains(feature.id) ? ink:Color.secondary).lineLimit(expanded.contains(feature.id) ? nil:2).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
+                                if !feature.text.isEmpty { Text(DescriptionMarkdown.attributed(feature.text)).font(.system(size:11)).foregroundStyle(expanded.contains(feature.id) ? ink:Color.secondary).lineLimit(expanded.contains(feature.id) ? nil:2).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
                                 ForEach(feature.resolvedEffects.filter(\.enabled)) { effect in Text(featureEffectSummary(effect,level:hero.level)).font(.caption).foregroundStyle(leaf) }
                                 if let counter = feature.counter {
                                     HStack(spacing:8) { Text("Uses \(counter.current) / \(counter.maximum)").font(.caption).foregroundStyle(gold); Button { changeUses(feature,-1) } label: { Image(systemName:"minus") }.disabled(counter.current == 0); Button { changeUses(feature,1) } label: { Image(systemName:"plus") }.disabled(counter.current >= counter.maximum); Spacer(minLength:0) }.font(.caption)
@@ -132,7 +117,7 @@ struct FeatureEditor:View {
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity & source") { TextField("Feature name",text:$feature.name); HStack { Picker("Category",selection:Binding(get:{ feature.category ?? .other },set:{ feature.category = $0 })) { ForEach(FeatureCategory.allCases,id:\.self) { Text($0.rawValue).tag($0) } }; TextField("Source · race, class, book",text:Binding(get:{ feature.source ?? "" },set:{ feature.source = $0 })) } }
-                EditorGroup(title:"Description") { BorderedTextEditor(text:$feature.text,height:120) }
+                EditorGroup(title:"Description") { BorderedTextEditor(text:$feature.text,height:120,markdown:true) }
                 EditorColumns {
                     EditorGroup(title:"Organization & timing") {
                 Picker("Group under feature",selection:$feature.parentFeatureID) {
@@ -168,18 +153,21 @@ struct SpellEditor:View {
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity") {
-                    TextField("Spell name",text:$spell.name)
-                    HStack { Stepper(spell.level == 0 ? "Cantrip":"Level \(spell.level)",value:$spell.level,in:0...9).frame(width:140); EditorField(title:"School") { OptionField(title:"School",value:$spell.school,choices:spellSchoolChoices) } }
+                    HStack(alignment:.bottom,spacing:14) {
+                        EditorField(title:"Name") { TextField("Spell name",text:$spell.name) }
+                        Stepper(spell.level == 0 ? "Cantrip":"Level \(spell.level)",value:$spell.level,in:0...9).frame(width:130,height:28)
+                        EditorField(title:"School") { OptionField(title:"School",value:$spell.school,choices:spellSchoolChoices) }.frame(width:190)
+                    }
                 }
-                EditorGroup(title:"Description") { BorderedTextEditor(text:$spell.text,height:110) }
-                EditorColumns {
-                    EditorGroup(title:"Casting details") {
+                EditorGroup(title:"Description") { BorderedTextEditor(text:$spell.text,height:110,markdown:true) }
+                EditorColumns(equalHeight:true) {
+                    EditorGroup(title:"Casting details",fillHeight:true) {
                     HStack { EditorField(title:"Casting time") { OptionField(title:"Casting time",value:$spell.time,choices:["1 action","1 bonus action","1 reaction","1 minute","10 minutes","1 hour","8 hours"]) }; EditorField(title:"Range") { OptionField(title:"Range",value:$spell.range,choices:["Self","Touch","30 feet","60 feet","90 feet","120 feet","150 feet","300 feet","1 mile","Sight","Unlimited"]) } }
                     HStack { EditorField(title:"Duration") { OptionField(title:"Duration",value:$spell.duration,choices:["Instantaneous","1 round","1 minute","10 minutes","1 hour","8 hours","24 hours","Until dispelled","Concentration, up to 1 minute","Concentration, up to 10 minutes","Concentration, up to 1 hour"]) }; EditorField(title:"Components") { SpellComponentButtons(value:$spell.components) } }
                     SpellMaterialField(components:$spell.components)
                     }
                 } trailing: {
-                EditorGroup(title:"Casting") {
+                EditorGroup(title:"Casting",fillHeight:true) {
                     SpellClassSelector(classes:Binding(get:{ spell.classes ?? "" },set:{ spell.classes = $0 }),options:classOptions + hero.progressionClasses.map(\.name))
                     HStack { Toggle("Ritual",isOn:Binding(get:{ spell.ritual ?? false },set:{ spell.ritual = $0 })); Toggle("Requires concentration",isOn:Binding(get:{ spell.requiresConcentration },set:{ spell.concentration = $0 })) }
                     if !isCompendium {
@@ -306,7 +294,7 @@ struct SpellDetails: View {
             if !library,let cost = spell.resourceCost { Text("Casting spends "+hero.resourceSummary(cost)).font(.caption2).foregroundStyle(gold) }
             Text(spell.level == 0 ? "\(spell.school) cantrip":"Level \(spell.level) · \(spell.school)").font(.caption).foregroundStyle(sky)
             Text("\(spell.time) · \(spell.range)\n\(spell.components) · \(spell.duration)").font(.system(size:12)).lineSpacing(5)
-            ScrollView { VStack(alignment:.leading,spacing:18) { Text(spell.text).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading); if !(spell.rolls ?? []).isEmpty { Text("CUSTOM ROLLS").font(.system(size:10,weight:.semibold)).foregroundStyle(sky); RollButtons(rolls:spell.rolls,hero:hero,store:store,source:spell.name,spell:spell,slot:spell.level == 0 ? 0:castLevel,actionSource:library ? nil:SheetActionRef(kind:.spellRoll,sourceID:spell.id)); Text(spell.level == 0 && hero.cantripRoll(spell,at:hero.level) != nil ? "Cast uses the selected character-level tier. Each formula can also be rolled separately without casting.":"Rolls are separate from casting unless an automatic roll is configured.").font(.caption2).foregroundStyle(.secondary) } } }.id(spell.id)
+            ScrollView { VStack(alignment:.leading,spacing:18) { Text(DescriptionMarkdown.attributed(spell.text)).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading); if !(spell.rolls ?? []).isEmpty { Text("CUSTOM ROLLS").font(.system(size:10,weight:.semibold)).foregroundStyle(sky); RollButtons(rolls:spell.rolls,hero:hero,store:store,source:spell.name,spell:spell,slot:spell.level == 0 ? 0:castLevel,actionSource:library ? nil:SheetActionRef(kind:.spellRoll,sourceID:spell.id)); Text(spell.level == 0 && hero.cantripRoll(spell,at:hero.level) != nil ? "Cast uses the selected character-level tier. Each formula can also be rolled separately without casting.":"Rolls are separate from casting unless an automatic roll is configured.").font(.caption2).foregroundStyle(.secondary) } } }.id(spell.id)
             Divider()
             if library {
                 Button("Add to character…") { store.compendiumAdd = CompendiumAddRequest(picks:[CompendiumPick(spell:spell)]) }.disabled(store.heroes.isEmpty)

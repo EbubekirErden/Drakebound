@@ -208,7 +208,7 @@ struct ItemEditor: View {
                         HStack { EditorField(title:"Type") { Picker("Type",selection:Binding(get:{ item.equipmentKind },set:{ item.kind = $0 })) { ForEach(EquipmentKind.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }; EditorField(title:"Quantity") { TextField("Quantity",value:$item.quantity,format:.number) }.frame(width:75); EditorField(title:"Weight each · lb") { TextField("Weight",value:$item.weight,format:.number) }.frame(width:100) }
                         HStack { Toggle("Equipped",isOn:$item.equipped); Toggle("Requires attunement",isOn:Binding(get:{ item.requiresAttunement ?? false },set:{ item.requiresAttunement = $0 })); if item.requiresAttunement == true { Toggle("Attuned",isOn:Binding(get:{ item.attuned ?? false },set:{ item.attuned = $0 })) } }.font(.caption)
                     }
-                    EditorGroup(title:"Description & properties") { BorderedTextEditor(text:$item.notes,height:90) }
+                    EditorGroup(title:"Description & properties") { BorderedTextEditor(text:$item.notes,height:90,markdown:true) }
                     EditorColumns {
                         WeaponProfileEditor(item:$item)
                     EditorGroup(title:"Armor & modifiers") {

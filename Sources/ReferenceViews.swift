@@ -8,7 +8,7 @@ struct ReferenceBody:View {
             if entry.category == .monster { CreatureReferenceStats(entry:entry) }
             else if entry.category != .race { ReferenceMetadataTable(fields:scalar.filter { !["text","description"].contains($0.name) },equipment:entry.category == .item) }
             ForEach(Array(scalar.filter { ["text","description"].contains($0.name) }.enumerated()),id:\.offset) { _,field in
-                Text(field.text).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
+                DescriptionText(text:field.text).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
             }
             ForEach(Array(entry.fields.filter { !$0.children.isEmpty && !(entry.category == .race && GuideRules.isOriginMetadata($0.children.first { $0.name == "name" }?.text ?? "")) }.enumerated()),id:\.offset) { _,field in ReferenceDisclosure(field:field) }
             if entry.category == .race { ReferenceMetadataTable(fields:GuideRules.originFacts(entry)) }
@@ -91,7 +91,7 @@ struct ReferenceDisclosure:View {
             Button { withAnimation(.easeOut(duration:0.15)) { expanded.toggle() } } label: { HStack(spacing:9) { Image(systemName:expanded ? "chevron.down":"chevron.right").font(.system(size:9)); Text(title).font(.system(size:13,weight:.medium)); Spacer(); if field.name == "autolevel" { Text("\(field.children.filter { $0.name == "feature" }.count) features").font(.caption2).foregroundStyle(.secondary) } }.contentShape(Rectangle()) }.buttonStyle(.plain)
             if expanded {
                 ForEach(Array(field.children.filter { $0.name != "name" }.enumerated()),id:\.offset) { _,child in
-                    if child.children.isEmpty { if !child.text.isEmpty { Text(["text","description"].contains(child.name) ? child.text:"\(child.name.capitalized): \(child.text)").font(.system(size:12)).lineSpacing(3).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }
+                    if child.children.isEmpty { if !child.text.isEmpty { Text(DescriptionMarkdown.attributed(["text","description"].contains(child.name) ? child.text:"\(child.name.capitalized): \(child.text)")).font(.system(size:12)).lineSpacing(3).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }
                     else { ReferenceDisclosure(field:child) }
                 }
             }

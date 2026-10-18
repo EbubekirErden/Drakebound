@@ -38,7 +38,7 @@ struct ReferenceTemplateEditor:View {
                     ForEach($draft.traits) { $trait in VStack(spacing:8) {
                         HStack { TextField("Feature title",text:$trait.name); Button { draft.traits.removeAll { $0.id == trait.id } } label: { Image(systemName:"minus.circle") } }
                         if draft.category == .classEntry { HStack { Stepper("Class level \(trait.level)",value:$trait.level,in:1...20); TextField("Subclass · blank for core",text:$trait.subclass); Toggle("Optional",isOn:$trait.optional) }.font(.caption) }
-                        BorderedTextEditor(text:$trait.text,height:75)
+                        BorderedTextEditor(text:$trait.text,height:75,markdown:true)
                     }.modifier(EditorRowStyle(index:draft.traits.firstIndex { $0.id == trait.id } ?? 0)) }
                     Button("Add feature") { draft.traits.append(TemplateTrait()) }
                 }

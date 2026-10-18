@@ -8,10 +8,11 @@ struct CustomEditorFrame: ViewModifier {
 }
 
 struct EditorColumns<Leading:View,Trailing:View>: View {
+    var equalHeight = false
     @ViewBuilder var leading: () -> Leading
     @ViewBuilder var trailing: () -> Trailing
     var body: some View {
-        EditorColumnsLayout {
+        EditorColumnsLayout(equalHeight:equalHeight) {
             VStack(alignment:.leading,spacing:12,content:leading)
             VStack(alignment:.leading,spacing:12,content:trailing)
         }
@@ -19,6 +20,7 @@ struct EditorColumns<Leading:View,Trailing:View>: View {
 }
 
 private struct EditorColumnsLayout: Layout {
+    var equalHeight = false
     private let gap:CGFloat = 16
     func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) -> CGSize {
         let width = proposal.width ?? 880
@@ -30,8 +32,8 @@ private struct EditorColumnsLayout: Layout {
         let sideBySide = bounds.width >= 740
         let width = sideBySide ? (bounds.width-gap)/2:bounds.width
         let first = subviews[0].sizeThatFits(ProposedViewSize(width:width,height:nil))
-        subviews[0].place(at:bounds.origin,anchor:.topLeading,proposal:ProposedViewSize(width:width,height:first.height))
-        subviews[1].place(at:CGPoint(x:sideBySide ? bounds.minX+width+gap:bounds.minX,y:sideBySide ? bounds.minY:bounds.minY+first.height+gap),anchor:.topLeading,proposal:ProposedViewSize(width:width,height:nil))
+        subviews[0].place(at:bounds.origin,anchor:.topLeading,proposal:ProposedViewSize(width:width,height:sideBySide && equalHeight ? bounds.height:first.height))
+        subviews[1].place(at:CGPoint(x:sideBySide ? bounds.minX+width+gap:bounds.minX,y:sideBySide ? bounds.minY:bounds.minY+first.height+gap),anchor:.topLeading,proposal:ProposedViewSize(width:width,height:sideBySide && equalHeight ? bounds.height:nil))
     }
 }
 

@@ -30,3 +30,6 @@ build/JournalTests
 
 xcrun swiftc -module-cache-path build/module-cache Sources/SpellComponents.swift Tests/SpellComponentsTests.swift -o build/SpellComponentsTests
 build/SpellComponentsTests
+
+xcrun swiftc -module-cache-path build/module-cache Sources/DescriptionMarkdownRules.swift Tests/DescriptionMarkdownTests.swift -o build/DescriptionMarkdownTests
+build/DescriptionMarkdownTests

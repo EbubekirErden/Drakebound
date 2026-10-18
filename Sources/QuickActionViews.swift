@@ -240,7 +240,7 @@ struct GroupedActionCard:View {
             if let creatureAttack { AttackDescription(name:(creature?.name ?? "Creature")+" · "+creatureAttack.name,text:creatureAttack.description ?? "",edit:nil) }
             else if let creatureFeature { AttackDescription(name:(creature?.name ?? "Creature")+" · "+creatureFeature.name,text:creatureFeature.text,edit:nil) }
             else if let attack { AttackDescription(name:attack.name,text:attack.description ?? "",edit:nil) }
-            else if let feature = hero.featureEntries?.first(where:{ $0.id == action.ref.sourceID }) { VStack(alignment:.leading,spacing:12) { Text(feature.name).font(.headline); ScrollView { Text(feature.text).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(18).frame(width:400,height:300) }
+            else if let feature = hero.featureEntries?.first(where:{ $0.id == action.ref.sourceID }) { VStack(alignment:.leading,spacing:12) { Text(feature.name).font(.headline); ScrollView { Text(DescriptionMarkdown.attributed(feature.text)).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(18).frame(width:400,height:300) }
         }
     }
     func rollField(_ title:String,_ value:String,_ color:Color) -> some View {

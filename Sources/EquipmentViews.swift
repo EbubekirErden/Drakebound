@@ -121,7 +121,7 @@ struct ItemDetails:View {
                 Divider()
                 ScrollView {
                     VStack(alignment:.leading,spacing:16) {
-                        if !item.notes.isEmpty { Text(item.notes).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
+                        if !item.notes.isEmpty { Text(DescriptionMarkdown.attributed(item.notes)).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
                         if item.armorBase != nil || !(item.bonuses ?? []).isEmpty { EditorGroup(title:"Configured effects") { if let base = item.armorBase { Text("Base armor AC \(base)").font(.caption) }; ForEach(item.bonuses ?? []) { bonus in Text(bonusSummary(bonus,hero:hero)).font(.caption).foregroundStyle(gold) } } }
                         RollButtons(rolls:item.rolls,hero:hero,store:store,source:item.name,actionSource:SheetActionRef(kind:.itemRoll,sourceID:item.id))
                     }.frame(maxWidth:.infinity,alignment:.leading).padding(.trailing,4)

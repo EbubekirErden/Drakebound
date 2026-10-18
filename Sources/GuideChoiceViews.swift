@@ -110,7 +110,7 @@ struct GuideSpellBrowser:View {
         }.padding(20).frame(width:660,height:580).background(surface).foregroundStyle(ink).tint(sky)
         .popover(isPresented:$casterOpen) { if let buildDraft { CasterTableView(draft:buildDraft,catalog:catalog,level:$casterLevel) { slots in onSlots?(slots);casterOpen=false } } }
         .popover(isPresented:$featuresOpen) { LoadoutFeatureReference(features:hero.featureEntries ?? []) }
-        .sheet(item:$preview) { spell in VStack(alignment:.leading,spacing:14) { HStack { Text(spell.name).font(.title2.bold()); Spacer(); Button("Done") { preview = nil } }; Text("\(spell.school) · \(spell.range) · \(spell.duration)").font(.caption).foregroundStyle(sky); ScrollView { Text(spell.text).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(22).frame(width:600,height:520).background(surface) }
+        .sheet(item:$preview) { spell in VStack(alignment:.leading,spacing:14) { HStack { Text(spell.name).font(.title2.bold()); Spacer(); Button("Done") { preview = nil } }; Text("\(spell.school) · \(spell.range) · \(spell.duration)").font(.caption).foregroundStyle(sky); ScrollView { Text(DescriptionMarkdown.attributed(spell.text)).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(22).frame(width:600,height:520).background(surface) }
         .sheet(item:$levelReview) { entry in GuideSpellLevelReview(entry:entry,hero:hero,onAdd:onAdd) }
     }
     func spellRow(_ spell:Spell) -> some View {
@@ -157,7 +157,7 @@ struct GuidePreview:View {
             if draft.isLevelUp || expanded { Divider(); Text("CHANGES").font(.system(size:9,weight:.semibold)).foregroundStyle(accent); ForEach(Array(draft.changeSummary.enumerated()),id:\.offset) { _,line in Text(line).font(.system(size:11)).frame(maxWidth:.infinity,alignment:.leading) } }
             if expanded {
                 Divider(); Text("TRAINING").font(.caption.bold()); Text(hero.skillRanks.filter { $0.value > 0 }.sorted { $0.key < $1.key }.map { "\($0.key)\($0.value == 2 ? " (expertise)":"")" }.joined(separator:", ")).font(.caption)
-                Text("FEATURES").font(.caption.bold()); ForEach(hero.featureEntries ?? []) { feature in DisclosureGroup(feature.name) { Text(feature.text).font(.caption).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,6) } }
+                Text("FEATURES").font(.caption.bold()); ForEach(hero.featureEntries ?? []) { feature in DisclosureGroup(feature.name) { Text(DescriptionMarkdown.attributed(feature.text)).font(.caption).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,6) } }
                 Text("SPELLS").font(.caption.bold()); ForEach(hero.spells) { spell in Text("\(spell.name) · \(spell.prepared ? "Prepared":"Unprepared")").font(.caption) }
                 Text("EQUIPMENT").font(.caption.bold()); ForEach(hero.items) { item in Text("\(item.name) ×\(item.quantity)\(item.equipped ? " · Equipped":"")").font(.caption) }
             }
