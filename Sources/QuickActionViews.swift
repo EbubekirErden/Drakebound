@@ -144,7 +144,7 @@ struct QuickActionsPanel:View {
                 }
             }.frame(maxWidth:.infinity).padding(.bottom,8)
         }
-        LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8,alignment:.top)],spacing:8) {
+        EqualHeightGridLayout(minimumColumnWidth:240,spacing:8) {
             ForEach(fullPage || expanded ? actions:Array(actions.prefix(6))) { action in GroupedActionCard(hero:$hero,store:store,action:action) }
         }
         if !fullPage && actions.count > 6 { Button(expanded ? "Show fewer":"Show all \(actions.count)") { expanded.toggle() }.font(.caption).buttonStyle(.plain).foregroundStyle(accent) }
@@ -232,12 +232,13 @@ struct GroupedActionCard:View {
                 }
             } else if let spell {
                 VStack(alignment:.leading,spacing:8) {
-                    HStack(spacing:8) { detailField("Range",spell.range);detailField("Duration",spell.duration) }
+                    EqualHeightGridLayout(columns:2,spacing:8) { detailField("Range",spell.range);detailField("Duration",spell.duration) }
                     excerpt(spell.text)
                 }
             } else if let feature=hero.featureEntries?.first(where:{ $0.id == action.ref.sourceID }) { excerpt(feature.text) }
             else if let item=hero.items.first(where:{ $0.id == action.ref.sourceID }) { excerpt(item.notes) }
             }.frame(maxWidth:.infinity,alignment:.leading)
+            Spacer(minLength:0)
             HStack(spacing:6) {
                 if chosenRoll != nil && spell != nil { Text("No slot spent").help("This roll is separate from casting and never spends a spell slot.").font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.85) }
                 else if let attack { Text(attack.type).font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1) }
@@ -261,7 +262,7 @@ struct GroupedActionCard:View {
                 }
                 if let spell { SpellConcentrationMark(hero:$hero,spell:spell) }
             }.frame(minHeight:20)
-        }.padding(12).frame(maxWidth:.infinity,alignment:.topLeading).background(paper.opacity(0.65),in:RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).stroke(cardColor.opacity(0.18))).modifier(ConcentrationOutline(active:hero.concentrationSpellID == action.ref.sourceID))
+        }.padding(12).frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading).background(paper.opacity(0.65),in:RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).stroke(cardColor.opacity(0.18))).modifier(ConcentrationOutline(active:hero.concentrationSpellID == action.ref.sourceID))
         .popover(isPresented:$attackDetails) {
             if let creatureAttack { AttackDescription(name:(creature?.name ?? "Creature")+" · "+creatureAttack.name,text:creatureAttack.description ?? "",edit:nil) }
             else if let creatureFeature { AttackDescription(name:(creature?.name ?? "Creature")+" · "+creatureFeature.name,text:creatureFeature.text,edit:nil) }
@@ -275,7 +276,7 @@ struct GroupedActionCard:View {
         Text(DescriptionMarkdown.attributed(String(text.prefix(600)))).font(.system(size:11)).foregroundStyle(ink.opacity(0.75)).lineLimit(2).frame(maxWidth:.infinity,alignment:.leading)
     }
     private func detailField(_ title:String,_ value:String)->some View {
-        VStack(alignment:.leading,spacing:4) { Text(title.uppercased()).font(.system(size:9,weight:.medium)).foregroundStyle(.secondary);Text(value).font(.system(size:12,weight:.medium)).lineLimit(2) }.frame(maxWidth:.infinity,alignment:.leading).padding(8).background(ink.opacity(0.035),in:RoundedRectangle(cornerRadius:6))
+        VStack(alignment:.leading,spacing:4) { Text(title.uppercased()).font(.system(size:9,weight:.medium)).foregroundStyle(.secondary);Text(value).font(.system(size:12,weight:.medium)).lineLimit(2) }.frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading).padding(8).background(ink.opacity(0.035),in:RoundedRectangle(cornerRadius:6))
     }
     func rollField(_ title:String,_ value:String,_ color:Color) -> some View {
         VStack(alignment:.leading,spacing:4) { Text(title.uppercased()).font(.system(size:9,weight:.semibold)).foregroundStyle(.secondary);Text(value).font(.system(size:18,weight:.semibold,design:.monospaced)).lineLimit(1).minimumScaleFactor(0.65) }.foregroundStyle(color).padding(9).frame(maxWidth:.infinity,alignment:.leading).background(color.opacity(0.09),in:RoundedRectangle(cornerRadius:7))

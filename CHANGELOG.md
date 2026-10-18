@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Action cards share the tallest natural height in each responsive row, with aligned footers. Spell range/duration tiles also match heights when text wraps; row sizing preserves each card’s natural content height.
+
 - Journal notes support pinning and drag-to-reorder within pinned/unpinned groups. Pins and manual order persist in saves and JSON backups; older notes load unpinned.
 - Equipment drag handles reorder items within their current container or Carried group. Cross-container and cross-character drops are rejected; hidden filtered entries retain their positions.
 - Note and equipment menus include Move up/Move down alternatives. Reordering commits on drop and preserves entry contents, quantities, equipment state, and container membership.

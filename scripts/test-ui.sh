@@ -16,3 +16,7 @@ build/PageLayoutTests
 # Folding preferences use a unique temporary defaults suite and no Store.
 xcrun swiftc -module-cache-path build/ui-module-cache Sources/SheetCard.swift Tests/SheetCardTests.swift -o build/SheetCardTests -framework SwiftUI -framework AppKit
 build/SheetCardTests
+
+# Equal row heights/footer geometry at responsive column counts; no Store or live data.
+xcrun swiftc -module-cache-path build/ui-module-cache Sources/EqualHeightGridLayout.swift Tests/EqualHeightGridTests.swift -o build/EqualHeightGridTests -framework SwiftUI -framework AppKit
+build/EqualHeightGridTests
