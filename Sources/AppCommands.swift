@@ -4,7 +4,7 @@ import AppKit
 enum UICommand:Equatable { case edit,addItem,addSpell,rest,search,diceInput }
 struct UICommandRequest { var id = UUID(); var action:UICommand; var heroID:UUID }
 extension Store {
-    var menusAvailable:Bool { characterGuide == nil && openEditorSheets == 0 }
+    var menusAvailable:Bool { !characterArchiveReadFailed && characterGuide == nil && openEditorSheets == 0 }
     var canPerformMenuAction:Bool { menusAvailable && NSApp.keyWindow?.attachedSheet == nil && NSApp.keyWindow?.sheetParent == nil }
     var characterCommandsAvailable:Bool { menusAvailable && heroes.contains { $0.id == selected } }
     func navigate(to tab:String) {

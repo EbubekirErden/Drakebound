@@ -21,6 +21,7 @@ extension Store {
         characterGuide = CharacterGuideSession(original:hero)
     }
     func commitGuide(_ draft:CharacterBuildDraft) throws {
+        guard !characterArchiveReadFailed else { throw GuideError.invalid("The saved character file needs recovery before creating or updating characters.") }
         let hero = try draft.finalized()
         var next = heroes
         if let original = draft.original {

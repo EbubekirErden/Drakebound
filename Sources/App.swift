@@ -23,6 +23,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
     var activityBaseline:[UUID:CharacterPlayState] = [:]
     var activityReady = false
     var activityContext:ActivityContext?
+    @Published var characterArchiveReadFailed = false
     @Published var heroes: [Hero] = []
     @Published var library = starterSpells
     @Published var selected: UUID?
@@ -54,8 +55,8 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
         file = FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("Fellowship5e/characters.json")
         if FileManager.default.fileExists(atPath:file.path) {
             do { let a = try JSONDecoder().decode(Archive.self,from:Data(contentsOf:file)); try validate(a); heroes = a.heroes; library = a.library }
-            catch { self.error = "Your saved file could not be read. It has been left untouched. Import a backup before making changes.\n\(error.localizedDescription)" }
-        } else { heroes = [.sample] }
+            catch { characterArchiveReadFailed = true; self.error = "Your saved file could not be read. It has been left untouched. Restore a verified backup in the data folder, then choose Try again.\n\(error.localizedDescription)" }
+        }
         for i in heroes.indices { heroes[i].migrateContent(); heroes[i].reconcileConcentration() }
         let compendiumFile = file.deletingLastPathComponent().appendingPathComponent("compendium.json")
         if FileManager.default.fileExists(atPath:compendiumFile.path) {
@@ -77,7 +78,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
     }
     func saveTaskCancellationForGuide() { saveTask?.cancel() }
     func save() {
-        guard !heroes.isEmpty else { return }
+        guard !characterArchiveReadFailed else { return }
         do {
             for i in heroes.indices { heroes[i].synchronizeWeaponAttacks(compendium:compendium);heroes[i].reconcileConcentration() }
             captureActivity()
@@ -99,7 +100,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
         rolls.insert(result,at:0); rolls = Array(rolls.prefix(50))
         if !result.event { animatedRoll = result; dicePresenter.show(result) { [weak self] in self?.animatedRoll = nil } }
     }
-    func addHero() { guard characterGuide == nil else { return }; characterGuide = CharacterGuideSession() }
+    func addHero() { guard characterGuide == nil,!characterArchiveReadFailed else { return }; characterGuide = CharacterGuideSession() }
     func openSpell(_ spell:Spell,hero:Hero,library:Bool = false,ids:[UUID]) { spellDetail = SpellPresentation(heroID:hero.id,spell:spell,library:library,ids:ids) }
     func importCompendium(_ data:Data) {
         guard !importingCompendium else { return }; importingCompendium = true
@@ -126,43 +127,48 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
         catch { self.error = error.localizedDescription }
     }
     func importBackup() {
+        guard !characterArchiveReadFailed else { return }
         let panel = NSOpenPanel(); panel.allowedContentTypes = [.json,.xml]; panel.canChooseDirectories = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            let data = try Data(contentsOf:url)
-            if url.pathExtension.lowercased() == "xml" {
-                if String(data:data.prefix(4096),encoding:.utf8)?.contains("<compendium") == true { importCompendium(data); return }
-                var imported = try FightClubImport.read(data)
-                imported.heroes = try imported.heroes.map { original in
-                    var hero = original
-                    if let portrait = hero.portrait { hero.portrait = try LocalImage.normalize(portrait) }
-                    if hero.creatures != nil { for i in hero.creatures!.indices { if let image = hero.creatures![i].image { hero.creatures![i].image = try LocalImage.normalize(image) } } }
-                    return hero
-                }
-                if !imported.heroes.isEmpty {
-                    save()
-                    if FileManager.default.fileExists(atPath:file.path) {
-                        let backup = file.deletingLastPathComponent().appendingPathComponent("before-import-\(UUID().uuidString).json")
-                        try Data(contentsOf:file).write(to:backup,options:.atomic)
-                    }
-                    var added = 0
-                    for hero in imported.heroes where !heroes.contains(where:{ $0.sourceXML == data && $0.name == hero.name }) { heroes.append(hero); selected = hero.id; added += 1 }
-                    save()
-                    error = "Imported \(added) character(s). Portraits, spells, equipment, features, counters, and creatures are included. Read ‘Fight Club import review’ in Journal for mappings and fields to verify. Existing characters were backed up before import."
-                } else {
-                    var added = 0
-                    for var spell in imported.spells where !library.contains(where:{ $0.name.caseInsensitiveCompare(spell.name) == .orderedSame }) { spell.id = UUID(); library.append(spell); added += 1 }
-                    save(); error = "Imported \(added) spells, including their custom roll formulas."
-                }
-            } else {
-                let archive = try JSONDecoder().decode(Archive.self,from:data); try validate(archive)
-                for var hero in archive.heroes { hero.id = UUID(); hero.migrateContent(); heroes.append(hero) }
-                for var spell in archive.library where !library.contains(where:{ $0.name == spell.name }) { spell.id = UUID(); library.append(spell) }
-                if let entries = archive.compendium { compendium = CompendiumImport.merged(compendium,entries); let ids = Set(library.map(\.id)); for entry in compendium where !ids.contains(entry.id) { if let spell = entry.spell() { library.append(spell) } }; try saveCompendium() }
-                selected = heroes.last?.id; save()
-            }
+            try importBackupData(Data(contentsOf:url),fileExtension:url.pathExtension)
         } catch { self.error = "Import failed. Choose a Drakebound JSON backup, Fight Club character XML, or compendium XML.\n\(error.localizedDescription)" }
     }
+    func importBackupData(_ data:Data,fileExtension:String) throws {
+        guard !characterArchiveReadFailed else { throw CocoaError(.fileReadCorruptFile) }
+        if fileExtension.lowercased() == "xml" {
+            if String(data:data.prefix(4096),encoding:.utf8)?.contains("<compendium") == true { importCompendium(data); return }
+            var imported = try FightClubImport.read(data)
+            imported.heroes = try imported.heroes.map { original in
+                var hero = original
+                if let portrait = hero.portrait { hero.portrait = try LocalImage.normalize(portrait) }
+                if hero.creatures != nil { for i in hero.creatures!.indices { if let image = hero.creatures![i].image { hero.creatures![i].image = try LocalImage.normalize(image) } } }
+                return hero
+            }
+            if !imported.heroes.isEmpty {
+                save()
+                if FileManager.default.fileExists(atPath:file.path) {
+                    let backup = file.deletingLastPathComponent().appendingPathComponent("before-import-\(UUID().uuidString).json")
+                    try Data(contentsOf:file).write(to:backup,options:.atomic)
+                }
+                var added = 0
+                for hero in imported.heroes where !heroes.contains(where:{ $0.sourceXML == data && $0.name == hero.name }) { heroes.append(hero); selected = hero.id; added += 1 }
+                save()
+                error = "Imported \(added) character(s). Portraits, spells, equipment, features, counters, and creatures are included. Read ‘Fight Club import review’ in Journal for mappings and fields to verify. Existing characters were backed up before import."
+            } else {
+                var added = 0
+                for var spell in imported.spells where !library.contains(where:{ $0.name.caseInsensitiveCompare(spell.name) == .orderedSame }) { spell.id = UUID(); library.append(spell); added += 1 }
+                save(); error = "Imported \(added) spells, including their custom roll formulas."
+            }
+        } else {
+            let archive = try JSONDecoder().decode(Archive.self,from:data); try validate(archive)
+            for var hero in archive.heroes { hero.id = UUID(); hero.migrateContent(); heroes.append(hero) }
+            for var spell in archive.library where !library.contains(where:{ $0.name == spell.name }) { spell.id = UUID(); library.append(spell) }
+            if let entries = archive.compendium { compendium = CompendiumImport.merged(compendium,entries); let ids = Set(library.map(\.id)); for entry in compendium where !ids.contains(entry.id) { if let spell = entry.spell() { library.append(spell) } }; try saveCompendium() }
+            selected = heroes.last?.id; save()
+        }
+    }
+
 }
 
 enum AppBrand {
@@ -213,6 +219,30 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     let sections = [("Sheet","person.text.rectangle"),("Actions","bolt.fill"),("Equipment","backpack"),("Spells","sparkles"),("Journal","book.closed"),("Creatures","pawprint")]
     var body: some View {
+        Group {
+            if store.characterArchiveReadFailed || (store.heroes.isEmpty && !store.showCompendium) { WelcomeView(store:store) }
+            else { workspace }
+        }.background(paper).foregroundStyle(ink).tint(accent).accessibilityHidden(store.characterGuide != nil)
+        .overlay {
+            if let detail = store.spellDetail, let i = store.heroes.firstIndex(where:{ $0.id == detail.heroID }) {
+                DismissibleDetail(dismiss:{ store.spellDetail = nil }) {
+                    SpellDetails(hero:$store.heroes[i],store:store,original:detail.spell,library:detail.library,navigationIDs:detail.ids,onClose:{ store.spellDetail = nil })
+                }
+            }
+        }
+        .overlay { if let item = store.itemDetail, let i = store.heroes.firstIndex(where:{ $0.id == item.heroID }) { DismissibleDetail(dismiss:{ store.itemDetail = nil }) { ItemDetails(hero:$store.heroes[i],store:store,presentation:item,close:{ store.itemDetail = nil }) } } }
+        .overlay { if store.importingCompendium { ZStack { Color.black.opacity(0.3); VStack(spacing:14) { ProgressView(); Text("Importing compendium…"); Text("Indexing local references across all categories").font(.caption).foregroundStyle(.secondary) }.padding(28).background(surface).clipShape(RoundedRectangle(cornerRadius:12)) } } }
+        .overlay { if let session = store.characterGuide { CharacterGuide(session:session,store:store).id(session.id) } }
+        .sheet(item:$store.compendiumAdd) { request in CompendiumDestination(store:store,request:request) }
+        .sheet(isPresented:$store.showPDFExport) { if let hero = store.heroes.first(where:{ $0.id == store.selected }) { PDFExportView(hero:hero) } }
+        .sheet(isPresented:$store.showHelp) { TipsLibrary() }
+        .onChange(of:store.selected) { _,_ in store.quickNoteOpen=false }
+        .onChange(of:store.characterGuide?.id) { _,_ in store.quickNoteOpen=false }
+        .onChange(of:store.openEditorSheets) { _, count in if count > 0 { store.quickNoteOpen=false } }
+        .onChange(of:store.heroes) { _,_ in store.captureActivity(); store.scheduleSave() }
+        .alert("Drakebound",isPresented:Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
+    }
+    private var workspace:some View {
         GeometryReader { viewport in
             let maximumWidth = min(320.0,max(220.0,Double(viewport.size.width)-660.0))
             let width = min(maximumWidth,max(220.0,sidebarWidth))
@@ -256,26 +286,9 @@ struct RootView: View {
                     DiceDock(store:store)
                 }
             }
-        }.background(paper).foregroundStyle(ink).tint(accent).accessibilityHidden(store.characterGuide != nil)
-        .overlay {
-            if let detail = store.spellDetail, let i = store.heroes.firstIndex(where:{ $0.id == detail.heroID }) {
-                DismissibleDetail(dismiss:{ store.spellDetail = nil }) {
-                    SpellDetails(hero:$store.heroes[i],store:store,original:detail.spell,library:detail.library,navigationIDs:detail.ids,onClose:{ store.spellDetail = nil })
-                }
-            }
         }
-        .overlay { if let item = store.itemDetail, let i = store.heroes.firstIndex(where:{ $0.id == item.heroID }) { DismissibleDetail(dismiss:{ store.itemDetail = nil }) { ItemDetails(hero:$store.heroes[i],store:store,presentation:item,close:{ store.itemDetail = nil }) } } }
-        .overlay { if store.importingCompendium { ZStack { Color.black.opacity(0.3); VStack(spacing:14) { ProgressView(); Text("Importing compendium…"); Text("Indexing local references across all categories").font(.caption).foregroundStyle(.secondary) }.padding(28).background(surface).clipShape(RoundedRectangle(cornerRadius:12)) } } }
-        .overlay { if let session = store.characterGuide { CharacterGuide(session:session,store:store).id(session.id) } }
-        .sheet(item:$store.compendiumAdd) { request in CompendiumDestination(store:store,request:request) }
-        .sheet(isPresented:$store.showPDFExport) { if let hero = store.heroes.first(where:{ $0.id == store.selected }) { PDFExportView(hero:hero) } }
-        .sheet(isPresented:$store.showHelp) { TipsLibrary() }
-        .onChange(of:store.selected) { _,_ in store.quickNoteOpen=false }
-        .onChange(of:store.characterGuide?.id) { _,_ in store.quickNoteOpen=false }
-        .onChange(of:store.openEditorSheets) { _, count in if count > 0 { store.quickNoteOpen=false } }
-        .onChange(of:store.heroes) { _,_ in store.captureActivity(); store.scheduleSave() }
-        .alert("Drakebound",isPresented:Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }
+
 }
 
 struct RollHistory: View {

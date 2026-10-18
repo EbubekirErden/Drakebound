@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- First launch opens Welcome with guided creation, character import instructions, an optional demo preview, and compendium browsing. Existing character archives open directly into the workspace. Cancelling creation returns to Welcome without creating a character.
+- Empty character rosters now save and reload correctly, including after removing the last character. Unreadable archives enter a protected recovery screen and cannot be overwritten by normal saves, creation, or imports.
+
 - Light-mode character, creature, and creation-preview banners blend into the page with soft sage overlays, dark text, and light control backgrounds. Dark-mode image overlays remain unchanged.
 
 - Quick note opens from Journal, the dock, or ⇧⌘J without leaving the current page. Capture text and optional tags, then Add note or ⌘Return; the first nonempty line becomes the title. Capture shows its character and saves into the existing journal. Closing keeps a separate in-memory draft for each character until the app quits.

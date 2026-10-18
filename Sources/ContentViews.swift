@@ -63,7 +63,7 @@ struct PartySidebar: View {
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
             brand
-            if !compact {
+            if !compact && !store.heroes.isEmpty {
                 HStack {
                     Text("Characters").font(.system(size:12,weight:.semibold))
                     Spacer()
@@ -89,6 +89,10 @@ struct PartySidebar: View {
                 }.padding(.horizontal,10).padding(.top,compact ? 12:0)
             }.scrollIndicators(.hidden)
             VStack(spacing:6) {
+                if store.heroes.isEmpty {
+                    Button { store.showCompendium=false } label: { sidebarLabel("Welcome",icon:"house") }
+                        .buttonStyle(.plain).foregroundStyle(ink.opacity(0.75)).help("Back to Welcome")
+                }
                 Button { store.showCompendium = true } label: { sidebarLabel("Compendium",icon:"books.vertical") }
                     .buttonStyle(.plain).foregroundStyle(store.showCompendium ? accent:ink.opacity(0.75))
                     .background(store.showCompendium ? accent.opacity(0.12):Color.clear,in:RoundedRectangle(cornerRadius:10))
