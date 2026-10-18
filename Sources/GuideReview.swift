@@ -4,9 +4,10 @@ struct GuideReview:View {
     var draft:CharacterBuildDraft
     var onEdit:(GuideStep)->Void
     var onPreview:()->Void
+    var onLoadoutEdit:((String)->Void)?
     @State private var changesOnly:Bool
-    init(draft:CharacterBuildDraft,onEdit:@escaping(GuideStep)->Void,onPreview:@escaping()->Void) {
-        self.draft=draft;self.onEdit=onEdit;self.onPreview=onPreview
+    init(draft:CharacterBuildDraft,onEdit:@escaping(GuideStep)->Void,onPreview:@escaping()->Void,onLoadoutEdit:((String)->Void)? = nil) {
+        self.draft=draft;self.onEdit=onEdit;self.onPreview=onPreview;self.onLoadoutEdit=onLoadoutEdit
         _changesOnly=State(initialValue:draft.isLevelUp)
     }
     private var hero:Hero { draft.result }
@@ -71,12 +72,12 @@ struct GuideReview:View {
                     ForEach(hero.bonuses ?? []) { bonus in GuideSummaryRow(title:bonus.name,value:bonusSummary(bonus,hero:hero)) }
                     ForEach(hero.counters ?? []) { counter in GuideSummaryRow(title:counter.name,value:"\(counter.current)/\(counter.maximum) · \(counter.resetSummary)") }
                 }
-                GuideReviewSection(index:4,title:"Spellbook & slots",summary:"\(hero.spells.count) spells · \(hero.spells.filter(\.prepared).count) prepared",onEdit:{ onEdit(.loadout) }) {
+                GuideReviewSection(index:4,title:"Spellbook & slots",summary:"\(hero.spells.count) spells · \(hero.spells.filter(\.prepared).count) prepared",onEdit:{ if let onLoadoutEdit { onLoadoutEdit("Spells") } else { onEdit(.loadout) } }) {
                     ForEach(0..<9,id:\.self) { i in if (hero.slots[i] > 0 || (before?.slots[i] ?? 0) > 0) && (!changesOnly || before?.slots[i] != hero.slots[i] || before?.usedSlots[i] != hero.usedSlots[i]) { GuideSummaryRow(title:"Level \(i+1) slots",previous:before.map { String($0.slots[i]) },value:"\(hero.slots[i]) total · \(hero.usedSlots[i]) spent") } }
                     ForEach(shownSpells) { spell in GuideSummaryRow(title:spell.name,value:(spell.level == 0 ? "Cantrip":"L\(spell.level)")+" · "+(spell.prepared ? "Prepared":"Unprepared")) }
                     ForEach(before?.spells.filter { old in !hero.spells.contains { $0.id == old.id } } ?? []) { spell in GuideSummaryRow(title:spell.name,value:"Removed").foregroundStyle(coral) }
                 }
-                GuideReviewSection(index:5,title:"Equipment",summary:"\(hero.items.count) items",onEdit:{ onEdit(.loadout) }) {
+                GuideReviewSection(index:5,title:"Equipment",summary:"\(hero.items.count) items",onEdit:{ if let onLoadoutEdit { onLoadoutEdit("Equipment") } else { onEdit(.loadout) } }) {
                     if hero.items.isEmpty { Text("No equipment selected. You can add it from Spells & gear or later.").font(.system(size:12)).foregroundStyle(.secondary) }
                     ForEach(shownItems) { item in GuideSummaryRow(title:item.name,value:"×\(item.quantity) · "+(item.equipped ? "Equipped":"Carried")) }
                     ForEach(before?.items.filter { old in !hero.items.contains { $0.id == old.id } } ?? []) { item in GuideSummaryRow(title:item.name,value:"Removed").foregroundStyle(coral) }

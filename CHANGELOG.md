@@ -15,6 +15,11 @@
 
 ## Unreleased
 
+- Creation and level-up use shared expandable rows for class settings, origins, training, HP and slot controls; ability scores use an aligned alternating-row table with modifiers.
+- Features have searchable Available, Selected, and Needs choice views with inline descriptions and retained configuration controls.
+- Spells & gear separates Spells, Equipment, and Attacks, with searchable draft lists, inline details, and matching action controls. Review Edit links open the matching loadout section.
+- Level-up preview emphasizes before/after values and changes instead of repeating the full portrait sheet. Reference and spell browsers use shared search/action controls.
+
 - Character creation and level-up review use expandable alternating rows, before/after statistics, a changes-only view, and direct Edit/Fix links; the full change log remains available.
 - Wizard Continue explains missing requirements at the current step. Back and direct step navigation stay available; completion markers follow validation and reviewed steps.
 - Compendium inspector resizing uses a fixed coordinate space and a drag guide, committing width only on release. Clear all filters is visible beside results, and custom/starter spell cards use the inspector too.

@@ -25,6 +25,12 @@ struct CharacterGuide:View {
     @State var spellBrowser = false
     @State var equipmentChoice:UUID?
     @State var featChoice:UUID?
+    @State var loadoutPage = "Spells"
+    @State var loadoutSpellQuery = ""
+    @State var loadoutEquipmentQuery = ""
+    @State var loadoutAttackQuery = ""
+    @State var loadoutSpellLevel = -1
+    @State var featureListMode = "Available"
     @State var featureSearch = ""
     @State var featureGroup = "Class"
     @State var casterLevel = 1
@@ -46,7 +52,8 @@ struct CharacterGuide:View {
                 ScrollViewReader { scroll in
                     ScrollView {
                         VStack(alignment:.leading,spacing:14) {
-                            VStack(alignment:.leading,spacing:6) { Text(step.heading).font(.system(size:23,weight:.semibold)); Text(step.hint).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true) }
+                            if step == .features || step == .loadout { Text(step.hint).font(.system(size:11)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true) }
+                            else { VStack(alignment:.leading,spacing:6) { Text(step.heading).font(.system(size:23,weight:.semibold)); Text(step.hint).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true) } }
                             if showStepIssues && !stepIssues.isEmpty && step != .review {
                                 VStack(alignment:.leading,spacing:7) { Text("Complete this step").font(.system(size:12,weight:.semibold)); ForEach(stepIssues) { issue in Label(issue.message,systemImage:"exclamationmark.circle").font(.system(size:12)).fixedSize(horizontal:false,vertical:true) } }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(gold.opacity(0.07),in:RoundedRectangle(cornerRadius:8)).foregroundStyle(gold).id("guideIssues")
                             }
@@ -54,8 +61,9 @@ struct CharacterGuide:View {
                         }.frame(maxWidth:.infinity,alignment:.leading).padding(2).padding(.bottom,18)
                     }.id(step)
                     .onChange(of:validationAttempt) { _,_ in withAnimation { scroll.scrollTo("guideIssues",anchor:.top) } }
+                    .onChange(of:loadoutPage) { _,_ in scroll.scrollTo("loadoutTop",anchor:.top) }
                 }
-                if previewVisible { ScrollView { VStack(alignment:.leading,spacing:12) { HStack { Text("LIVE PREVIEW").font(.system(size:9,weight:.semibold)).tracking(1).foregroundStyle(.secondary); Spacer(); Button { fullPreview = true } label: { Image(systemName:"arrow.up.left.and.arrow.down.right") }.buttonStyle(.plain).help("Expand character preview") }; GuidePreview(draft:draft) }.padding(14) }.frame(width:250).background(surface.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:10)) }
+                if previewVisible { ScrollView { VStack(alignment:.leading,spacing:12) { HStack { Text(draft.isLevelUp ? "LEVEL CHANGES":"CHARACTER PREVIEW").font(.system(size:10,weight:.semibold)).foregroundStyle(.secondary); Spacer(); Button { fullPreview = true } label: { Image(systemName:"arrow.up.left.and.arrow.down.right") }.buttonStyle(.plain).help("Expand character preview") }; GuidePreview(draft:draft) }.padding(14) }.frame(width:250).background(surface.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:10)) }
             }.padding(20).frame(maxWidth:1120,maxHeight:.infinity).frame(maxWidth:.infinity,maxHeight:.infinity)
             footer
         }.background(paper).foregroundStyle(ink).tint(accent).textFieldStyle(.roundedBorder)
@@ -89,7 +97,7 @@ struct CharacterGuide:View {
         HStack(spacing:12) {
             Image(systemName:draft.isLevelUp ? "arrow.up.circle":"person.crop.circle.badge.plus").font(.system(size:22)).foregroundStyle(accent)
             VStack(alignment:.leading,spacing:3) { Text(draft.isLevelUp ? "Level up · \(draft.original!.level) → \(draft.newLevel)":"Create a character").font(.system(size:17,weight:.semibold)); Text(draft.isLevelUp ? draft.hero.name:"A guided start to your next adventure").font(.system(size:10)).foregroundStyle(.secondary) }
-            Spacer(); Button { previewVisible.toggle() } label: { Label(previewVisible ? "Hide preview":"Show preview",systemImage:"sidebar.right") }; Button("Preview sheet") { fullPreview = true }; Button("Cancel") { discard = true }
+            Spacer(); Button { previewVisible.toggle() } label: { Image(systemName:"sidebar.right") }.buttonStyle(PageButtonStyle()).help(previewVisible ? "Hide character preview":"Show character preview").accessibilityLabel(previewVisible ? "Hide character preview":"Show character preview"); Button("Preview sheet") { fullPreview = true }.buttonStyle(PageButtonStyle()); Button("Cancel") { discard = true }.buttonStyle(PageButtonStyle())
         }.padding(.horizontal,22).padding(.vertical,15).background(surface)
     }
     var progress:some View {
@@ -118,37 +126,38 @@ struct CharacterGuide:View {
     }
     var stepIssues:[GuideIssue] { step == .review ? draft.guideIssues:draft.guideIssues.filter { $0.step == step } }
     func stepComplete(_ item:GuideStep) -> Bool { visited.contains(item) && !draft.guideIssues.contains { $0.step == item } && item != .review }
-    func go(to destination:GuideStep,showProblems:Bool = false) { visited.insert(step);step=destination;showStepIssues=showProblems;validationAttempt += 1 }
+    func go(to destination:GuideStep,showProblems:Bool = false) { if destination == .loadout && showProblems { loadoutPage="Spells" };visited.insert(step);step=destination;showStepIssues=showProblems;validationAttempt += 1 }
     @ViewBuilder var stage:some View {
         switch step { case .identity:identityStep; case .origin:originStep; case .abilities:abilitiesStep; case .vitality:vitalityStep; case .training:trainingStep; case .features:featuresStep; case .loadout:loadoutStep; case .review:reviewStep }
     }
     var identityStep:some View {
-        VStack(spacing:14) {
+        GuideTable {
             EditorGroup(title:"Identity") {
                 EditorField(title:"Character name") { TextField("Name your adventurer",text:$draft.hero.name) }
                 HStack { EditorField(title:"Rules edition") { Picker("Rules edition",selection:Binding(get:{ draft.hero.edition },set:{ draft.hero.rulesEdition = $0; draft.resetOriginBonuses(); if let profile = ClassProfile.named(draft.chosenClass.name) { selectProfile(profile.name) } else { linkClassReference() } })) { Text("2024").tag("2024"); Text("2014").tag("2014") } }; EditorField(title:"Alignment") { OptionField(title:"Alignment",value:$draft.hero.alignment,choices:alignmentChoices) } }
                 Stepper("Starting level: \(draft.startingLevel)",value:$draft.startingLevel,in:1...20)
                 Text("Higher-level starts use fixed HP after level 1. You can adjust HP and choose features through the starting level.").font(.caption2).foregroundStyle(.secondary)
             }
-            EditorGroup(title:"Portrait · optional") { PictureControls(data:$draft.hero.portrait,label:"Character portrait") }
+            GuideSection("Portrait",summary:"Optional") { PictureControls(data:$draft.hero.portrait,label:"Character portrait") }
         }
     }
     var originStep:some View {
-        VStack(spacing:14) {
-            if draft.isLevelUp { EditorGroup(title:"Advance a class") {
+        VStack(spacing:12) {
+            if draft.isLevelUp { GuideSection("Advance a class",summary:"Total level \(draft.original!.level) → \(draft.newLevel)",expanded:true) {
                 ForEach(draft.existingClasses) { record in Button { selectExisting(record) } label: { HStack { Image(systemName:draft.selectedClassID == record.id ? "largecircle.fill.circle":"circle").foregroundStyle(accent); Text(record.name); Spacer(); Text("\(record.level) → \(record.level+(draft.selectedClassID == record.id ? 1:0))").monospacedDigit().foregroundStyle(sky) }.font(.system(size:12)).padding(9).background(paper).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain) }
                 Button("Multiclass into a new class") { draft.selectedClassID = UUID(); draft.chosenClass = CharacterClassLevel(id:draft.selectedClassID,name:"Fighter",level:0,hitDie:10); draft.selectedFeatures.removeAll { $0.category == .classFeature }; linkClassReference() }
                 DisclosureGroup("Review existing class levels") { ForEach($draft.existingClasses) { $record in HStack { TextField("Class name",text:$record.name); Stepper("\(record.level)",value:$record.level,in:1...20).frame(width:80); Picker("Casting",selection:$record.casting) { ForEach(CastingProgression.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.labelsHidden().frame(width:135) } }; Text("These levels must total \(draft.original!.level). Imported hit-dice pools supply the initial breakdown.").font(.caption2).foregroundStyle(.secondary) }
             } }
-            EditorGroup(title:draft.isLevelUp ? "Selected class · level \(draft.classLevel)":"Starting class") {
+            GuideSection(draft.isLevelUp ? "Selected class":"Starting class",summary:draft.chosenClass.name+" · level \(draft.classLevel)",expanded:true) {
                 if !draft.isLevelUp || !draft.existingClasses.contains(where:{ $0.id == draft.selectedClassID }) {
-                    Picker("Quick choice",selection:Binding(get:{ ClassProfile.named(draft.chosenClass.name)?.name ?? "Custom" },set:{ selectProfile($0) })) { ForEach(ClassProfile.all) { Text($0.name).tag($0.name) }; Text("Custom").tag("Custom") }
+                    Picker("Class",selection:Binding(get:{ ClassProfile.named(draft.chosenClass.name)?.name ?? "Custom" },set:{ selectProfile($0) })) { ForEach(ClassProfile.all) { Text($0.name).tag($0.name) }; Text("Custom").tag("Custom") }
                 }
                 GuideReferencePicker(title:"Classes",options:classReferenceOptions,selection:$draft.chosenClass.referenceID,onPreview:{ referencePreview = $0 })
-                EditorField(title:"Class name") { TextField("Class name",text:$draft.chosenClass.name).disabled(draft.isLevelUp && draft.existingClasses.contains { $0.id == draft.selectedClassID }) }
                 subclassPicker
-
-                HStack { Picker("Hit die",selection:$draft.chosenClass.hitDie) { ForEach([6,8,10,12],id:\.self) { Text("d\($0)").tag($0) } }; Picker("Casting",selection:$draft.chosenClass.casting) { ForEach(CastingProgression.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }
+                GuideSection("Class settings",summary:"d\(draft.chosenClass.hitDie) · \(draft.chosenClass.casting.rawValue)") {
+                    EditorField(title:"Class name") { TextField("Class name",text:$draft.chosenClass.name).disabled(draft.isLevelUp && draft.existingClasses.contains { $0.id == draft.selectedClassID }) }
+                    HStack { Picker("Hit die",selection:$draft.chosenClass.hitDie) { ForEach([6,8,10,12],id:\.self) { Text("d\($0)").tag($0) } }; Picker("Casting",selection:$draft.chosenClass.casting) { ForEach(CastingProgression.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }
+                }
                 if draft.isLevelUp && draft.classLevel == 1 { Text("Check the multiclass prerequisites and starting benefits in Preview. New classes do not automatically grant saving throw proficiencies.").font(.caption).foregroundStyle(gold) }
                 if catalog.classes.isEmpty { Text("Import a Fight Club compendium for class features and previews. Custom classes work without a compendium.").font(.caption).foregroundStyle(.secondary) }
             }
@@ -157,23 +166,25 @@ struct CharacterGuide:View {
         }
     }
     var abilitiesStep:some View {
-        VStack(spacing:14) {
+        GuideTable {
             if draft.isLevelUp && !draft.improvementFeatures.isEmpty {
-                EditorGroup(title:"Class ability choices") { ForEach(draft.improvementFeatures) { feature in Button("Configure "+(feature.source ?? feature.name)) { improvementFeature=feature } }; ForEach(0..<6,id:\.self) { i in HStack { Text(abilities[i]); Spacer(); Text("\(draft.original!.scores[i]) → \(draft.result.scores[i])").foregroundStyle(sky) }.font(.caption) } }
+                GuideSection("Class ability choices",summary:"\(draft.improvementFeatures.count) choices",expanded:true) { ForEach(draft.improvementFeatures) { feature in Button("Configure "+(feature.source ?? feature.name)) { improvementFeature=feature } }; ForEach(0..<6,id:\.self) { i in HStack { Text(abilities[i]); Spacer(); Text("\(draft.original!.scores[i]) → \(draft.result.scores[i])").foregroundStyle(sky) }.font(.caption) } }
             } else {
-            EditorGroup(title:draft.isLevelUp ? "Ability improvement · class level \(draft.classLevel)":"Generate & assign",badge:!draft.isLevelUp && draft.abilityMethod == .pointBuy ? "\(27-draft.pointCost) / 27 remaining":nil,badgeColor:draft.pointCost > 27 ? coral:accent) {
+            GuideSection(draft.isLevelUp ? "Ability improvement":"Generate & assign",summary:!draft.isLevelUp && draft.abilityMethod == .pointBuy ? "\(27-draft.pointCost) / 27 points remaining":"Class level \(draft.classLevel)",expanded:true) {
                 if !draft.isLevelUp {
                     Picker("Method",selection:Binding(get:{ draft.abilityMethod },set:{ draft.changeAbilityMethod($0) })) { ForEach(AbilityGeneration.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
                     if draft.abilityMethod != .manual { Button("Prioritize class abilities") { draft.prioritizeAbilities() }.font(.caption) }
 
                     if draft.abilityMethod == .rolled { HStack { Button(draft.rollDetails.isEmpty ? "Roll six scores":"Reroll six scores") { do { let rolls = try draft.rollAbilities(); if let last = rolls.last { store.record(last) } } catch { self.error = error.localizedDescription } }; Text("4d6 per score · drop the lowest").font(.caption2).foregroundStyle(.secondary) } }
                     originBonusControls
-                    HStack { Text("Ability").frame(maxWidth:.infinity,alignment:.leading); Text("Base").frame(width:110); Text(draft.hero.edition == "2024" ? "Background +":"Ancestry +").frame(width:90); Text("Final").frame(width:45) }.font(.system(size:10,weight:.semibold)).foregroundStyle(.secondary)
                 } else {
                     if draft.asiAvailable { Picker("Class feature choice",selection:$draft.featInsteadOfASI) { Text("Ability Score Improvement").tag(false); Text("Another feat").tag(true) }.pickerStyle(.menu); Text("This milestone comes from \(draft.chosenClass.name) level \(draft.classLevel). An ASI grants two ability points, up to 20; choose another feat in Features instead if preferred.").font(.caption).foregroundStyle(.secondary) }
                     else { Text("No ASI is granted at this class level. Ability changes require a specific feature or an explicit override.").font(.caption).foregroundStyle(.secondary) }
                 }
-                ForEach(0..<6,id:\.self) { i in abilityRow(i) }
+                VStack(spacing:0) {
+                    HStack(spacing:10) { Text("Ability").frame(maxWidth:.infinity,alignment:.leading); Text(draft.isLevelUp ? "Change":"Base").frame(width:draft.isLevelUp ? 140:110); if !draft.isLevelUp { Text(draft.hero.edition == "2024" ? "Origin +":"Ancestry +").frame(width:90) };Text("Final").frame(width:45);Text("Mod").frame(width:35) }.font(.system(size:10,weight:.semibold)).foregroundStyle(.secondary).padding(.horizontal,10).padding(.vertical,9)
+                    ForEach(0..<6,id:\.self) { i in abilityRow(i) }
+                }.clipShape(RoundedRectangle(cornerRadius:7)).overlay(RoundedRectangle(cornerRadius:7).stroke(ink.opacity(0.07)))
                 if !draft.rollDetails.isEmpty && draft.abilityMethod == .rolled && !draft.isLevelUp { DisclosureGroup("Dice breakdown") { ForEach(Array(draft.rollDetails.enumerated()),id:\.offset) { i,text in Text("Score \(i+1): \(text)").font(.caption).foregroundStyle(.secondary) } } }
             }
             }
@@ -193,10 +204,11 @@ struct CharacterGuide:View {
                 }.labelsHidden().frame(width:90).disabled(draft.originBonusMethod == .reference || (draft.originBonusMethod != .custom && !draft.originAbilityChoices.contains(i)))
             }
             Text("\(draft.result.effectiveScore(i))").font(.system(size:14,weight:.semibold,design:.rounded)).foregroundStyle(sky).frame(width:45)
-        }.padding(.vertical,5)
+            Text(signed(draft.result.modifier(i))).font(.system(size:12,weight:.medium)).foregroundStyle(accent).frame(width:35)
+        }.modifier(GuideTableRow(index:i))
     }
     var vitalityStep:some View {
-        EditorGroup(title:draft.isLevelUp ? "Hit point gain":"Health & defenses") {
+        GuideSection(draft.isLevelUp ? "Hit point gain":"Health & defenses",summary:"\(draft.result.maximumHP) maximum HP · \(draft.result.armorClass) AC",expanded:draft.isLevelUp) {
             if draft.isLevelUp {
                 Picker("HP method",selection:$draft.hpMethod) { ForEach(HPGrowth.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
                 if draft.hpMethod == .average { Text("Fixed value: \(draft.chosenClass.hitDie/2+1) + Constitution \(signed(draft.result.modifier(2)))").font(.caption) }

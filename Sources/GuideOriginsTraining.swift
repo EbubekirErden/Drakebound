@@ -19,16 +19,21 @@ extension CharacterGuide {
             DisclosureGroup("Custom or imported subclass") { TextField("Subclass name",text:$draft.chosenClass.subclass); Text("Add its features with Custom feature. Use your table’s class-level requirement.").font(.caption2).foregroundStyle(.secondary) }.font(.caption)
         }
     }
-    var originChoices:some View {
-        EditorGroup(title:"Ancestry & background") {
-            HStack { Text("Ancestry / species").font(.caption).foregroundStyle(.secondary); Spacer(); Button("Custom ancestry…") { customOrigin = CompendiumCreation(category:.race) } }
-            GuideReferencePicker(title:"Ancestries",options:catalog.ancestries,selection:$draft.ancestryReference,onPreview:{ referencePreview = $0 },edition:draft.hero.edition)
-            if let entry = draft.ancestryTemplate { originSummary(entry) }
-            HStack { Text("Background").font(.caption).foregroundStyle(.secondary); Spacer(); Button("Custom background…") { customOrigin = CompendiumCreation(category:.background) } }
-            GuideReferencePicker(title:"Backgrounds",options:catalog.backgrounds,selection:$draft.backgroundReference,onPreview:{ referencePreview = $0 })
-            if let entry = draft.backgroundTemplate { originSummary(entry) }
-            Text("The selected origin’s traits and structured skill training are granted automatically. Custom origins require their rules and features.").font(.caption2).foregroundStyle(.secondary)
+    @ViewBuilder var originChoices:some View {
+        EditorColumns {
+            GuideSection("Ancestry / species",summary:draft.hero.ancestry.isEmpty ? "Choose an origin":draft.hero.ancestry,expanded:true) {
+                GuideReferencePicker(title:"Ancestries",options:catalog.ancestries,selection:$draft.ancestryReference,onPreview:{ referencePreview = $0 },edition:draft.hero.edition)
+                if let entry=draft.ancestryTemplate { Text("\(GuideRules.originFeatures(entry).count) granted traits · \(entry.value("speed")) ft").font(.system(size:11)).foregroundStyle(.secondary) }
+                Button("Custom ancestry…") { customOrigin=CompendiumCreation(category:.race) }.buttonStyle(PageButtonStyle())
+            }
+        } trailing: {
+            GuideSection("Background",summary:draft.hero.background.isEmpty ? "Choose a background":draft.hero.background,expanded:true) {
+                GuideReferencePicker(title:"Backgrounds",options:catalog.backgrounds,selection:$draft.backgroundReference,onPreview:{ referencePreview = $0 })
+                if let entry=draft.backgroundTemplate { Text("\(GuideRules.originFeatures(entry).count) granted traits").font(.system(size:11)).foregroundStyle(.secondary) }
+                Button("Custom background…") { customOrigin=CompendiumCreation(category:.background) }.buttonStyle(PageButtonStyle())
+            }
         }
+        Text("Origin traits and structured training are included automatically. Use Custom for your own origin rules.").font(.system(size:11)).foregroundStyle(.secondary)
     }
     func originSummary(_ entry:CompendiumEntry) -> some View {
         HStack { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.semibold)); Text("\(GuideRules.originFeatures(entry).count) granted traits\(entry.category == .race ? " · \(entry.value("speed")) ft":"")").font(.caption2).foregroundStyle(.secondary) }; Spacer(); Button { referencePreview = entry } label: { Image(systemName:"eye") }.help("Preview \(entry.name)") }.padding(10).background(surface).clipShape(RoundedRectangle(cornerRadius:7))
@@ -39,33 +44,39 @@ extension CharacterGuide {
         return allowed.isEmpty ? skills.map(\.0):allowed
     }
     var guideTraining:some View {
-        VStack(spacing:14) {
-            EditorGroup(title:draft.isLevelUp ? "Existing training · preserved":"Starting saving throws") {
-                Text((0..<6).filter { draft.result.isSaveProficient($0) }.map { abilities[$0] }.joined(separator:" · ")).font(.system(size:12))
-                if draft.isLevelUp { Text("Starting saving throws and prior skill training stay unchanged. New grants from features are added by source below.").font(.caption).foregroundStyle(.secondary)
-                    ForEach(skills.filter { draft.result.effectiveSkillRank($0.0) > 0 },id:\.0) { name,_ in HStack { Text(name); Spacer(); Text(draft.result.effectiveSkillRank(name) == 2 ? "Expertise":"Proficient").foregroundStyle(sky) }.font(.caption).help(draft.result.trainingSources("skill."+name).joined(separator:" · ")) }
-                } else { Text("Granted by your starting class.").font(.caption2).foregroundStyle(.secondary) }
-            }
+        GuideTable {
             if !draft.isLevelUp {
-                EditorGroup(title:"Class skill choices",badge:"\(draft.classSkillChoices.count) / \(draft.startingSkillCount)") {
-                    Text("Choose \(draft.startingSkillCount) skills from your class’s list. Origin and feature grants appear separately.").font(.caption).foregroundStyle(.secondary)
-                    LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],alignment:.leading,spacing:9) {
-                        ForEach(classSkillOptions,id:\.self) { name in Toggle(name,isOn:Binding(get:{ draft.classSkillChoices.contains(name) },set:{ value in if value { draft.classSkillChoices.insert(name) } else { draft.classSkillChoices.remove(name) } })).toggleStyle(.checkbox).font(.system(size:12)) }
+                GuideSection("Class skill choices",summary:"\(draft.classSkillChoices.count) / \(draft.startingSkillCount) selected",expanded:true) {
+                    Text("Choose \(draft.startingSkillCount) class skills. Origin and feature grants are listed separately.").font(.system(size:11)).foregroundStyle(.secondary)
+                    LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],alignment:.leading,spacing:1) {
+                        ForEach(Array(classSkillOptions.enumerated()),id:\.element) { index,name in Toggle(name,isOn:Binding(get:{ draft.classSkillChoices.contains(name) },set:{ value in if value { draft.classSkillChoices.insert(name) } else { draft.classSkillChoices.remove(name) } })).toggleStyle(.checkbox).font(.system(size:12)).modifier(GuideTableRow(index:index/2)) }
                     }
                 }
             }
-            EditorGroup(title:"Weapon & armor proficiency") {
+            GuideSection(draft.isLevelUp ? "Existing training":"Starting saving throws",summary:"\((0..<6).filter { draft.result.isSaveProficient($0) }.count) saves",expanded:!draft.isLevelUp) {
+                Text((0..<6).filter { draft.result.isSaveProficient($0) }.map { abilities[$0] }.joined(separator:" · ")).font(.system(size:12))
+                if draft.isLevelUp {
+                    Text("Prior training stays preserved. Additional grants appear by source below.").font(.system(size:11)).foregroundStyle(.secondary)
+                    ForEach(Array(skills.filter { draft.result.effectiveSkillRank($0.0) > 0 }.enumerated()),id:\.element.0) { index,skill in HStack { Text(skill.0);Spacer();Text(draft.result.effectiveSkillRank(skill.0) == 2 ? "Expertise":"Proficient").foregroundStyle(sky) }.font(.system(size:12)).help(draft.result.trainingSources("skill."+skill.0).joined(separator:" · ")).modifier(GuideTableRow(index:index)) }
+                } else { Text("Granted by your starting class.").font(.system(size:11)).foregroundStyle(.secondary) }
+            }
+            GuideSection("Weapon & armor training",summary:"Granted and additional proficiencies") {
                 EquipmentTrainingRoster(hero:draft.result)
+                Text("Additional training").font(.system(size:11,weight:.semibold)).foregroundStyle(.secondary)
                 EquipmentTrainingEditor(grants:Binding(get:{ draft.trainingAdditions },set:{ draft.trainingAdditions=$0 ?? [] }),source:"Character creation / advancement",expanded:true)
             }
-            EditorGroup(title:"Training sources") {
-                let grants = draft.result.allTraining
-                if grants.isEmpty { Text("No extra training grants.").font(.caption).foregroundStyle(.secondary) }
-                ForEach(Array(grants.enumerated()),id:\.offset) { _,grant in HStack(alignment:.top) { VStack(alignment:.leading,spacing:3) { Text(trainingTargetName(grant.target)).font(.system(size:12)); Text(grant.source).font(.system(size:10)).foregroundStyle(.secondary) }; Spacer(); Text(grant.rank == 2 ? "Expertise":"Proficient").font(.caption).foregroundStyle(sky) } }
-                Text("Proficiency is applied once per check; the strongest expertise grant wins. Independent flat or dice bonuses still add.").font(.caption2).foregroundStyle(.secondary)
-                TrainingGrantEditor(grants:Binding(get:{ draft.trainingAdditions },set:{ draft.trainingAdditions = $0 ?? [] }),source:"\(draft.chosenClass.name) · level \(draft.classLevel)")
+            GuideSection("Additional skills & expertise",summary:"\(draft.trainingAdditions.filter { $0.target.hasPrefix("skill.") || $0.target.hasPrefix("save.") }.count) recorded") {
+                TrainingGrantEditor(grants:Binding(get:{ draft.trainingAdditions },set:{ draft.trainingAdditions=$0 ?? [] }),source:"\(draft.chosenClass.name) · level \(draft.classLevel)",expanded:true,includeEquipment:false)
             }
-            EditorGroup(title:"Languages, tools & other training") { BorderedTextEditor(text:$draft.trainingNotes,height:65); Text("Saved as a separate Languages & training feature.").font(.caption2).foregroundStyle(.secondary) }
+            GuideSection("Languages, tools & other training",summary:draft.trainingNotes.isEmpty ? "Optional":"Notes recorded") {
+                BorderedTextEditor(text:$draft.trainingNotes,height:75,markdown:true)
+                Text("Saved as a separate Languages & training feature.").font(.system(size:11)).foregroundStyle(.secondary)
+            }
+            GuideSection("Training sources",summary:"\(draft.result.allTraining.count) grants") {
+                if draft.result.allTraining.isEmpty { Text("No extra training grants.").font(.system(size:12)).foregroundStyle(.secondary) }
+                ForEach(Array(draft.result.allTraining.enumerated()),id:\.offset) { index,grant in HStack(alignment:.top) { VStack(alignment:.leading,spacing:3) { Text(trainingTargetName(grant.target));Text(grant.source).font(.system(size:10)).foregroundStyle(.secondary) };Spacer();Text(grant.rank == 2 ? "Expertise":"Proficient").foregroundStyle(sky) }.font(.system(size:12)).modifier(GuideTableRow(index:index)) }
+                Text("Proficiency applies once; expertise doubles it once. Independent numeric bonuses still add.").font(.system(size:11)).foregroundStyle(.secondary)
+            }
         }
     }
 }

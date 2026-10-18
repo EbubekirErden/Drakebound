@@ -11,7 +11,7 @@ struct GuideReferencePicker:View {
     @State private var equipmentType = "All types"
     @State private var equipmentSource = CompendiumScope.all
     var selected:CompendiumEntry? { options.first { $0.id == selection } }
-    var matches:[CompendiumEntry] { options.filter { (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)) && ($0.category != .item || ((equipmentType == "All types" || $0.subcategory == equipmentType) && equipmentSource.includes($0))) } }
+    var matches:[CompendiumEntry] { options.filter { CompendiumSearch.matches($0,query:query) && ($0.category != .item || ((equipmentType == "All types" || $0.subcategory == equipmentType) && equipmentSource.includes($0))) } }
     func summary(_ entry:CompendiumEntry) -> String {
         if edition == "2024" && entry.category == .race {
             return (entry.value("speed").isEmpty ? "":entry.value("speed")+" ft · ")+"Ability increases from background"
@@ -20,15 +20,15 @@ struct GuideReferencePicker:View {
     }
     var body:some View {
         HStack(spacing:8) {
-            Button { browsing = true } label: { HStack { Image(systemName:"books.vertical").foregroundStyle(sky); Text(selected?.name ?? "Browse \(title.lowercased())").lineLimit(1); Spacer(minLength:4); Image(systemName:"chevron.down").font(.system(size:9)) }.font(.system(size:12)).padding(9).background(surface).clipShape(RoundedRectangle(cornerRadius:6)).overlay(RoundedRectangle(cornerRadius:6).stroke(ink.opacity(0.1))) }.buttonStyle(.plain).disabled(options.isEmpty)
-            if let selected { Button { onPreview(selected) } label: { Image(systemName:"eye") }.help("Preview \(selected.name)"); Button { selection = nil } label: { Image(systemName:"xmark") }.help("Clear \(title.lowercased()) reference") }
+            Button { browsing = true } label: { HStack { Image(systemName:"books.vertical").foregroundStyle(sky); Text(selected?.name ?? "Browse \(title.lowercased())").lineLimit(1); Spacer(minLength:4); Image(systemName:"chevron.down").font(.system(size:9)) }.font(.system(size:12)).padding(.horizontal,10).frame(height:PageControl.height).background(surface).clipShape(RoundedRectangle(cornerRadius:6)).overlay(RoundedRectangle(cornerRadius:6).stroke(ink.opacity(0.1))) }.buttonStyle(.plain).disabled(options.isEmpty)
+            if let selected { Button { onPreview(selected) } label: { Image(systemName:"eye") }.buttonStyle(PageButtonStyle()).help("Preview \(selected.name)"); Button { selection = nil } label: { Image(systemName:"xmark") }.buttonStyle(PageButtonStyle()).help("Clear \(title.lowercased()) reference") }
         }
         .popover(isPresented:$browsing) {
             VStack(alignment:.leading,spacing:12) {
                 HStack { Text(title).font(.headline); Spacer(); Button("Done") { browsing = false } }
-                TextField("Search \(title.lowercased())",text:$query).textFieldStyle(.roundedBorder)
+                PageSearchField(title:"Search \(title.lowercased())",query:$query)
                 if options.first?.category == .item {
-                    HStack { Picker("Type",selection:$equipmentType) { Text("All types").tag("All types");ForEach(Array(Set(options.map(\.subcategory))).sorted(),id:\.self) { Text($0).tag($0) } }; Picker("Source",selection:$equipmentSource) { ForEach(CompendiumScope.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }.labelsHidden().font(.caption)
+                    HStack(spacing:10) { PagePicker(title:"Type",selectionTitle:equipmentType,selection:$equipmentType) { Text("All types").tag("All types");ForEach(Array(Set(options.map(\.subcategory))).sorted(),id:\.self) { Text($0).tag($0) } }; PagePicker(title:"Source",selectionTitle:equipmentSource.rawValue,selection:$equipmentSource) { ForEach(CompendiumScope.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }.font(.caption)
                 }
                 GeometryReader { geometry in ScrollView { LazyVStack(spacing:4) {
                     ForEach(matches.prefix(80)) { entry in
@@ -72,18 +72,24 @@ struct GuideSpellBrowser:View {
         return catalog.spells.filter { spell in hero.edition == "2024" ? spell.name.contains("[2024]") || !revised.contains(GuideRules.spellNameKey(spell.name)):!spell.name.contains("[2024]") || !legacy.contains(GuideRules.spellNameKey(spell.name)) }
     }
     var matches:[Spell] { spellOptions.filter { spell in
-        (!onlyLevel || spell.level == level) && (search.isEmpty || spell.name.localizedCaseInsensitiveContains(search)) && (!classOnly || GuideRules.spellBelongs(spell,to:baseClass))
+        (!onlyLevel || spell.level == level) && CompendiumSearch.matches(name:spell.name,summary:spell.school,classes:spell.classes ?? "",source:"",query:search) && (!classOnly || GuideRules.spellBelongs(spell,to:baseClass))
     } }
     var referenceMatches:[CompendiumEntry] { catalog.unleveledSpells.filter { entry in (search.isEmpty || entry.name.localizedCaseInsensitiveContains(search)) && (!classOnly || entry.value("classes").localizedCaseInsensitiveContains(baseClass)) } }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
-            HStack { VStack(alignment:.leading,spacing:3) { Text("Choose spells").font(.title2.bold()); Text("Adding to \(className)").font(.caption).foregroundStyle(sky) }; Spacer(); if let onCustom { Button("Custom spell") { dismiss(); onCustom() } }; Button("Features") { featuresOpen=true }; if buildDraft != nil { Button("Caster table…") { casterLevel=min(20,buildDraft!.resultingClasses.reduce(0) { $0+$1.casting.contribution($1.level,edition:hero.edition) });casterOpen=true } }; Button("Done") { dismiss() } }
-            TextField("Search spells",text:$search).textFieldStyle(.roundedBorder)
+            PageToolbar(title:"Choose spells",subtitle:"Adding to \(className)",color:sky,searchTitle:"Search spells…",query:$search) {
+                GuideActionMenu(title:"Spell browser options") {
+                    if let onCustom { Button("Custom spell…") { dismiss();onCustom() } }
+                    Button("Features & traits") { featuresOpen=true }
+                    if buildDraft != nil { Button("Caster table…") { casterLevel=min(20,buildDraft!.resultingClasses.reduce(0) { $0+$1.casting.contribution($1.level,edition:hero.edition) });casterOpen=true } }
+                }
+                Button("Done") { dismiss() }.buttonStyle(PageButtonStyle())
+            }
             ScrollViewReader { scroll in
-                HStack {
-                    Picker("Level",selection:$level) { Text("Cantrips").tag(0); ForEach(1...9,id:\.self) { Text("Level \($0)").tag($0) }; Text("Needs review").tag(-1) }.frame(width:180)
+                HStack(spacing:12) {
+                    PagePicker(title:"Level",selectionTitle:level == -1 ? "Needs review":level == 0 ? "Cantrips":"Level \(level)",selection:$level) { Text("Cantrips").tag(0); ForEach(1...9,id:\.self) { Text("Level \($0)").tag($0) }; Text("Needs review").tag(-1) }.frame(width:140)
                     Toggle("Only this level",isOn:$onlyLevel).font(.caption).disabled(level == -1)
-                    Spacer(); Toggle("\(baseClass) list",isOn:$classOnly).font(.caption)
+                    Toggle("Class list",isOn:$classOnly).font(.caption).help("Only \(baseClass) spells")
                 }
                 .onChange(of:level) { _,value in if value >= 0 { withAnimation(.easeInOut(duration:0.2)) { scroll.scrollTo(value,anchor:.top) } } }
                 Text("Scroll through spell levels, or jump with the level menu. Class levels determine which spells you can learn; multiclass slot levels do not.").font(.caption2).foregroundStyle(.secondary)
@@ -139,7 +145,8 @@ struct GuideSpellLevelReview:View {
 struct GuidePreview:View {
     var draft:CharacterBuildDraft
     var expanded = false
-    var body:some View {
+    @ViewBuilder var body:some View { if draft.isLevelUp && !expanded { GuideLevelPreview(draft:draft) } else { fullBody } }
+    @ViewBuilder var fullBody:some View {
         let hero = draft.result
         VStack(alignment:.leading,spacing:14) {
             ZStack(alignment:.bottomLeading) { Rectangle().fill(surface.gradient); CroppedImage(data:hero.portrait,crop:hero.bannerCrop ?? BannerCrop()); LinearGradient(colors:[.clear,.black.opacity(0.8)],startPoint:.top,endPoint:.bottom); VStack(alignment:.leading,spacing:5) { Text(hero.name.isEmpty ? "Your adventurer":hero.name).font(.system(size:expanded ? 24:18,weight:.semibold)); Text("Level \(hero.level) · \(hero.edition)").font(.caption).foregroundStyle(sky) }.padding(14) }.frame(height:expanded ? 140:105).clipShape(RoundedRectangle(cornerRadius:9))
