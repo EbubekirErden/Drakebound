@@ -62,9 +62,14 @@ extension CharacterGuide {
         GuideSection("Starting equipment & packs",summary:"Choose a pack or starting wealth",expanded:true) {
             let kits=catalog.startingKits(classEntry:classReference,background:draft.backgroundTemplate,edition:draft.hero.edition)
             ForEach(kits) { kit in DisclosureGroup(kit.name) {
-                Text(kit.source).font(.caption2).foregroundStyle(sky)
-                Text(kit.items.map { "\($0.1) × \($0.0)" }.joined(separator:" · ")+(kit.gold > 0 ? " · \(kit.gold) gp":"")).font(.caption).foregroundStyle(.secondary).padding(.vertical,6)
-                Button(draft.appliedStarterKits.contains(kit.id) ? "Added":"Add equipment") { draft.applyStarterKit(kit,catalog:catalog) }.disabled(draft.appliedStarterKits.contains(kit.id) || (kit.groupID.map { draft.appliedStarterKits.contains("group:"+$0) } ?? false))
+                VStack(alignment:.leading,spacing:10) {
+                    Text(kit.items.map { "\($0.1) × \($0.0)" }.joined(separator:" · ")+(kit.gold > 0 ? " · \(kit.gold) gp":""))
+                        .font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                    Button(draft.appliedStarterKits.contains(kit.id) ? "Added":"Add equipment") { draft.applyStarterKit(kit,catalog:catalog) }
+                        .buttonStyle(PageButtonStyle())
+                        .disabled(draft.appliedStarterKits.contains(kit.id) || (kit.groupID.map { draft.appliedStarterKits.contains("group:"+$0) } ?? false))
+                    if !kit.source.isEmpty { Text(kit.source).font(.system(size:10)).foregroundStyle(.secondary).textSelection(.enabled) }
+                }.frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,8)
             }.font(.caption) }
             if kits.isEmpty { Button("View starting equipment reference") { if let classReference { referencePreview=classReference } }.disabled(classReference == nil) }
         }

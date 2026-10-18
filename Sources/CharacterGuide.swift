@@ -83,7 +83,7 @@ struct CharacterGuide:View {
         .sheet(isPresented:$fullPreview) { GuideFullPreview(draft:draft) }
         .sheet(item:$customOrigin) { session in ReferenceTemplateEditor(draft:ReferenceTemplateDraft(category:session.category)) { entry in draft.chooseOrigin(entry) } }
 
-        .sheet(item:$featurePreview) { feature in VStack(alignment:.leading,spacing:14) { HStack { Text(feature.name).font(.title2.bold()); Spacer(); Button("Done") { featurePreview = nil } }; Text(feature.source ?? "").font(.caption).foregroundStyle(sky); ScrollView { Text(DescriptionMarkdown.attributed(feature.text)).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(22).frame(width:640,height:580).background(surface) }
+        .sheet(item:$featurePreview) { GuideFeaturePreview(feature:$0) }
         .sheet(item:$improvementFeature) { feature in GuidedImprovementEditor(feature:feature,draft:draft,feats:eligibleFeats) { choice in do { try draft.configureImprovement(feature,choice:choice) } catch { self.error=error.localizedDescription } } }
         .sheet(item:$featureEditor) { feature in FeatureEditor(feature:feature,hero:draft.result,allowDelete:!draft.requiredOriginIDs.contains(feature.id),onSave:{ updated in if let i = draft.selectedFeatures.firstIndex(where:{ $0.id == updated.id }) { draft.selectedFeatures[i] = updated } else { draft.selectedFeatures.append(updated) } },onDelete:{ draft.selectedFeatures.removeAll { $0.id == feature.id } }) }
         .sheet(item:$bonusEditor) { bonus in BonusEditor(bonus:bonus,hero:draft.result,onSave:{ updated in var list = draft.hero.bonuses ?? []; if let i = list.firstIndex(where:{ $0.id == updated.id }) { list[i] = updated } else { list.append(updated) }; draft.hero.bonuses = list },onDelete:{ draft.hero.bonuses?.removeAll { $0.id == bonus.id } }) }
@@ -101,31 +101,34 @@ struct CharacterGuide:View {
         }.padding(.horizontal,22).padding(.vertical,15).background(surface)
     }
     var progress:some View {
-        HStack(spacing:6) {
-            ForEach(Array(steps.enumerated()),id:\.element) { i,item in Button { go(to:item) } label: { VStack(spacing:8) { HStack(spacing:5) { Text(stepComplete(item) ? "✓":draft.guideIssues.contains { $0.step == item } && visited.contains(item) ? "!":"\(i+1)").font(.system(size:9,weight:.bold)).frame(width:17,height:17).background(((stepComplete(item) || item == step) ? accent:ink).opacity(0.12)).clipShape(Circle()); Text(item.rawValue).font(.system(size:10,weight:step == item ? .semibold:.regular)).lineLimit(1) }; Capsule().fill(stepComplete(item) || item == step ? accent:ink.opacity(0.1)).frame(height:2) }.foregroundStyle(step == item ? ink:ink.opacity(0.55)).frame(maxWidth:.infinity).padding(.vertical,10).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Step \(i+1), \(item.rawValue)").accessibilityValue(stepComplete(item) ? "Complete":draft.guideIssues.contains { $0.step == item } ? "Needs attention":"Not reviewed").accessibilityAddTraits(step == item ? .isSelected:[]) }
+        let issues=draft.guideIssues
+        let complete=Set(steps.filter { item in visited.contains(item) && item != .review && !issues.contains { $0.step == item } })
+        return HStack(spacing:6) {
+            ForEach(Array(steps.enumerated()),id:\.element) { i,item in Button { go(to:item) } label: { VStack(spacing:8) { HStack(spacing:5) { Text(complete.contains(item) ? "✓":issues.contains { $0.step == item } && visited.contains(item) ? "!":"\(i+1)").font(.system(size:9,weight:.bold)).frame(width:17,height:17).background(((complete.contains(item) || item == step) ? accent:ink).opacity(0.12)).clipShape(Circle()); Text(item.rawValue).font(.system(size:10,weight:step == item ? .semibold:.regular)).lineLimit(1) }; Capsule().fill(complete.contains(item) || item == step ? accent:ink.opacity(0.1)).frame(height:2) }.foregroundStyle(step == item ? ink:ink.opacity(0.55)).frame(maxWidth:.infinity).padding(.vertical,10).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Step \(i+1), \(item.rawValue)").accessibilityValue(complete.contains(item) ? "Complete":issues.contains { $0.step == item } ? "Needs attention":"Not reviewed").accessibilityAddTraits(step == item ? .isSelected:[]) }
         }.padding(.horizontal,22).background(surface.opacity(0.35))
     }
     var footer:some View {
-        HStack(spacing:12) {
+        let issues=draft.guideIssues
+        let currentIssues=step == .review ? issues:issues.filter { $0.step == step }
+        return HStack(spacing:12) {
             Button("Back") { go(to:steps[max(0,position-1)]) }.buttonStyle(PageButtonStyle()).disabled(position == 0)
             Text("Step \(position+1) of \(steps.count)").font(.system(size:11)).foregroundStyle(.secondary)
             Spacer(minLength:8)
-            if !stepIssues.isEmpty {
-                Button { showStepIssues=true;validationAttempt += 1; if step == .review,let issue=draft.guideIssues.first { go(to:issue.step,showProblems:true) } } label: { Label("\(stepIssues.count) \(stepIssues.count == 1 ? "item needs":"items need") attention",systemImage:"exclamationmark.circle") }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(gold)
+            if !currentIssues.isEmpty {
+                Button { showStepIssues=true;validationAttempt += 1; if step == .review,let issue=issues.first { go(to:issue.step,showProblems:true) } } label: { Label("\(currentIssues.count) \(currentIssues.count == 1 ? "item needs":"items need") attention",systemImage:"exclamationmark.circle") }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(gold)
             } else { Text("Draft · saved when you finish").font(.system(size:10)).foregroundStyle(.secondary) }
             if step == .review {
-                if let issue=draft.guideIssues.first {
+                if let issue=issues.first {
                     Button("Fix first issue") { go(to:issue.step,showProblems:true) }.buttonStyle(PageButtonStyle(prominent:true))
                 } else {
                     Button(draft.isLevelUp ? "Apply level \(draft.newLevel)":"Create character") { do { try store.commitGuide(draft) } catch { self.error=error.localizedDescription } }.buttonStyle(PageButtonStyle(prominent:true))
                 }
             } else {
-                Button("Continue") { if stepIssues.isEmpty { go(to:steps[min(steps.count-1,position+1)]) } else { showStepIssues=true;validationAttempt += 1 } }.buttonStyle(PageButtonStyle(prominent:true))
+                Button("Continue") { if currentIssues.isEmpty { go(to:steps[min(steps.count-1,position+1)]) } else { showStepIssues=true;validationAttempt += 1 } }.buttonStyle(PageButtonStyle(prominent:true))
             }
         }.padding(.horizontal,22).padding(.vertical,14).background(surface)
     }
     var stepIssues:[GuideIssue] { step == .review ? draft.guideIssues:draft.guideIssues.filter { $0.step == step } }
-    func stepComplete(_ item:GuideStep) -> Bool { visited.contains(item) && !draft.guideIssues.contains { $0.step == item } && item != .review }
     func go(to destination:GuideStep,showProblems:Bool = false) { if destination == .loadout && showProblems { loadoutPage="Spells" };visited.insert(step);step=destination;showStepIssues=showProblems;validationAttempt += 1 }
     @ViewBuilder var stage:some View {
         switch step { case .identity:identityStep; case .origin:originStep; case .abilities:abilitiesStep; case .vitality:vitalityStep; case .training:trainingStep; case .features:featuresStep; case .loadout:loadoutStep; case .review:reviewStep }
