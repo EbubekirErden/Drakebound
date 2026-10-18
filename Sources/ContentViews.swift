@@ -211,10 +211,7 @@ struct JournalPanel: View {
     var entries: Binding<[JournalEntry]> { Binding(get:{ hero.journalEntries ?? [] },set:{ hero.journalEntries = $0 }) }
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack {
-                VStack(alignment:.leading,spacing:4) { Text("Adventure journal").font(.system(size:18,weight:.semibold)); Text("\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images").font(.caption).foregroundStyle(.secondary) }
-                Spacer(minLength:12)
-                TextField("Search notes",text:$search).textFieldStyle(.roundedBorder).frame(width:180)
+            PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images",color:journalTint,searchTitle:"Search notes",query:$search) {
                 Button { let note = JournalEntry(); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.journalEntries = [note] + (hero.journalEntries ?? []); expanded.insert(note.id) } } label: { Label("New note",systemImage:"plus") }.buttonStyle(.borderedProminent)
             }
             if entries.wrappedValue.isEmpty { ContentUnavailableView("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea.")) }
@@ -249,7 +246,9 @@ struct CreaturesPanel: View {
     var creatures: Binding<[Creature]> { Binding(get:{ hero.creatures ?? [] },set:{ hero.creatures = $0 }) }
     var body: some View {
         VStack(alignment:.leading,spacing:16) {
-            HStack { VStack(alignment:.leading,spacing:4) { Text("Creatures").font(.system(size:18,weight:.semibold)); Text("Companions, summons, and encounters").font(.caption).foregroundStyle(.secondary) }; Spacer(minLength:12); TextField("Search name, type, or role",text:$search).textFieldStyle(.roundedBorder).frame(width:190); Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) } }
+            PageToolbar(title:"Creatures",subtitle:"Companions, summons, and encounters",color:leaf,searchTitle:"Search creatures",query:$search) {
+                Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) }
+            }
             if creatures.wrappedValue.isEmpty { creatureEmptyState("Make room for a companion","Browse the compendium or create a custom creature with portraits, stats, HP, and attacks.") }
             let matching = creatures.wrappedValue.filter { matches($0) }
             if !creatures.wrappedValue.isEmpty && matching.isEmpty { creatureEmptyState("No matching creatures","Try another name, type, or role.") }

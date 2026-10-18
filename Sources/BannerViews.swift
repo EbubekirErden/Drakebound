@@ -39,16 +39,23 @@ struct CharacterBanner: View {
                 Spacer()
             }.padding(20)
         }.overlay(alignment:.topTrailing) {
-            HStack(spacing:10) {
-                if let levelUp { Button("Level up",action:levelUp).disabled(hero.level >= 20) }
-                Button { cropping = true } label: { Image(systemName:"crop").frame(width:20,height:20) }.help("Choose the visible part of the banner").accessibilityLabel("Frame character banner")
+            HStack(spacing:4) {
+                Button(action:edit) { Label("Edit",systemImage:"pencil").padding(.horizontal,10).frame(height:30) }.buttonStyle(.plain)
                 Button {
                     withAnimation(reduceMotion ? nil:.easeInOut(duration:0.2)) { expanded.toggle() }
-                } label: { Image(systemName:expanded ? "arrow.down.right.and.arrow.up.left":"arrow.up.left.and.arrow.down.right").frame(width:20,height:20) }
-                    .help(expanded ? "Compact banner":"Expand banner").accessibilityLabel(expanded ? "Compact banner":"Expand banner")
-                Button("Edit",action:edit)
-                more
-            }.padding(8).background(paper.opacity(0.85),in:RoundedRectangle(cornerRadius:10)).padding(12)
+                } label: { Image(systemName:expanded ? "arrow.down.right.and.arrow.up.left":"arrow.up.left.and.arrow.down.right").frame(width:30,height:30) }
+                    .buttonStyle(.plain).help(expanded ? "Compact banner":"Expand banner").accessibilityLabel(expanded ? "Compact banner":"Expand banner")
+                Menu {
+                    if let levelUp { Button("Level up…",systemImage:"arrow.up",action:levelUp).disabled(hero.level >= 20) }
+                    Button("Frame banner…",systemImage:"crop") { cropping = true }
+                    Divider()
+                    more
+                } label: { Image(systemName:"ellipsis").frame(width:30,height:30) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                    .help("Character actions").accessibilityLabel("Character actions")
+            }.font(.system(size:12,weight:.medium)).foregroundStyle(.white.opacity(0.9))
+                .padding(5).background(paper.opacity(0.85),in:RoundedRectangle(cornerRadius:10))
+                .overlay(RoundedRectangle(cornerRadius:10).stroke(.white.opacity(0.08))).padding(12)
         }.clipShape(RoundedRectangle(cornerRadius:12)).overlay(RoundedRectangle(cornerRadius:12).stroke(.white.opacity(0.08)))
         .sheet(isPresented:$cropping) { BannerEditor(hero:$hero,previewAspectRatio:previewAspectRatio) }
     }

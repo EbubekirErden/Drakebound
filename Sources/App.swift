@@ -344,12 +344,12 @@ struct HeroView: View {
                 VStack(alignment:.leading,spacing:-24) {
                     GeometryReader { position in
                         let y = position.frame(in:.named("heroScroll")).minY
-                        CharacterBanner(hero:$hero,expanded:$bannerExpanded,previewAspectRatio:max(1,(viewport.size.width-36)/bannerHeight),edit:{ edit = true },more:AnyView(Menu {
+                        CharacterBanner(hero:$hero,expanded:$bannerExpanded,previewAspectRatio:max(1,(viewport.size.width-36)/bannerHeight),edit:{ edit = true },more:AnyView(Group {
                             Button("Rest & recovery") { rest = true }
                             Button("Hit dice") { hitDice = true }
                             Button("Duplicate character") { var copy = hero; copy.id = UUID(); copy.name += " copy"; store.heroes.append(copy); store.selected = copy.id; store.save() }
                             Divider(); Button("Delete character…",role:.destructive) { delete = true }.disabled(store.heroes.count <= 1)
-                        } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:25)),levelUp:{ store.beginLevelUp(hero) })
+                        }),levelUp:{ store.beginLevelUp(hero) })
                             .frame(height:bannerHeight).offset(y:max(0,-y*0.65))
                     }.frame(height:bannerHeight).padding(18).zIndex(0)
                     VStack(alignment:.leading,spacing:14) {
@@ -358,7 +358,7 @@ struct HeroView: View {
                             ConcentrationChip(hero:$hero,store:store)
                             QuickActionsPanel(hero:$hero,store:store,fullPage:true)
                         case "Sheet": character
-                        case "Equipment": Card(title:"Equipment") { equipment }
+                        case "Equipment": equipment
                         case "Spells": spellbook
                         case "Journal": JournalPanel(hero:$hero)
                         default: CreaturesPanel(hero:$hero,store:store)
@@ -394,18 +394,17 @@ struct HeroView: View {
 
     var spellNavigationIDs:[UUID] { hero.spells.enumerated().filter { (spellLevel == -1 || $0.element.level == spellLevel) && preparation.includes($0.element) }.filter { search.isEmpty || $0.element.name.localizedCaseInsensitiveContains(search) }.sorted { $0.element.level == $1.element.level ? $0.offset < $1.offset:$0.element.level < $1.element.level }.map { $0.element.id } }
     var spellbook: some View {
-        VStack(spacing:20) {
-            HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); stat("KNOWN SPELLS","\(hero.spells.count)","book"); Button("Manage slots") { managingSlots = true } }
+        VStack(spacing:16) {
+            PageToolbar(title:"Spells",subtitle:"\(hero.spells.count) spells in your spellbook",color:sky,searchTitle:"Search spells",query:$search,focus:$searchFocused) {
+                Menu("Preparation") { Button("Prepare all") { for i in hero.spells.indices { hero.spells[i].prepared=true } };Button("Unprepare all level 1+") { for i in hero.spells.indices where hero.spells[i].level > 0 { hero.spells[i].prepared=false } } }.help("Changes your whole spellbook, including spells hidden by filters.")
+                Button { adding = "Spell" } label: { Label("Add spell",systemImage:"plus") }.buttonStyle(.borderedProminent)
+            }
+            HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); Button("Manage slots") { managingSlots = true } }
             Card(title:"Spell slots") {
                 ForEach(0..<9,id:\.self) { i in if hero.slots[i] > 0 { HStack { Text("Level \(i+1)").font(.system(size:12,weight:.semibold)).frame(width:70,alignment:.leading); ForEach(0..<hero.slots[i],id:\.self) { slot in Button { hero.usedSlots[i] = slot < hero.usedSlots[i] ? slot : slot+1 } label: { Image(systemName:slot < hero.usedSlots[i] ? "circle.fill":"circle").font(.system(size:19)).foregroundStyle(accent) }.buttonStyle(.plain).help("Toggle expended spell slots") }; Spacer(); Text("\(max(0,hero.slots[i]-hero.usedSlots[i])) remaining").font(.caption).foregroundStyle(.secondary) } } }
                 Text("Filled circles are expended. Set slot totals and casting ability in Edit character.").font(.caption2).foregroundStyle(.secondary)
             }
             VStack(spacing:10) {
-                HStack(spacing:12) {
-                    TextField("Search your spellbook",text:$search).focused($searchFocused).textFieldStyle(.roundedBorder)
-                    Menu("Preparation") { Button("Prepare all") { for i in hero.spells.indices { hero.spells[i].prepared=true } };Button("Unprepare all level 1+") { for i in hero.spells.indices where hero.spells[i].level > 0 { hero.spells[i].prepared=false } } }.help("Changes your whole spellbook, including spells hidden by filters.")
-                    Button("Add spell") { adding = "Spell" }.buttonStyle(.borderedProminent)
-                }
                 HStack(spacing:12) {
                     HStack(spacing:2) {
                         ForEach(PreparationFilter.allCases,id:\.self) { filter in

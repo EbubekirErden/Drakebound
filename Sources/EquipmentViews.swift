@@ -18,14 +18,29 @@ struct EquipmentPanel:View {
     var filtering:Bool { !search.isEmpty || kind != "All types" || equippedOnly }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
-            DisclosureGroup("Weapon & armor proficiency",isExpanded:$trainingOpen) { EquipmentTrainingRoster(hero:hero);EquipmentTrainingEditor(grants:$hero.trainingGrants,source:"Manual character training",expanded:true) }.font(.caption)
-            HStack {
-                Label(String(format:"%.1f / %d lb",hero.items.reduce(0) { $0+Double($1.quantity)*$1.weight },hero.effectiveScore(0)*15),systemImage:"scalemass").font(.caption).foregroundStyle(.secondary)
-                Spacer(); CurrencyButton(hero:$hero)
-                Button { containerEditor = EquipmentContainer(name:"") } label: { Label("Container",systemImage:"shippingbox") }
-                Button("Compendium") { store.showCompendium = true }; Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
+            PageToolbar(title:"Equipment",subtitle:String(format:"%d items · %.1f / %d lb",hero.items.count,hero.items.reduce(0) { $0+Double($1.quantity)*$1.weight },hero.effectiveScore(0)*15),color:gold,searchTitle:"Search equipment",query:$search,focus:$searchFocused) {
+                Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
             }
-            HStack { TextField("Search equipment",text:$search).focused($searchFocused); Picker("Type",selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.labelsHidden().frame(width:175); Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox) }.textFieldStyle(.roundedBorder)
+            HStack(spacing:12) {
+                Picker("Type",selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.labelsHidden().frame(width:150)
+                Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox)
+                Spacer(minLength:8)
+                CurrencyButton(hero:$hero)
+                Menu {
+                    Button("New container…",systemImage:"shippingbox") { containerEditor = EquipmentContainer(name:"") }
+                    Button("Browse compendium",systemImage:"books.vertical") { store.showCompendium = true }
+                    Divider()
+                    Button("Weapon & armor proficiency…",systemImage:"shield") { trainingOpen = true }
+                } label: { Image(systemName:"ellipsis").frame(width:26,height:26) }
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Equipment options").accessibilityLabel("Equipment options")
+                    .popover(isPresented:$trainingOpen) {
+                        ScrollView { VStack(alignment:.leading,spacing:16) {
+                            HStack { Text("Weapon & armor proficiency").font(.headline); Spacer(); Button("Done") { trainingOpen = false } }
+                            EquipmentTrainingRoster(hero:hero)
+                            EquipmentTrainingEditor(grants:$hero.trainingGrants,source:"Manual character training",expanded:true)
+                        }.padding(20) }.frame(width:460,height:440)
+                    }
+            }.font(.system(size:12)).controlSize(.regular)
             LazyVStack(spacing:10) {
                 if items.contains(where:{ $0.containerID == nil }) || !filtering { inventoryGroup(nil) }
                 ForEach(hero.inventoryContainers) { storage in if !filtering || items.contains(where:{ $0.containerID == storage.id }) { inventoryGroup(storage) } }
