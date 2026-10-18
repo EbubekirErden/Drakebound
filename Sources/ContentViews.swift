@@ -207,12 +207,13 @@ struct JournalPanel: View {
     @Binding var hero: Hero
     @State var expanded: Set<UUID> = []
     @State var search = ""
+    @State private var editing:JournalEntry?
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     var entries: Binding<[JournalEntry]> { Binding(get:{ hero.journalEntries ?? [] },set:{ hero.journalEntries = $0 }) }
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images",color:journalTint,searchTitle:"Search notes",query:$search) {
-                Button { let note = JournalEntry(); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.journalEntries = [note] + (hero.journalEntries ?? []); expanded.insert(note.id) } } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
+                Button { editing = JournalEntry() } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
             }
             if entries.wrappedValue.isEmpty { ContentUnavailableView("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea.")) }
             ForEach(entries) { $entry in
@@ -220,10 +221,24 @@ struct JournalPanel: View {
                     VStack(alignment:.leading,spacing:0) {
                         DisclosureGroup(isExpanded:Binding(get:{ expanded.contains(entry.id) },set:{ isOpen in withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if isOpen { expanded.insert(entry.id) } else { expanded.remove(entry.id) } } })) {
                             VStack(alignment:.leading,spacing:12) {
-                                TextField("Title",text:$entry.title).font(.system(size:15,weight:.semibold)).textFieldStyle(.roundedBorder)
-                                JournalRichEditor(entry:$entry)
-                                PictureControls(data:$entry.image,label:"Note image")
-                                HStack { Text("Saved as you type").font(.system(size:9)).foregroundStyle(.secondary); Spacer(); Menu { Button("Duplicate note") { var copy = entry; copy.id = UUID(); copy.title += " copy"; hero.journalEntries?.append(copy) }; Button("Delete note",role:.destructive) { let id = entry.id; hero.journalEntries?.removeAll { $0.id == id } } } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:24) }
+                                if entry.description.isEmpty {
+                                    Text("No note text yet.").font(.system(size:13)).foregroundStyle(.secondary)
+                                } else {
+                                    Text(AttributedString(JournalText.read(entry.richText,plain:entry.description)))
+                                        .textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading)
+                                }
+                                if let data = entry.image, let image = NSImage(data:data) {
+                                    Image(nsImage:image).resizable().scaledToFit().frame(maxHeight:280)
+                                        .clipShape(RoundedRectangle(cornerRadius:8)).accessibilityLabel("Note image")
+                                }
+                                HStack {
+                                    Button { editing = entry } label: { Label("Edit note",systemImage:"pencil") }.buttonStyle(PageButtonStyle())
+                                    Spacer()
+                                    Menu {
+                                        Button("Duplicate note") { var copy = entry; copy.id = UUID(); copy.title += " copy"; hero.journalEntries?.append(copy) }
+                                        Button("Delete note",role:.destructive) { let id = entry.id; hero.journalEntries?.removeAll { $0.id == id } }
+                                    } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:24).accessibilityLabel("Note options")
+                                }
                             }.padding(.top,14)
                         } label: {
                             Button { withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } } label: {
@@ -234,8 +249,17 @@ struct JournalPanel: View {
                 }
             }
         }.onAppear { hero.migrateContent() }
+        .sheet(item:$editing) { note in
+            JournalNoteEditor(note:note,isNew:!entries.wrappedValue.contains { $0.id == note.id }) { saved in
+                if let index = hero.journalEntries?.firstIndex(where:{ $0.id == saved.id }) {
+                    hero.journalEntries?[index] = saved
+                } else { hero.journalEntries = [saved] + (hero.journalEntries ?? []) }
+                expanded.insert(saved.id)
+            }
+        }
     }
 }
+
 
 struct CreaturesPanel: View {
     @Binding var hero: Hero
