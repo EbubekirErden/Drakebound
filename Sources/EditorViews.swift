@@ -8,12 +8,12 @@ struct EditorGroup<Content:View>:View {
     var badge:String? = nil
     var badgeColor:Color = accent
     @ViewBuilder var content:()->Content
-    var body:some View { VStack(alignment:.leading,spacing:12) { HStack { Text(title.uppercased()).font(.system(size:9,weight:.semibold)).tracking(1).foregroundStyle(.secondary); Spacer(minLength:0); if let badge { Text(badge).font(.system(size:10,weight:.medium)).foregroundStyle(badgeColor).monospacedDigit() } }.frame(height:14); content() }.padding(14).frame(maxWidth:.infinity,alignment:.leading).background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.09))) }
+    var body:some View { VStack(alignment:.leading,spacing:10) { HStack { Text(title.uppercased()).font(.system(size:10,weight:.semibold)).tracking(0.8).foregroundStyle(.secondary); Spacer(minLength:0); if let badge { Text(badge).font(.system(size:10,weight:.medium)).foregroundStyle(badgeColor).monospacedDigit() } }.frame(height:14); content() }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.09))) }
 }
 struct EditorField<Content:View>:View {
     var title:String
     @ViewBuilder var content:()->Content
-    var body:some View { VStack(alignment:.leading,spacing:5) { Text(title).font(.system(size:10)).foregroundStyle(.secondary); content().labelsHidden() }.frame(maxWidth:.infinity,alignment:.leading) }
+    var body:some View { VStack(alignment:.leading,spacing:5) { Text(title).font(.system(size:11)).foregroundStyle(.secondary); content().labelsHidden() }.frame(maxWidth:.infinity,alignment:.leading) }
 }
 struct BorderedTextEditor:View {
     @Binding var text:String

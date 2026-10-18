@@ -15,7 +15,7 @@ struct ReferenceTemplateEditor:View {
     @Environment(\.dismiss) var dismiss
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack { Text("Custom \(draft.category == .race ? "ancestry":draft.category == .background ? "background":"class")").font(.title2.bold()); Spacer(); Button("Cancel") { dismiss() }; Button("Save") { onSave(draft.entry); dismiss() }.buttonStyle(.borderedProminent).disabled(!draft.issues.isEmpty) }
+            HStack { Text("Custom \(draft.category == .race ? "ancestry":draft.category == .background ? "background":"class")").font(.title2.bold()); Spacer(); Button("Cancel") { dismiss() }.buttonStyle(PageButtonStyle()); Button("Save") { onSave(draft.entry); dismiss() }.buttonStyle(PageButtonStyle(prominent:true)).disabled(!draft.issues.isEmpty) }
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity & rules") {
                     TextField("Name",text:$draft.name)
@@ -39,12 +39,12 @@ struct ReferenceTemplateEditor:View {
                         HStack { TextField("Feature title",text:$trait.name); Button { draft.traits.removeAll { $0.id == trait.id } } label: { Image(systemName:"minus.circle") } }
                         if draft.category == .classEntry { HStack { Stepper("Class level \(trait.level)",value:$trait.level,in:1...20); TextField("Subclass · blank for core",text:$trait.subclass); Toggle("Optional",isOn:$trait.optional) }.font(.caption) }
                         BorderedTextEditor(text:$trait.text,height:75)
-                    }.padding(10).background(surface).clipShape(RoundedRectangle(cornerRadius:7)) }
+                    }.modifier(EditorRowStyle(index:draft.traits.firstIndex { $0.id == trait.id } ?? 0)) }
                     Button("Add feature") { draft.traits.append(TemplateTrait()) }
                 }
             } }
             if let issue = draft.issues.first { Text(issue).font(.caption).foregroundStyle(gold) }
-        }.padding(20).frame(width:640,height:660).background(paper).foregroundStyle(ink).textFieldStyle(.roundedBorder).tint(accent)
+        }.padding(20).modifier(CustomEditorFrame()).background(paper).foregroundStyle(ink).textFieldStyle(.roundedBorder).tint(accent)
     }
     var selectedSkills:Set<String> { Set(draft.values["proficiency",default:""].components(separatedBy:",").map { $0.trimmingCharacters(in:.whitespaces) }.filter { !$0.isEmpty }) }
     func value(_ key:String) -> Binding<String> { Binding(get:{ draft.values[key] ?? "" },set:{ draft.values[key] = $0 }) }

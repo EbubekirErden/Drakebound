@@ -198,7 +198,7 @@ struct ItemEditor: View {
     var valid:Bool { !item.name.trimmingCharacters(in:.whitespaces).isEmpty && (0...999).contains(item.quantity) && item.weight.isFinite && (0...100000).contains(item.weight) && validRolls(item.rolls,hero:hero) && (item.weaponProfile?.valid ?? true) }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack { Text("Equipment").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save item") { if saveToCompendium { saveTemplate?(TemplateFactory.item(item)) }; onSave(item); dismiss() }.buttonStyle(.borderedProminent).disabled(!valid) }
+            HStack { Text("Equipment").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }.buttonStyle(PageButtonStyle()); Button("Save item") { if saveToCompendium { saveTemplate?(TemplateFactory.item(item)) }; onSave(item); dismiss() }.buttonStyle(PageButtonStyle(prominent:true)).disabled(!valid) }
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView {
                 VStack(spacing:12) {
@@ -209,7 +209,8 @@ struct ItemEditor: View {
                         HStack { Toggle("Equipped",isOn:$item.equipped); Toggle("Requires attunement",isOn:Binding(get:{ item.requiresAttunement ?? false },set:{ item.requiresAttunement = $0 })); if item.requiresAttunement == true { Toggle("Attuned",isOn:Binding(get:{ item.attuned ?? false },set:{ item.attuned = $0 })) } }.font(.caption)
                     }
                     EditorGroup(title:"Description & properties") { BorderedTextEditor(text:$item.notes,height:90) }
-                    WeaponProfileEditor(item:$item)
+                    EditorColumns {
+                        WeaponProfileEditor(item:$item)
                     EditorGroup(title:"Armor & modifiers") {
                         Toggle("Use as base armor",isOn:Binding(get:{ item.armorBase != nil },set:{ item.armorBase = $0 ? 12:nil }))
                         if item.armorBase != nil {
@@ -220,11 +221,13 @@ struct ItemEditor: View {
                         Button("Add modifier") { editingBonus = Bonus(name:item.name.isEmpty ? "Item modifier":item.name) }
                         Text("Effects apply while equipped and, if required, attuned. Shields use an AC modifier.").font(.caption2).foregroundStyle(.secondary)
                     }
-                    ActionTimingPicker(timing:$item.timing)
+                    } trailing: {
+                        EditorGroup(title:"Action timing") { ActionTimingPicker(timing:$item.timing) }
                     EditorGroup(title:"Custom rolls") { RollListEditor(rolls:$item.rolls,hero:hero) }
+                    }
                 }
             }
-        }.padding(20).frame(width:600,height:660).textFieldStyle(.roundedBorder).tint(accent)
+        }.padding(20).modifier(CustomEditorFrame()).textFieldStyle(.roundedBorder).tint(accent)
         .sheet(item:$editingBonus) { bonus in BonusEditor(bonus:bonus,hero:hero,onSave:{ updated in var all = item.bonuses ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; item.bonuses = all },onDelete:{ item.bonuses?.removeAll { $0.id == bonus.id } }) }
     }
 }

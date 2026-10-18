@@ -20,12 +20,12 @@ struct RollListEditor: View {
                         if spell.level == 0 { Stepper("Character level \(roll.minimumCharacterLevel ?? 1)+",value:Binding(get:{ roll.minimumCharacterLevel ?? 1 },set:{ roll.minimumCharacterLevel = $0 }),in:1...20); Toggle("Use as cantrip scaling tier",isOn:Binding(get:{ roll.minimumCharacterLevel != nil },set:{ roll.minimumCharacterLevel = $0 ? 1:nil })) }
                         else { Stepper("Slot level \(roll.slotLevel ?? spell.level)",value:Binding(get:{ roll.slotLevel ?? spell.level },set:{ roll.slotLevel = $0 }),in:max(1,spell.level)...9); Toggle("Label as slot-level option",isOn:Binding(get:{ roll.slotLevel != nil },set:{ roll.slotLevel = $0 ? max(1,spell.level):nil })) }
                     }
-                    Picker("Condition effects",selection:$roll.kind) { Text("Generic · no automatic conditions").tag(Optional<D20Kind>.none); ForEach(D20Kind.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) } }
+                    EditorField(title:"Condition effects") { Picker("Condition effects",selection:$roll.kind) { Text("Generic · no automatic conditions").tag(Optional<D20Kind>.none); ForEach(D20Kind.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) } }.labelsHidden() }
                     if roll.kind == .save || roll.kind == .check { Picker("Ability",selection:$roll.ability) { Text("Unspecified").tag(Optional<Int>.none); ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag(Optional($0)) } } }
                     if allowsResourceCosts { ResourceCostPicker(cost:$roll.resourceCost,hero:hero) }
                     if let resolved = try? hero.resolveRoll(roll.expression,spell:spell,slot:spell?.level ?? 0) { Text("Preview: \(resolved)").font(.caption2).foregroundStyle(.secondary) }
                     else { Text("Invalid formula or unknown token").font(.caption2).foregroundStyle(coral) }
-                }
+                }.modifier(EditorRowStyle(index:list.wrappedValue.firstIndex { $0.id == roll.id } ?? 0))
             }
             HStack {
                 Button("Add custom roll") { rolls = (rolls ?? []) + [NamedRoll()] }.help("Build a formula with dice and character values. Custom rolls do not apply HP or other effects automatically.")
@@ -128,24 +128,29 @@ struct FeatureEditor:View {
     var valid:Bool { validFeatureEffects(feature) && !feature.name.trimmingCharacters(in:.whitespaces).isEmpty && validRolls(feature.rolls,hero:hero) && (feature.counter == nil || ((1...999).contains(feature.counter!.maximum) && (0...max(0,feature.counter!.maximum)).contains(feature.counter!.current))) }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack { Text("Feature").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save") { if saveToCompendium { saveTemplate?(TemplateFactory.feature(feature)) }; onSave(feature); dismiss() }.buttonStyle(.borderedProminent).disabled(!valid) }
+            HStack { Text("Feature").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }.buttonStyle(PageButtonStyle()); Button("Save") { if saveToCompendium { saveTemplate?(TemplateFactory.feature(feature)) }; onSave(feature); dismiss() }.buttonStyle(PageButtonStyle(prominent:true)).disabled(!valid) }
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity & source") { TextField("Feature name",text:$feature.name); HStack { Picker("Category",selection:Binding(get:{ feature.category ?? .other },set:{ feature.category = $0 })) { ForEach(FeatureCategory.allCases,id:\.self) { Text($0.rawValue).tag($0) } }; TextField("Source · race, class, book",text:Binding(get:{ feature.source ?? "" },set:{ feature.source = $0 })) } }
+                EditorGroup(title:"Description") { BorderedTextEditor(text:$feature.text,height:120) }
+                EditorColumns {
+                    EditorGroup(title:"Organization & timing") {
                 Picker("Group under feature",selection:$feature.parentFeatureID) {
                     Text("None").tag(Optional<UUID>.none)
                     ForEach(SelectionRules.parentOptions(for:feature,in:hero.featureEntries ?? [])) { parent in Text(parent.name).tag(Optional(parent.id)) }
                 }.help("Groups this feature visually under another feature. Resources and effects remain independent.")
                 ActionTimingPicker(timing:$feature.timing)
-                EditorGroup(title:"Description") { BorderedTextEditor(text:$feature.text,height:120) }
-                FeatureEffectsEditor(feature:$feature,hero:hero)
+                    }
                 EditorGroup(title:"Uses & recovery") { Toggle("Track uses",isOn:Binding(get:{ feature.counter != nil },set:{ feature.counter = $0 ? ResourceCounter(name:feature.name):nil })); if feature.counter != nil { let counter = Binding(get:{ feature.counter ?? ResourceCounter() },set:{ feature.counter = $0 }); HStack { EditorField(title:"Maximum") { TextField("Maximum",value:counter.maximum,format:.number) }; EditorField(title:"Remaining") { TextField("Remaining",value:counter.current,format:.number) } }; CounterResetPicker(counter:counter) } }
                 EditorGroup(title:"Linked resource") { ResourceCostPicker(cost:$feature.resourceCost,hero:hero); Text("Use feature spends this cost and one tracked use, if enabled. Custom rolls spend only the resource configured on that roll.").font(.caption2).foregroundStyle(.secondary) }
-                TrainingGrantEditor(grants:$feature.training,source:feature.name)
+                } trailing: {
+                    FeatureEffectsEditor(feature:$feature,hero:hero)
+                    TrainingGrantEditor(grants:$feature.training,source:feature.name)
+                }
                 EditorGroup(title:"Custom rolls") { RollListEditor(rolls:$feature.rolls,hero:hero) }
                 if allowDelete { HStack { Button("Remove feature",role:.destructive) { onDelete(); dismiss() }; Spacer() } }
             } }
-        }.padding(20).frame(width:600,height:650).textFieldStyle(.roundedBorder).tint(accent)
+        }.padding(20).modifier(CustomEditorFrame()).textFieldStyle(.roundedBorder).tint(accent)
     }
 }
 struct SpellEditor:View {
@@ -159,17 +164,21 @@ struct SpellEditor:View {
     @Environment(\.dismiss) var dismiss
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack { Text("Spell").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save spell") { if !(spell.rolls ?? []).contains(where:{ $0.id == spell.automaticRollID }) { spell.automaticRollID = nil }; if saveToCompendium { saveTemplate?(TemplateFactory.spell(spell)) }; onSave(spell); dismiss() }.buttonStyle(.borderedProminent).disabled(spell.name.trimmingCharacters(in:.whitespaces).isEmpty || !validRolls(spell.rolls,hero:hero,spell:spell)) }
+            HStack { Text("Spell").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }.buttonStyle(PageButtonStyle()); Button("Save spell") { if !(spell.rolls ?? []).contains(where:{ $0.id == spell.automaticRollID }) { spell.automaticRollID = nil }; if saveToCompendium { saveTemplate?(TemplateFactory.spell(spell)) }; onSave(spell); dismiss() }.buttonStyle(PageButtonStyle(color:sky,prominent:true)).disabled(spell.name.trimmingCharacters(in:.whitespaces).isEmpty || !validRolls(spell.rolls,hero:hero,spell:spell)) }
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
-                EditorGroup(title:"Spell") {
+                EditorGroup(title:"Identity") {
                     TextField("Spell name",text:$spell.name)
                     HStack { Stepper(spell.level == 0 ? "Cantrip":"Level \(spell.level)",value:$spell.level,in:0...9).frame(width:140); EditorField(title:"School") { OptionField(title:"School",value:$spell.school,choices:spellSchoolChoices) } }
+                }
+                EditorGroup(title:"Description") { BorderedTextEditor(text:$spell.text,height:110) }
+                EditorColumns {
+                    EditorGroup(title:"Casting details") {
                     HStack { EditorField(title:"Casting time") { OptionField(title:"Casting time",value:$spell.time,choices:["1 action","1 bonus action","1 reaction","1 minute","10 minutes","1 hour","8 hours"]) }; EditorField(title:"Range") { OptionField(title:"Range",value:$spell.range,choices:["Self","Touch","30 feet","60 feet","90 feet","120 feet","150 feet","300 feet","1 mile","Sight","Unlimited"]) } }
                     HStack { EditorField(title:"Duration") { OptionField(title:"Duration",value:$spell.duration,choices:["Instantaneous","1 round","1 minute","10 minutes","1 hour","8 hours","24 hours","Until dispelled","Concentration, up to 1 minute","Concentration, up to 10 minutes","Concentration, up to 1 hour"]) }; EditorField(title:"Components") { SpellComponentButtons(value:$spell.components) } }
                     SpellMaterialField(components:$spell.components)
-                }
-                EditorGroup(title:"Description") { BorderedTextEditor(text:$spell.text,height:110) }
+                    }
+                } trailing: {
                 EditorGroup(title:"Casting") {
                     SpellClassSelector(classes:Binding(get:{ spell.classes ?? "" },set:{ spell.classes = $0 }),options:classOptions + hero.progressionClasses.map(\.name))
                     HStack { Toggle("Ritual",isOn:Binding(get:{ spell.ritual ?? false },set:{ spell.ritual = $0 })); Toggle("Requires concentration",isOn:Binding(get:{ spell.requiresConcentration },set:{ spell.concentration = $0 })) }
@@ -180,13 +189,14 @@ struct SpellEditor:View {
                         }
                         if let source = spell.sourceClassName { Text("Casting source: \(source)").font(.caption2).foregroundStyle(sky) }
                         HStack { Toggle("Prepared",isOn:$spell.prepared); if spell.level > 0 { Toggle("Uses slot",isOn:Binding(get:{ spell.usesSlot ?? true },set:{ spell.usesSlot = $0 })) } }
-                        Toggle("Extra / always-prepared spell · exclude from class allowance",isOn:Binding(get:{ spell.exemptFromClassLimit ?? false },set:{ spell.exemptFromClassLimit = $0 }))
+                        Toggle(isOn:Binding(get:{ spell.exemptFromClassLimit ?? false },set:{ spell.exemptFromClassLimit = $0 })) { Text("Extra / always-prepared spell · exclude from class allowance").fixedSize(horizontal:false,vertical:true) }
                         ResourceCostPicker(cost:$spell.resourceCost,hero:hero)
                         Text("A linked resource is spent on casting, in addition to any spell slot or free use. Automatic rolls also spend their own configured cost.").font(.caption2).foregroundStyle(.secondary)
                         Picker("Casting ability",selection:Binding(get:{ spell.castingAbility ?? hero.castingAbility },set:{ spell.castingAbility = $0 })) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } }
                         Stepper("Free uses per long rest: \(spell.freeUses ?? 0)",value:Binding(get:{ spell.freeUses ?? 0 },set:{ spell.freeUses = $0; spell.freeRemaining = min(spell.freeRemaining ?? $0,$0) }),in:0...999)
                         if (spell.freeUses ?? 0) > 0 { Stepper("Remaining: \(spell.freeRemaining ?? spell.freeUses ?? 0)",value:Binding(get:{ spell.freeRemaining ?? spell.freeUses ?? 0 },set:{ spell.freeRemaining = $0 }),in:0...(spell.freeUses ?? 0)) }
                     }
+                }
                 }
                 EditorGroup(title:spell.level == 0 ? "Cantrip scaling & custom rolls":"Upcasting & custom rolls") {
                     if spell.level > 0 {
@@ -197,7 +207,7 @@ struct SpellEditor:View {
                     Text(spell.level == 0 ? "Cantrip tiers use character levels. Set each roll’s level requirement below its formula.":"Automatic upcasting uses the casting slot. Select that damage roll in Roll when cast to roll it during casting. Separate rolls spend no slot.").font(.caption2).foregroundStyle(.secondary)
                 }
             } }
-        }.padding(20).frame(width:610,height:700).textFieldStyle(.roundedBorder).tint(sky)
+        }.padding(20).modifier(CustomEditorFrame()).textFieldStyle(.roundedBorder).tint(sky)
     }
 }
 

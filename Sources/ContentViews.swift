@@ -396,19 +396,24 @@ struct CreatureEditor:View {
     var valid:Bool { !creature.name.trimmingCharacters(in:.whitespaces).isEmpty && (1...99999).contains(creature.maximumHP) && (0...99999).contains(creature.hp) && (0...50).contains(creature.ac) && (0...999).contains(creature.speed) && creature.scores.allSatisfy { (1...30).contains($0) } && creature.attacks.allSatisfy { (-100...100).contains($0.bonus) && (try? Dice.roll($0.damage)) != nil } }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
-            HStack { Text("Creature").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save creature") { creature.hp = min(creature.hp,creature.maximumHP); if saveToCompendium { saveTemplate?(TemplateFactory.creature(creature)) }; onSave(creature); dismiss() }.buttonStyle(.borderedProminent).disabled(!valid) }
+            HStack { Text("Creature").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }.buttonStyle(PageButtonStyle()); Button("Save creature") { creature.hp = min(creature.hp,creature.maximumHP); if saveToCompendium { saveTemplate?(TemplateFactory.creature(creature)) }; onSave(creature); dismiss() }.buttonStyle(PageButtonStyle(prominent:true)).disabled(!valid) }
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity") { TextField("Creature name",text:$creature.name); HStack { Picker("Role",selection:$creature.kind) { ForEach(["Companion","Familiar","Summon","Encounter","Reference"],id:\.self) { Text($0).tag($0) } }; TextField("Size / type / challenge",text:$creature.type) }; DisclosureGroup("Image") { PictureControls(data:$creature.image,label:"Creature image") } }
-                CreatureLayoutPicker(creature:$creature)
-                Toggle("Active in play",isOn:Binding(get:{ creature.isActive },set:{ creature.isActive = $0 })).font(.caption).help("Inactive creatures remain saved and can be activated at any time. Companions stay active until you deactivate them.")
+                EditorGroup(title:"Notes & full source") { BorderedTextEditor(text:$creature.description,height:90) }
+                EditorColumns {
                 EditorGroup(title:"Combat stats") {
                     HStack { EditorField(title:"HP") { TextField("Current HP",value:$creature.hp,format:.number) }; EditorField(title:"Maximum") { TextField("Maximum HP",value:$creature.maximumHP,format:.number) }; EditorField(title:"AC") { TextField("Armor class",value:$creature.ac,format:.number) }; EditorField(title:"Speed · ft") { TextField("Speed",value:$creature.speed,format:.number) } }
                     HStack { ForEach(0..<6,id:\.self) { i in EditorField(title:String(abilities[i].prefix(3)).uppercased()) { TextField(abilities[i],value:$creature.scores[i],format:.number) } } }
                 }
+                    EditorGroup(title:"Presentation & play") {
+                CreatureLayoutPicker(creature:$creature)
+                Toggle("Active in play",isOn:Binding(get:{ creature.isActive },set:{ creature.isActive = $0 })).font(.caption).help("Inactive creatures remain saved and can be activated at any time. Companions stay active until you deactivate them.")
+                    }
+                } trailing: {
                 EditorGroup(title:"Attacks") {
                     ForEach($creature.attacks) { $attack in
-                        VStack(alignment:.leading,spacing:9) { HStack { TextField("Attack name",text:$attack.name); Button { let id = attack.id; creature.attacks.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain) }; HStack { EditorField(title:"To hit") { TextField("To hit",value:$attack.bonus,format:.number) }; EditorField(title:"Damage dice") { DiceFormulaField(value:$attack.damage) } }; HStack { ActionTimingPicker(timing:$attack.timing,defaultLabel:"Default · Action"); Picker("Resolution",selection:Binding(get:{ attack.resolution ?? .attack },set:{ attack.resolution = $0 })) { ForEach(CreatureResolution.allCases,id:\.self) { option in Text(option.rawValue).tag(option) } } }; BorderedTextEditor(text:Binding(get:{ attack.description ?? "" },set:{ attack.description = $0 }),height:75) }.padding(10).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
+                        VStack(alignment:.leading,spacing:9) { HStack { TextField("Attack name",text:$attack.name); Button { let id = attack.id; creature.attacks.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain) }; HStack { EditorField(title:"To hit") { TextField("To hit",value:$attack.bonus,format:.number) }; EditorField(title:"Damage dice") { DiceFormulaField(value:$attack.damage) } }; VStack(alignment:.leading,spacing:9) { ActionTimingPicker(timing:$attack.timing,defaultLabel:"Default · Action"); Picker("Resolution",selection:Binding(get:{ attack.resolution ?? .attack },set:{ attack.resolution = $0 })) { ForEach(CreatureResolution.allCases,id:\.self) { option in Text(option.rawValue).tag(option) } } }; BorderedTextEditor(text:Binding(get:{ attack.description ?? "" },set:{ attack.description = $0 }),height:75) }.modifier(EditorRowStyle(index:creature.attacks.firstIndex { $0.id == attack.id } ?? 0))
                     }
                     Button("Add attack") { creature.attacks.append(CreatureAttack()) }
                 }
@@ -416,8 +421,8 @@ struct CreatureEditor:View {
                     ForEach(Binding(get:{ creature.traits ?? [] },set:{ creature.traits = $0 })) { $trait in VStack(spacing:8) { HStack { TextField("Trait name",text:$trait.name); Button { let id = trait.id; creature.traits?.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain) }; ActionTimingPicker(timing:$trait.timing,defaultLabel:"Passive · hide from Actions"); BorderedTextEditor(text:$trait.text,height:70) } }
                     Button("Add trait / action") { creature.traits = (creature.traits ?? [])+[CharacterFeature()] }
                 }
-                EditorGroup(title:"Notes & full source") { BorderedTextEditor(text:$creature.description,height:90) }
+                }
             } }
-        }.padding(20).frame(width:640,height:700).textFieldStyle(.roundedBorder).tint(accent)
+        }.padding(20).modifier(CustomEditorFrame()).textFieldStyle(.roundedBorder).tint(accent)
     }
 }
