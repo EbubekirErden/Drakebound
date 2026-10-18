@@ -32,11 +32,12 @@ struct PictureControls: View {
     @Binding var data: Data?
     var label: String
     @State var error: String?
+    var previewHeight:CGFloat = 200
     @State var preview = false
     var body: some View {
         VStack(alignment:.leading,spacing:10) {
             if let image = LocalImage.display(data) {
-                Button { preview = true } label: { Image(nsImage:image).resizable().scaledToFit().frame(maxWidth:420,maxHeight:200).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).help("View image")
+                Button { preview = true } label: { Image(nsImage:image).resizable().scaledToFit().frame(maxWidth:420,maxHeight:previewHeight).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).help("View image")
             }
             HStack {
                 Button { do { if let chosen = try LocalImage.choose() { data = chosen } } catch { self.error = "Choose a readable image under 25 MB. PNG, JPEG, and HEIC are supported.\n\(error.localizedDescription)" } } label: { Label(data == nil ? "Add image":"Replace image",systemImage:"photo") }

@@ -76,7 +76,7 @@ struct JournalRichEditor:View {
                 }.padding(.horizontal,6).frame(height:32)
             }.frame(height:32).background(ink.opacity(0.025))
             Rectangle().fill(ink.opacity(0.08)).frame(height:1)
-            NativeJournalEditor(entry:$entry,controller:controller).frame(height:210)
+            NativeJournalEditor(entry:$entry,controller:controller).frame(minHeight:140,maxHeight:.infinity)
         }.background(paper.opacity(0.7)).clipShape(RoundedRectangle(cornerRadius:7)).overlay(RoundedRectangle(cornerRadius:7).stroke(ink.opacity(0.12)))
     }
     func tool(_ title:String,_ icon:String,active:Bool = false,action:@escaping()->Void) -> some View {

@@ -33,11 +33,7 @@ struct EquipmentPanel:View {
                 } label: { Image(systemName:"ellipsis").frame(width:PageControl.height,height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8)) }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Equipment options").accessibilityLabel("Equipment options")
                     .popover(isPresented:$trainingOpen) {
-                        ScrollView { VStack(alignment:.leading,spacing:16) {
-                            HStack { Text("Weapon & armor proficiency").font(.headline); Spacer(); Button("Done") { trainingOpen = false } }
-                            EquipmentTrainingRoster(hero:hero)
-                            EquipmentTrainingEditor(grants:$hero.trainingGrants,source:"Manual character training",expanded:true)
-                        }.padding(20) }.frame(width:460,height:440)
+                        EquipmentTrainingPopover(hero:$hero) { trainingOpen=false }
                     }
             }.font(.system(size:12)).controlSize(.regular)
             if filtering {

@@ -144,7 +144,7 @@ struct QuickActionsPanel:View {
                 }
             }.frame(maxWidth:.infinity).padding(.bottom,8)
         }
-        LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8)],spacing:8) {
+        LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8,alignment:.top)],spacing:8) {
             ForEach(fullPage || expanded ? actions:Array(actions.prefix(6))) { action in GroupedActionCard(hero:$hero,store:store,action:action) }
         }
         if !fullPage && actions.count > 6 { Button(expanded ? "Show fewer":"Show all \(actions.count)") { expanded.toggle() }.font(.caption).buttonStyle(.plain).foregroundStyle(accent) }
@@ -182,19 +182,20 @@ struct GroupedActionCard:View {
     var rollExpression:String { guard let roll = chosenRoll else { return "" }; return (try? hero.resolveRoll(roll.expression(spell:spell,slot:slot),spell:spell,slot:slot)) ?? roll.expression }
     var canUseFeature:Bool { (hero.featureEntries ?? []).contains { $0.id == action.ref.sourceID && ($0.counter != nil || $0.resourceCost != nil) } }
     var body:some View {
-        VStack(alignment:.leading,spacing:6) {
+        VStack(alignment:.leading,spacing:10) {
             HStack(alignment:.top,spacing:8) {
-                Button { hero.toggleActionFavorite(action.ref) } label: { Image(systemName:hero.actionIsFavorite(action.ref) ? "star.fill":"star").foregroundStyle(gold) }.buttonStyle(.plain).accessibilityLabel("Favorite "+action.name).help("Keep \(action.name) in Frequent")
+                Image(systemName:cardIcon).font(.system(size:15,weight:.medium)).foregroundStyle(cardColor).frame(width:30,height:30).background(cardColor.opacity(0.12),in:RoundedRectangle(cornerRadius:8))
                 Button { openDetails() } label: {
                     VStack(alignment:.leading,spacing:4) {
-                        Text(action.name).font(.system(size:11,weight:.semibold)).lineLimit(2).frame(maxWidth:.infinity,alignment:.leading)
+                        Text(action.name).font(.system(size:13,weight:.semibold)).lineLimit(2).frame(maxWidth:.infinity,alignment:.leading)
                         Text(action.subtitle).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
                     }.contentShape(Rectangle())
                 }.buttonStyle(.plain).help("Open \(action.name) details")
+                Button { hero.toggleActionFavorite(action.ref) } label: { Image(systemName:hero.actionIsFavorite(action.ref) ? "star.fill":"star").foregroundStyle(gold) }.buttonStyle(.plain).accessibilityLabel("Favorite "+action.name).help("Keep \(action.name) in Frequent")
                 if let spell { CastControl(hero:$hero,store:store,spell:spell,compact:true) }
                 else if creatureFeature != nil { Button("Use") { store.performAction(action.ref,heroID:hero.id) }.font(.system(size:11,weight:.semibold)).tint(leaf).disabled(creature?.hp == 0) }
                 else if canUseFeature { Button("Use") { store.performAction(action.ref,heroID:hero.id) }.font(.system(size:11,weight:.semibold)).tint(accent) }
-            }.frame(height:42,alignment:.top)
+            }.frame(minHeight:34,alignment:.top)
             Group {
             if let creatureAttack,let creature {
                 HStack(spacing:8) {
@@ -204,7 +205,10 @@ struct GroupedActionCard:View {
                     Button { store.performAction(SheetActionRef(kind:.creatureDamage,sourceID:creatureAttack.id,creatureID:creature.id),heroID:hero.id) } label: { rollField("Damage",creatureAttack.damage,coral) }.buttonStyle(.plain).accessibilityLabel(creature.name+" · "+creatureAttack.name+" damage")
                 }.disabled(creature.hp == 0)
             } else if let creatureFeature {
-                Text(creatureFeature.counter.map { "Uses \($0.current)/\($0.maximum)" } ?? "Open title for action details").font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
+                VStack(alignment:.leading,spacing:6) {
+                    if let counter=creatureFeature.counter { Text("Uses \(counter.current)/\(counter.maximum)").font(.system(size:12,weight:.medium)).foregroundStyle(leaf) }
+                    excerpt(creatureFeature.text)
+                }
             } else if let attack {
                 HStack(spacing:8) {
                     RollChoiceButton(explanation:hero.attackExplanation(attack)) { mode in store.performAction(action.ref,heroID:hero.id,mode:mode) } label: {
@@ -227,14 +231,18 @@ struct GroupedActionCard:View {
                     } label: { Text("Roll "+rollExpression).font(.system(size:11,weight:.semibold,design:.monospaced)).foregroundStyle(sky).padding(7).background(sky.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:6)) }
                 }
             } else if let spell {
-                HStack { Text(spell.range).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1); Spacer(minLength:0) }
-            } else { Color.clear }
-            }.frame(maxWidth:.infinity).frame(height:28,alignment:.leading)
+                VStack(alignment:.leading,spacing:8) {
+                    HStack(spacing:8) { detailField("Range",spell.range);detailField("Duration",spell.duration) }
+                    excerpt(spell.text)
+                }
+            } else if let feature=hero.featureEntries?.first(where:{ $0.id == action.ref.sourceID }) { excerpt(feature.text) }
+            else if let item=hero.items.first(where:{ $0.id == action.ref.sourceID }) { excerpt(item.notes) }
+            }.frame(maxWidth:.infinity,alignment:.leading)
             HStack(spacing:6) {
                 if chosenRoll != nil && spell != nil { Text("No slot spent").help("This roll is separate from casting and never spends a spell slot.").font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.85) }
                 else if let attack { Text(attack.type).font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1) }
                 if attack == nil && creature == nil {
-                    Button { costDetails.toggle() } label: { Label("Costs",systemImage:"info.circle").font(.system(size:9)) }.buttonStyle(.plain).foregroundStyle(.secondary).help("Show casting, use, and roll costs").accessibilityLabel(action.name+" costs")
+                    Button { costDetails.toggle() } label: { Label("Costs",systemImage:"info.circle").font(.system(size:11)) }.buttonStyle(.plain).foregroundStyle(.secondary).help("Show casting, use, and roll costs").accessibilityLabel(action.name+" costs")
                         .popover(isPresented:$costDetails) {
                             VStack(alignment:.leading,spacing:10) {
                                 Text(action.name+" · costs").font(.headline)
@@ -252,8 +260,8 @@ struct GroupedActionCard:View {
                     Button("Crit") { store.performAction(SheetActionRef(kind:.attackDamage,sourceID:attack.id),heroID:hero.id,critical:true) }.font(.system(size:9,weight:.semibold)).buttonStyle(.plain).foregroundStyle(coral).help("Roll critical damage: double the damage dice, add flat modifiers once.").accessibilityLabel(attack.name+" critical damage")
                 }
                 if let spell { SpellConcentrationMark(hero:$hero,spell:spell) }
-            }.frame(height:18)
-        }.padding(10).frame(maxWidth:.infinity).frame(height:120,alignment:.topLeading).background(paper.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:8)).modifier(ConcentrationOutline(active:hero.concentrationSpellID == action.ref.sourceID))
+            }.frame(minHeight:20)
+        }.padding(12).frame(maxWidth:.infinity,alignment:.topLeading).background(paper.opacity(0.65),in:RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).stroke(cardColor.opacity(0.18))).modifier(ConcentrationOutline(active:hero.concentrationSpellID == action.ref.sourceID))
         .popover(isPresented:$attackDetails) {
             if let creatureAttack { AttackDescription(name:(creature?.name ?? "Creature")+" · "+creatureAttack.name,text:creatureAttack.description ?? "",edit:nil) }
             else if let creatureFeature { AttackDescription(name:(creature?.name ?? "Creature")+" · "+creatureFeature.name,text:creatureFeature.text,edit:nil) }
@@ -261,8 +269,16 @@ struct GroupedActionCard:View {
             else if let feature = hero.featureEntries?.first(where:{ $0.id == action.ref.sourceID }) { VStack(alignment:.leading,spacing:12) { Text(feature.name).font(.headline); ScrollView { Text(DescriptionMarkdown.attributed(feature.text)).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(18).frame(width:400,height:300) }
         }
     }
+    private var cardColor:Color { if creature != nil { return leaf };if attack != nil { return coral };if spell != nil { return sky };return action.ref.kind == .itemRoll ? gold:accent }
+    private var cardIcon:String { if creature != nil { return "pawprint" };if attack != nil { return "scope" };if spell != nil { return "sparkles" };return action.ref.kind == .itemRoll ? "backpack":"bolt.shield" }
+    private func excerpt(_ text:String)->some View {
+        Text(DescriptionMarkdown.attributed(String(text.prefix(600)))).font(.system(size:11)).foregroundStyle(ink.opacity(0.75)).lineLimit(2).frame(maxWidth:.infinity,alignment:.leading)
+    }
+    private func detailField(_ title:String,_ value:String)->some View {
+        VStack(alignment:.leading,spacing:4) { Text(title.uppercased()).font(.system(size:9,weight:.medium)).foregroundStyle(.secondary);Text(value).font(.system(size:12,weight:.medium)).lineLimit(2) }.frame(maxWidth:.infinity,alignment:.leading).padding(8).background(ink.opacity(0.035),in:RoundedRectangle(cornerRadius:6))
+    }
     func rollField(_ title:String,_ value:String,_ color:Color) -> some View {
-        HStack(spacing:6) { Text(title).font(.system(size:10)).lineLimit(1).fixedSize(); Spacer(minLength:2); Text(value).font(.system(size:13,weight:.semibold,design:.monospaced)).lineLimit(1).minimumScaleFactor(0.65) }.foregroundStyle(color).padding(7).frame(maxWidth:.infinity).background(color.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:6))
+        VStack(alignment:.leading,spacing:4) { Text(title.uppercased()).font(.system(size:9,weight:.semibold)).foregroundStyle(.secondary);Text(value).font(.system(size:18,weight:.semibold,design:.monospaced)).lineLimit(1).minimumScaleFactor(0.65) }.foregroundStyle(color).padding(9).frame(maxWidth:.infinity,alignment:.leading).background(color.opacity(0.09),in:RoundedRectangle(cornerRadius:7))
     }
     func openDetails() {
         if let spell { store.openSpell(spell,hero:hero,ids:hero.spells.filter { $0.prepared || $0.level == 0 }.map(\.id)) }

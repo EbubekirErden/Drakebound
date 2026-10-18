@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Action cards use natural content height, distinct type icons and accents, stronger attack/damage values, and spell range/duration with short description previews. Existing cast, roll, cost, favorite, and critical controls remain available.
+- Weapon & armor proficiency fits its content and scrolls when the training list is long, replacing the oversized fixed-height popover.
+- Note editor text fills the remaining sheet height instead of staying at 210 points inside an outer scroll view. Image controls remain below the editor, with a compact clickable image preview.
+
 - Empty Frequent/Recent Actions and filtered action lists offer Show all actions, which clears view filters without changing favorites or usage history.
 - Sheet sections fold from their headers, retaining key summaries and independent interface preferences. Health stays expanded; the banner menu offers Compact Sheet and Expand all Sheet sections. Compact Sheet keeps attacks, resources, and conditions visible.
 
