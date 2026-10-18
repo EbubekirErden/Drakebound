@@ -231,19 +231,25 @@ struct JournalPanel: View {
                                     Image(nsImage:image).resizable().scaledToFit().frame(maxHeight:280)
                                         .clipShape(RoundedRectangle(cornerRadius:8)).accessibilityLabel("Note image")
                                 }
-                                HStack {
-                                    Button { editing = entry } label: { Label("Edit note",systemImage:"pencil") }.buttonStyle(PageButtonStyle())
-                                    Spacer()
-                                    Menu {
-                                        Button("Duplicate note") { var copy = entry; copy.id = UUID(); copy.title += " copy"; hero.journalEntries?.append(copy) }
-                                        Button("Delete note",role:.destructive) { let id = entry.id; hero.journalEntries?.removeAll { $0.id == id } }
-                                    } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:24).accessibilityLabel("Note options")
-                                }
+
                             }.padding(.top,14)
                         } label: {
+                            HStack(spacing:8) {
                             Button { withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } } label: {
                                 HStack(spacing:10) { Image(systemName:entry.image == nil ? "text.alignleft":"photo.on.rectangle").foregroundStyle(gold); VStack(alignment:.leading,spacing:4) { Text(entry.title.isEmpty ? "Untitled note":entry.title).font(.system(size:13,weight:.medium)); if !expanded.contains(entry.id) { Text(entry.description.isEmpty ? "Add a description…":entry.description.replacingOccurrences(of:"\n",with:" ")).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) } }; Spacer() }.contentShape(Rectangle())
                             }.buttonStyle(.plain)
+                            Button { editing = entry } label: {
+                                Image(systemName:"pencil").font(.system(size:12,weight:.medium)).frame(width:28,height:28)
+                                    .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:6)).contentShape(Rectangle())
+                            }.buttonStyle(.plain).help("Edit note").accessibilityLabel("Edit note")
+                            Menu {
+                                Button("Duplicate note") { var copy = entry; copy.id = UUID(); copy.title += " copy"; hero.journalEntries?.append(copy) }
+                                Button("Delete note",role:.destructive) { let id = entry.id; hero.journalEntries?.removeAll { $0.id == id } }
+                            } label: { Image(systemName:"ellipsis") }
+                                .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width:28,height:28)
+                                .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:6))
+                                .help("Note options").accessibilityLabel("Note options")
+                            }
                         }
                     }.padding(16).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.06)))
                 }
