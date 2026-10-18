@@ -22,7 +22,7 @@ extension CharacterGuide {
     var originChoices:some View {
         EditorGroup(title:"Ancestry & background") {
             HStack { Text("Ancestry / species").font(.caption).foregroundStyle(.secondary); Spacer(); Button("Custom ancestry…") { customOrigin = CompendiumCreation(category:.race) } }
-            GuideReferencePicker(title:"Ancestries",options:catalog.ancestries,selection:$draft.ancestryReference,onPreview:{ referencePreview = $0 })
+            GuideReferencePicker(title:"Ancestries",options:catalog.ancestries,selection:$draft.ancestryReference,onPreview:{ referencePreview = $0 },edition:draft.hero.edition)
             if let entry = draft.ancestryTemplate { originSummary(entry) }
             HStack { Text("Background").font(.caption).foregroundStyle(.secondary); Spacer(); Button("Custom background…") { customOrigin = CompendiumCreation(category:.background) } }
             GuideReferencePicker(title:"Backgrounds",options:catalog.backgrounds,selection:$draft.backgroundReference,onPreview:{ referencePreview = $0 })
@@ -54,10 +54,14 @@ extension CharacterGuide {
                     }
                 }
             }
+            EditorGroup(title:"Weapon & armor proficiency") {
+                EquipmentTrainingRoster(hero:draft.result)
+                EquipmentTrainingEditor(grants:Binding(get:{ draft.trainingAdditions },set:{ draft.trainingAdditions=$0 ?? [] }),source:"Character creation / advancement",expanded:true)
+            }
             EditorGroup(title:"Training sources") {
                 let grants = draft.result.allTraining
                 if grants.isEmpty { Text("No extra training grants.").font(.caption).foregroundStyle(.secondary) }
-                ForEach(Array(grants.enumerated()),id:\.offset) { _,grant in HStack(alignment:.top) { VStack(alignment:.leading,spacing:3) { Text(grant.target.hasPrefix("skill.") ? String(grant.target.dropFirst(6)):(Int(grant.target.dropFirst(5)).map { abilities[$0]+" save" } ?? grant.target)).font(.system(size:12)); Text(grant.source).font(.system(size:10)).foregroundStyle(.secondary) }; Spacer(); Text(grant.rank == 2 ? "Expertise":"Proficient").font(.caption).foregroundStyle(sky) } }
+                ForEach(Array(grants.enumerated()),id:\.offset) { _,grant in HStack(alignment:.top) { VStack(alignment:.leading,spacing:3) { Text(trainingTargetName(grant.target)).font(.system(size:12)); Text(grant.source).font(.system(size:10)).foregroundStyle(.secondary) }; Spacer(); Text(grant.rank == 2 ? "Expertise":"Proficient").font(.caption).foregroundStyle(sky) } }
                 Text("Proficiency is applied once per check; the strongest expertise grant wins. Independent flat or dice bonuses still add.").font(.caption2).foregroundStyle(.secondary)
                 TrainingGrantEditor(grants:Binding(get:{ draft.trainingAdditions },set:{ draft.trainingAdditions = $0 ?? [] }),source:"\(draft.chosenClass.name) · level \(draft.classLevel)")
             }

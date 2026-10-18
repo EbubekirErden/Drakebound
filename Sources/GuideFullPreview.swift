@@ -53,6 +53,6 @@ struct GuideFullPreview:View {
             if !draft.problems.isEmpty { EditorGroup(title:"Still needed") { ForEach(draft.problems,id:\.self) { Text($0).font(.caption).foregroundStyle(gold) } } }
         }
     }
-    func trainingName(_ target:String) -> String { if target.hasPrefix("skill.") { return String(target.dropFirst(6)) }; if let i = Int(target.dropFirst(5)),abilities.indices.contains(i) { return abilities[i]+" save" }; return target }
+    func trainingName(_ target:String) -> String { trainingTargetName(target) }
     func metric(_ title:String,_ value:String,_ color:Color) -> some View { VStack(spacing:6) { Text(title.uppercased()).font(.system(size:9,weight:.semibold)).foregroundStyle(.secondary); Text(value).font(.system(size:21,weight:.medium,design:.rounded)).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.7) }.padding(12).frame(maxWidth:.infinity).background(color.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:8)) }
 }

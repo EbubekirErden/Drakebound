@@ -85,6 +85,7 @@ struct TrainingGrantEditor:View {
         DisclosureGroup("Training granted by this feature") {
             Text("Multiple proficiency sources count once. Expertise uses twice your proficiency bonus; separate numeric bonuses still add.").font(.caption2).foregroundStyle(.secondary).padding(.vertical,6)
             LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:8) { ForEach(skills,id:\.0) { skill in HStack { Text(skill.0).font(.system(size:11)); Spacer(); Picker(skill.0,selection:rank("skill."+skill.0)) { Text("None").tag(0); Text("Proficient").tag(1); Text("Expertise").tag(2) }.labelsHidden().frame(width:102) } } }
+            EquipmentTrainingEditor(grants:$grants,source:source)
             HStack { ForEach(0..<6,id:\.self) { i in Toggle(String(abilities[i].prefix(3)),isOn:Binding(get:{ (grants ?? []).contains { $0.target == "save.\(i)" } },set:{ set("save.\(i)",$0 ? 1:0) })).toggleStyle(.checkbox).font(.caption2) } }.padding(.top,8)
         }.font(.caption)
     }

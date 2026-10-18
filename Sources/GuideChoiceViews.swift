@@ -5,10 +5,19 @@ struct GuideReferencePicker:View {
     var options:[CompendiumEntry]
     @Binding var selection:UUID?
     var onPreview:(CompendiumEntry)->Void
+    var edition:String? = nil
     @State private var browsing = false
     @State private var query = ""
+    @State private var equipmentType = "All types"
+    @State private var equipmentSource = CompendiumScope.all
     var selected:CompendiumEntry? { options.first { $0.id == selection } }
-    var matches:[CompendiumEntry] { options.filter { query.isEmpty || $0.name.localizedCaseInsensitiveContains(query) } }
+    var matches:[CompendiumEntry] { options.filter { (query.isEmpty || $0.name.localizedCaseInsensitiveContains(query)) && ($0.category != .item || ((equipmentType == "All types" || $0.subcategory == equipmentType) && equipmentSource.includes($0))) } }
+    func summary(_ entry:CompendiumEntry) -> String {
+        if edition == "2024" && entry.category == .race {
+            return (entry.value("speed").isEmpty ? "":entry.value("speed")+" ft · ")+"Ability increases from background"
+        }
+        return entry.summary
+    }
     var body:some View {
         HStack(spacing:8) {
             Button { browsing = true } label: { HStack { Image(systemName:"books.vertical").foregroundStyle(sky); Text(selected?.name ?? "Browse \(title.lowercased())").lineLimit(1); Spacer(minLength:4); Image(systemName:"chevron.down").font(.system(size:9)) }.font(.system(size:12)).padding(9).background(surface).clipShape(RoundedRectangle(cornerRadius:6)).overlay(RoundedRectangle(cornerRadius:6).stroke(ink.opacity(0.1))) }.buttonStyle(.plain).disabled(options.isEmpty)
@@ -18,9 +27,12 @@ struct GuideReferencePicker:View {
             VStack(alignment:.leading,spacing:12) {
                 HStack { Text(title).font(.headline); Spacer(); Button("Done") { browsing = false } }
                 TextField("Search \(title.lowercased())",text:$query).textFieldStyle(.roundedBorder)
+                if options.first?.category == .item {
+                    HStack { Picker("Type",selection:$equipmentType) { Text("All types").tag("All types");ForEach(Array(Set(options.map(\.subcategory))).sorted(),id:\.self) { Text($0).tag($0) } }; Picker("Source",selection:$equipmentSource) { ForEach(CompendiumScope.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }.labelsHidden().font(.caption)
+                }
                 ScrollView { LazyVStack(spacing:4) {
                     ForEach(matches.prefix(80)) { entry in
-                        HStack { Button { selection = entry.id; browsing = false } label: { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.medium)); Text(entry.summary).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(2) }.frame(maxWidth:.infinity,alignment:.leading).padding(9).background(selection == entry.id ? accent.opacity(0.12):surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain); Button { browsing = false; onPreview(entry) } label: { Image(systemName:"eye") }.help("Preview \(entry.name)") }
+                        HStack(spacing:6) { Button { selection = entry.id; browsing = false } label: { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.medium)); Text(summary(entry)).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,9).frame(height:56).background(selection == entry.id ? accent.opacity(0.12):surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain); Button { browsing = false; onPreview(entry) } label: { Image(systemName:"eye").frame(width:36,height:56).background(surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain).accessibilityLabel("Preview "+entry.name).help("Preview \(entry.name)") }
                     }
                     if matches.isEmpty { Text("No matching entries").font(.caption).foregroundStyle(.secondary).padding() }
                     if matches.count > 80 { Text("\(matches.count) matches · narrow your search").font(.caption).foregroundStyle(.secondary) }
@@ -40,21 +52,31 @@ struct GuideSpellBrowser:View {
     var alreadyKnown:[Spell]
     var hero:Hero
     var onAdd:(Spell)->Void
+    var buildDraft:CharacterBuildDraft? = nil
+    var onSlots:(([Int])->Void)? = nil
     @Environment(\.dismiss) var dismiss
     @State private var search = ""
     @State private var level = 0
     @State private var onlyLevel = false
     @State private var classOnly = true
+    @State private var featuresOpen = false
+    @State private var casterOpen = false
+    @State private var casterLevel = 1
     @State private var preview:Spell?
     @State private var levelReview:CompendiumEntry?
     var baseClass:String { ClassProfile.named(className)?.name ?? className }
-    var matches:[Spell] { catalog.spells.filter { spell in
-        (!onlyLevel || spell.level == level) && (search.isEmpty || spell.name.localizedCaseInsensitiveContains(search)) && (!classOnly || (spell.classes ?? catalog.spellClasses[spell.id] ?? "").localizedCaseInsensitiveContains(baseClass))
+    var spellOptions:[Spell] {
+        let revised=Set(catalog.spells.filter { $0.name.contains("[2024]") }.map { GuideRules.spellNameKey($0.name) })
+        let legacy=Set(catalog.spells.filter { !$0.name.contains("[2024]") }.map { GuideRules.spellNameKey($0.name) })
+        return catalog.spells.filter { spell in hero.edition == "2024" ? spell.name.contains("[2024]") || !revised.contains(GuideRules.spellNameKey(spell.name)):!spell.name.contains("[2024]") || !legacy.contains(GuideRules.spellNameKey(spell.name)) }
+    }
+    var matches:[Spell] { spellOptions.filter { spell in
+        (!onlyLevel || spell.level == level) && (search.isEmpty || spell.name.localizedCaseInsensitiveContains(search)) && (!classOnly || GuideRules.spellBelongs(spell,to:baseClass))
     } }
     var referenceMatches:[CompendiumEntry] { catalog.unleveledSpells.filter { entry in (search.isEmpty || entry.name.localizedCaseInsensitiveContains(search)) && (!classOnly || entry.value("classes").localizedCaseInsensitiveContains(baseClass)) } }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
-            HStack { VStack(alignment:.leading,spacing:3) { Text("Choose spells").font(.title2.bold()); Text("Adding to \(className)").font(.caption).foregroundStyle(sky) }; Spacer(); Button("Done") { dismiss() } }
+            HStack { VStack(alignment:.leading,spacing:3) { Text("Choose spells").font(.title2.bold()); Text("Adding to \(className)").font(.caption).foregroundStyle(sky) }; Spacer(); Button("Features") { featuresOpen=true }; if buildDraft != nil { Button("Caster table…") { casterLevel=min(20,buildDraft!.resultingClasses.reduce(0) { $0+$1.casting.contribution($1.level,edition:hero.edition) });casterOpen=true } }; Button("Done") { dismiss() } }
             TextField("Search spells",text:$search).textFieldStyle(.roundedBorder)
             ScrollViewReader { scroll in
                 HStack {
@@ -85,11 +107,13 @@ struct GuideSpellBrowser:View {
                 } }
             }
         }.padding(20).frame(width:660,height:580).background(surface).foregroundStyle(ink).tint(sky)
+        .popover(isPresented:$casterOpen) { if let buildDraft { CasterTableView(draft:buildDraft,catalog:catalog,level:$casterLevel) { slots in onSlots?(slots);casterOpen=false } } }
+        .popover(isPresented:$featuresOpen) { LoadoutFeatureReference(features:hero.featureEntries ?? []) }
         .sheet(item:$preview) { spell in VStack(alignment:.leading,spacing:14) { HStack { Text(spell.name).font(.title2.bold()); Spacer(); Button("Done") { preview = nil } }; Text("\(spell.school) · \(spell.range) · \(spell.duration)").font(.caption).foregroundStyle(sky); ScrollView { Text(spell.text).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(22).frame(width:600,height:520).background(surface) }
         .sheet(item:$levelReview) { entry in GuideSpellLevelReview(entry:entry,hero:hero,onAdd:onAdd) }
     }
     func spellRow(_ spell:Spell) -> some View {
-        let known = alreadyKnown.contains { $0.name.caseInsensitiveCompare(spell.name) == .orderedSame }
+        let known = alreadyKnown.contains { GuideRules.spellNameKey($0.name) == GuideRules.spellNameKey(spell.name) }
         return HStack {
             Button { preview = spell } label: { VStack(alignment:.leading,spacing:4) { Text(spell.name).font(.system(size:12,weight:.medium)); Text("\(spell.school) · \(spell.time) · \(spell.range)").font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain)
             Button(known ? "Added":"Add") { onAdd(spell) }.accessibilityLabel("\(known ? "Added":"Add") \(spell.name)").disabled(known)

@@ -6,6 +6,7 @@ struct EquipmentPanel:View {
     @ObservedObject var store:Store
     var edit:(Item)->Void
     @State private var search = ""
+    @State private var trainingOpen = false
     @State private var kind = "All types"
     @State private var equippedOnly = false
     @State private var collapsed:Set<UUID> = []
@@ -16,6 +17,7 @@ struct EquipmentPanel:View {
     var filtering:Bool { !search.isEmpty || kind != "All types" || equippedOnly }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
+            DisclosureGroup("Weapon & armor proficiency",isExpanded:$trainingOpen) { EquipmentTrainingRoster(hero:hero);EquipmentTrainingEditor(grants:$hero.trainingGrants,source:"Manual character training",expanded:true) }.font(.caption)
             HStack {
                 Label(String(format:"%.1f / %d lb",hero.items.reduce(0) { $0+Double($1.quantity)*$1.weight },hero.effectiveScore(0)*15),systemImage:"scalemass").font(.caption).foregroundStyle(.secondary)
                 Spacer(); Stepper("\(hero.gold) gp",value:$hero.gold,in:0...999999).frame(width:130)

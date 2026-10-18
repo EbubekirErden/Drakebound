@@ -30,7 +30,7 @@ enum TemplateFactory {
         return CompendiumEntry(category:.monster,name:c.name,fields:fields,custom:true,template:CompendiumTemplate(creature:c))
     }
     static func feature(_ input:CharacterFeature) -> CompendiumEntry {
-        var f = input; if let maximum = f.counter?.maximum { f.counter?.current = maximum }
+        var f = input; f.parentFeatureID = nil; if let maximum = f.counter?.maximum { f.counter?.current = maximum }
         f.resourceCost = nil; f.rolls = cleanResourceLinks(f.rolls)
         return CompendiumEntry(category:.feat,name:f.name,fields:[ReferenceField(name:"name",text:f.name),ReferenceField(name:"text",text:f.text)],custom:true,template:CompendiumTemplate(feature:f))
     }

@@ -26,7 +26,7 @@ extension CompendiumEntry {
         }
     }
     func featureCopies(through level:Int = 20) -> [CharacterFeature] {
-        if var feature = template?.feature { feature.id = UUID(); feature.resourceCost = nil; feature.rolls = cleanResourceLinks(feature.rolls); return [feature] }
+        if var feature = template?.feature { feature.id = UUID(); feature.parentFeatureID = nil; feature.resourceCost = nil; feature.rolls = cleanResourceLinks(feature.rolls); return [feature] }
         let category:FeatureCategory = self.category == .classEntry ? .classFeature:self.category == .race ? .ancestry:self.category == .background ? .background:self.category == .feat ? .feat:.other
         if self.category == .classEntry {
             return fields.filter { $0.name == "autolevel" && (Int($0.attributes["level"] ?? "1") ?? 1) <= level }.flatMap { field in

@@ -8,11 +8,23 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 
 ## Included
 
+- Creator spell selection includes the caster table; equipment selection filters by type and source.
+- Spell preparation menus affect the whole spellbook (including hidden rows). Prepare all records your choice without enforcing class limits.
+- Features can be grouped under another feature in their editor. Links organize the list; they do not share counters or apply extra effects. Removing a parent leaves its children available.
+- Equipment and Training show weapon/armor proficiency sources and manual controls. Class/feature grants remain separate from manual grants.
+- Duplicate catalog choices are consolidated for browsing; custom compendium entries and saved character spells are retained.
+
+
 - Slate theme, narrow 184-point character sidebar, and browser-style Sheet, Actions, Equipment, Spells, Journal, and Creatures tabs.
 - Consistent tab accents: teal Sheet, coral Actions, gold Equipment, blue Spells, muted rose Journal, and green Creatures. Inactive icons are subdued; the selected tab has a matching underline and stronger icon.
 - Semantic colors, animated health bars and counters, and a larger dice display; macOS Reduce Motion is respected.
 - Multiple editable characters, with a sample level 5 wizard.
 - Compact character-creation and level-up guides with live and full previews, explicit compendium choices, and a final review.
+- ASI milestones open an ability/feat chooser; allocations disappear when the milestone is removed. Other feats record their explicit ability increase rather than interpreting arbitrary prose.
+- Weapon and armor training retain their sources. Known linked weapons use that training for attack proficiency; custom weapons retain their manual setting.
+- Spells & Gear includes feature references, per-class spell allowances, starting equipment alternatives, and packs expanded into inventory containers. Kits do not auto-equip items; choose one class/background alternative.
+- Spell allowances use imported class tables where available and supported edition-specific rules. Unknown values ask you to check the reference. Mark domain/other always-prepared spells exempt in their editor.
+- Complete recognized cantrips without an XML level are available in the creator; ambiguous missing-level entries remain available for manual review.
 - Ability checks, saving throws, skill proficiency and expertise, calculated proficiency and spell DC.
 - Animated dice rolls, dice notation, attack and damage rolls, and session roll history. Honors macOS Reduce Motion.
 - HP, temporary HP, hit dice, death saves, inspiration, and selectable conditions with effects.
@@ -235,3 +247,14 @@ The preview computes the resolved formula, minimum, maximum, and average without
 The initial Git baseline is version **0.26.0**. Its logical commits capture the application, regression tests, generated-file exclusions, and release documentation; they are snapshots of the existing work rather than reconstructed historical releases. See [CHANGELOG.md](CHANGELOG.md).
 
 Use `feat:` for features, `fix:` for corrections, `test:` for verification changes, and `milestone:` for release checkpoints. Release tags such as `v0.26.0` point to the complete baseline. Generated `build/` and `output/` files are ignored; character saves remain in Application Support.
+
+
+## Origin ability increases in the creator
+
+Alignment uses the standard nine-alignment picker plus Unaligned and Custom. Ancestry browse rows and their preview buttons share a fixed 56-point height.
+
+The Abilities step identifies the source of origin increases. Under 2024 rules these come from the background: choose +2/+1 on different abilities, or +1/+1/+1 on three abilities. When the imported background clearly lists its three abilities, other ability pickers are disabled. Older backgrounds allow any abilities under the compatibility rules. An ambiguous modern import can be checked in the reference/help popover and entered explicitly. Older ancestry increases are not added in 2024 mode.
+
+Under 2014 rules, unambiguous complete fixed ancestry bonuses are filled from the XML ability field. A flexible ability-increase trait takes precedence over a conflicting legacy summary. Unknown or nonstandard origins use an explicit Custom / table rule option. Normal patterns validate their distribution, allowed abilities, and the ability-score cap of 20; Custom intentionally permits table overrides. Changing the relevant origin or edition resets its allocation. These rules affect creation drafts, never existing characters or level-up origin scores. Longer explanations live in a dismissible question-mark popover.
+
+Reference: [Official 2024 character creation rules](https://www.dndbeyond.com/sources/dnd/br-2024/creating-a-character).

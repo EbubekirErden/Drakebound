@@ -14,15 +14,22 @@ extension CharacterGuide {
                     let required = draft.requiredOriginIDs.contains(feature.id)
                     let known = (draft.original?.featureEntries ?? []).contains { $0.name == feature.name && $0.text == feature.text }
                     HStack(spacing:9) {
-                        Button { if selected { draft.selectedFeatures.removeAll { $0.id == feature.id } } else { draft.selectedFeatures.append(feature) } } label: { Image(systemName:selected || known ? "checkmark.square.fill":"square").foregroundStyle(selected ? accent:Color.secondary) }.buttonStyle(.plain).disabled(known || required).help(known ? "Already on character":"Select feature").accessibilityLabel("Select \(feature.name)")
-                        Button { featurePreview = feature } label: { VStack(alignment:.leading,spacing:4) { Text(feature.name).font(.system(size:12,weight:.medium)); Text(known ? "Already on character":feature.source ?? "").font(.system(size:10)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain)
+                        Button { if selected { draft.selectedFeatures.removeAll { $0.id == feature.id } } else { draft.selectedFeatures.append(feature); if CharacterBuildDraft.isAbilityImprovement(feature) { improvementFeature=feature } } } label: { Image(systemName:selected || known ? "checkmark.square.fill":"square").foregroundStyle(selected ? accent:Color.secondary) }.buttonStyle(.plain).disabled(known || required).help(known ? "Already on character":"Select feature").accessibilityLabel("Select \(feature.name)")
+                        Button { openFeatureChoice(feature) } label: { VStack(alignment:.leading,spacing:4) { Text(feature.name).font(.system(size:12,weight:.medium)); Text(known ? "Already on character":feature.source ?? "").font(.system(size:10)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain)
                         Button { featurePreview = feature } label: { Image(systemName:"eye") }.help("Preview feature")
                     }.padding(9).background(surface).clipShape(RoundedRectangle(cornerRadius:6))
                 } }
             }
             EditorGroup(title:"Selected features & feats · \(draft.selectedFeatures.count)") {
                 if !draft.isLevelUp || draft.featChoiceAvailable { GuideReferencePicker(title:"Feats",options:eligibleFeats,selection:$featChoice,onPreview:{ referencePreview = $0 }) }
-                ForEach(draft.selectedFeatures) { feature in HStack { Button { featureEditor = feature } label: { VStack(alignment:.leading,spacing:3) { Text(feature.name).font(.system(size:12)); Text(feature.counter?.resetSummary ?? feature.source ?? "").font(.system(size:10)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain); Button { featureEditor = feature } label: { Image(systemName:"pencil") }.help("Edit description, rolls, uses & recovery"); if !draft.requiredOriginIDs.contains(feature.id) { Button { draft.selectedFeatures.removeAll { $0.id == feature.id } } label: { Image(systemName:"minus.circle") }.help("Remove selection") } } }
+                ForEach(FeatureCategory.allCases,id:\.self) { category in
+                    let entries=draft.selectedFeatures.filter { ($0.category ?? .other) == category }
+                    if !entries.isEmpty { DisclosureGroup("\(category.rawValue) · \(entries.count)") {
+                ForEach(SelectionRules.outline(entries)) { row in
+                    let feature=row.feature
+                     HStack { Button { if CharacterBuildDraft.isAbilityImprovement(feature) { improvementFeature=feature } else { featureEditor=feature } } label: { VStack(alignment:.leading,spacing:3) { Text(feature.name).font(.system(size:12)); Text(CharacterBuildDraft.isAbilityImprovement(feature) ? draft.improvementSummary(feature):feature.counter?.resetSummary ?? feature.source ?? "").font(.system(size:10)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain); Button { if CharacterBuildDraft.isAbilityImprovement(feature) { improvementFeature=feature } else { featureEditor=feature } } label: { Group { if CharacterBuildDraft.isAbilityImprovement(feature) { Text(draft.abilityImprovements[feature.id] == nil ? "Choose…":"Edit choice").font(.caption) } else { Image(systemName:"pencil") } } }.help(CharacterBuildDraft.isAbilityImprovement(feature) ? "Choose ability increases or a feat":"Edit description, rolls, uses & recovery"); if !draft.requiredOriginIDs.contains(feature.id) { Button { draft.selectedFeatures.removeAll { $0.id == feature.id } } label: { Image(systemName:"minus.circle") }.help("Remove selection") } }.padding(.leading,CGFloat(row.depth)*14) }
+                    }.font(.caption) }
+                }
                 Button("Custom feature") { featureEditor = CharacterFeature(name:"",category:.classFeature,source:"\(draft.chosenClass.name) · Level \(draft.classLevel)") }
             }
             EditorGroup(title:"Effects & resources") {
@@ -43,6 +50,7 @@ extension CharacterGuide {
     var eligibleFeats:[CompendiumEntry] { catalog.feats.filter { GuideRules.featMinimumLevel($0) <= draft.newLevel } }
     var loadoutStep:some View {
         VStack(spacing:14) {
+            DisclosureGroup("Features & choices · \(draft.result.featureEntries?.count ?? 0)") { ForEach(draft.result.featureEntries ?? []) { feature in Button { openFeatureChoice(feature) } label: { HStack { Text(feature.name); Spacer(); Image(systemName:CharacterBuildDraft.isAbilityImprovement(feature) ? "slider.horizontal.3":"eye") }.font(.caption).padding(.vertical,4) }.buttonStyle(.plain) } }
             EditorGroup(title:"Spellcasting & slots") {
                 Picker("Default casting ability",selection:$draft.hero.castingAbility) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } }
                 HStack { if let entry = classReference, draft.resultingClasses.count == 1, GuideRules.importedSlots(entry,at:draft.classLevel) != nil { Button("Use imported class table") { draft.hero.slots = GuideRules.importedSlots(entry,at:draft.classLevel)!; draft.hero.slotsRecoverOnShortRest = entry.value("slotsReset") == "S" } }; Spacer(); Button("Caster table…") { updateCasterLevel(); equipmentOpen = true } }
@@ -52,9 +60,10 @@ extension CharacterGuide {
                 if draft.resultingClasses.contains(where:{ $0.casting == .pact }) && draft.resultingClasses.count > 1 { Text("Mixed Pact Magic needs a separate manual counter for pact slots. This slot grid has one recovery policy for all its slots; use it for ordinary Spellcasting and keep pact uses separate.").font(.caption).foregroundStyle(gold) }
             }
             EditorGroup(title:"Spellbook · \(draft.hero.spells.count)") {
-                HStack { Button("Browse spells") { spellBrowser = true }; Button("Custom spell") { var spell = Spell(name:"",level:0); spell.sourceClassID = draft.selectedClassID; spell.sourceClassName = draft.chosenClass.name; spell.castingAbility = classCastingAbility; spellEditor = spell }; Spacer(); Text("Check prepared spells").font(.caption2).foregroundStyle(.secondary) }
+                HStack { Button("Browse spells") { spellBrowser = true }; Button("Custom spell") { var spell = Spell(name:"",level:0); spell.sourceClassID = draft.selectedClassID; spell.sourceClassName = draft.chosenClass.name; spell.castingAbility = classCastingAbility; spellEditor = spell }; Spacer(); Menu("Preparation") { Button("Prepare all") { for i in draft.hero.spells.indices { draft.hero.spells[i].prepared=true } }; Button("Unprepare all level 1+") { for i in draft.hero.spells.indices where draft.hero.spells[i].level > 0 { draft.hero.spells[i].prepared=false } } }.help("Changes all spells in this draft; review your class allowance.") }
                 ForEach(draft.hero.spells) { spell in HStack(spacing:9) { Toggle("Prepare \(spell.name)",isOn:Binding(get:{ draft.hero.spells.first { $0.id == spell.id }?.prepared ?? false },set:{ value in if let i = draft.hero.spells.firstIndex(where:{ $0.id == spell.id }) { draft.hero.spells[i].prepared = value } })).labelsHidden().toggleStyle(.checkbox); Button { spellEditor = spell } label: { Text(spell.name).font(.system(size:12)).frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain); Text(spell.level == 0 ? "Cantrip":"L\(spell.level)").font(.caption2).foregroundStyle(sky); Button { draft.hero.spells.removeAll { $0.id == spell.id } } label: { Image(systemName:"minus.circle") }.help("Remove spell from draft") } }
             }
+            if !draft.isLevelUp { starterEquipmentChoices }
             EditorGroup(title:"Equipment · \(draft.hero.items.count)") {
                 GuideReferencePicker(title:"Equipment",options:catalog.items,selection:$equipmentChoice,onPreview:{ referencePreview = $0 })
                 HStack { Button("Custom item") { itemEditor = Item(name:"") }; Spacer(); Stepper("\(draft.hero.gold) gp",value:$draft.hero.gold,in:0...999999).frame(width:140) }
@@ -144,6 +153,6 @@ extension CharacterGuide {
         if let existing = draft.hero.attacks.first(where:{ $0.name == item.name }) { return existing }
         let entry = catalog.items.first { $0.name == item.name }
         let damage = entry?.value("dmg1") ?? ""
-        return Attack(name:item.name,ability:item.equipmentKind == .ranged ? 1:0,damage:(try? Dice.roll(damage)) == nil ? "1d6":damage,type:entry.map { (["B":"Bludgeoning","P":"Piercing","S":"Slashing"][ $0.value("dmgType")] ?? $0.value("dmgType")) } ?? "",description:item.notes,equipmentID:item.id)
+        return Attack(name:item.name,ability:item.equipmentKind == .ranged ? 1:0,proficient:draft.result.weaponTraining(for:item) ?? true,damage:(try? Dice.roll(damage)) == nil ? "1d6":damage,type:entry.map { (["B":"Bludgeoning","P":"Piercing","S":"Slashing"][ $0.value("dmgType")] ?? $0.value("dmgType")) } ?? "",description:item.notes,equipmentID:item.id)
     }
 }

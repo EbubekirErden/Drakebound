@@ -7,7 +7,7 @@ struct TrainingGrant:Codable,Identifiable,Equatable {
     var source:String
 }
 extension Hero {
-    var allTraining:[TrainingGrant] { (trainingGrants ?? []) + (featureEntries ?? []).flatMap { feature in (feature.training ?? []).map { var grant = $0; grant.source = feature.name; return grant } } }
+    var allTraining:[TrainingGrant] { (trainingGrants ?? []) + (featureEntries ?? []).flatMap { feature in ((feature.training ?? []) + GuideRules.featureEquipmentTraining(feature)).map { var grant = $0; grant.source = feature.name; return grant } } }
     func effectiveSkillRank(_ name:String) -> Int { max(skillRanks[name] ?? 0,allTraining.filter { $0.target == "skill."+name }.map(\.rank).max() ?? 0) }
     func isSaveProficient(_ index:Int) -> Bool { saveProficiencies.contains(index) || allTraining.contains { $0.target == "save.\(index)" && $0.rank > 0 } }
     func trainingSources(_ target:String) -> [String] {

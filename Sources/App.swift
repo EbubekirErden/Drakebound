@@ -378,6 +378,7 @@ struct HeroView: View {
             VStack(spacing:10) {
                 HStack(spacing:12) {
                     TextField("Search your spellbook",text:$search).focused($searchFocused).textFieldStyle(.roundedBorder)
+                    Menu("Preparation") { Button("Prepare all") { for i in hero.spells.indices { hero.spells[i].prepared=true } };Button("Unprepare all level 1+") { for i in hero.spells.indices where hero.spells[i].level > 0 { hero.spells[i].prepared=false } } }.help("Changes your whole spellbook, including spells hidden by filters.")
                     Button("Add spell") { adding = "Spell" }.buttonStyle(.borderedProminent)
                 }
                 HStack(spacing:12) {
@@ -414,10 +415,11 @@ struct HeroEditor: View {
             HStack { Text("Edit character").font(.title2).fontDesign(.serif); Spacer(); Button("Done") { dismiss() }.keyboardShortcut(.defaultAction) }.padding(22)
             Form {
                 Section("Portrait") { PictureControls(data:$hero.portrait,label:"Character portrait") }
-                Section("Identity") { TextField("Name",text:$hero.name); TextField("Ancestry",text:$hero.ancestry); TextField("Class / multiclass",text:$hero.characterClass).disabled(hero.classLevels != nil); TextField("Background",text:$hero.background); TextField("Alignment",text:$hero.alignment); Stepper("Total level: \(hero.level)",value:$hero.level,in:1...20).disabled(hero.classLevels != nil); if hero.classLevels != nil { Text("Use Level up on the banner to advance class levels.").font(.caption).foregroundStyle(.secondary) } }
+                Section("Identity") { TextField("Name",text:$hero.name); TextField("Ancestry",text:$hero.ancestry); TextField("Class / multiclass",text:$hero.characterClass).disabled(hero.classLevels != nil); TextField("Background",text:$hero.background); OptionField(title:"Alignment",value:$hero.alignment,choices:alignmentChoices); Stepper("Total level: \(hero.level)",value:$hero.level,in:1...20).disabled(hero.classLevels != nil); if hero.classLevels != nil { Text("Use Level up on the banner to advance class levels.").font(.caption).foregroundStyle(.secondary) } }
                 Section("Abilities") { ForEach(0..<6,id:\.self) { i in Stepper("\(abilities[i]): \(hero.scores[i])",value:$hero.scores[i],in:1...30) } }
                 Section("Combat") { Stepper("Base maximum HP: \(hero.maxHP)",value:$hero.maxHP,in:1...999); Stepper("Base AC (without equipment): \(hero.ac)",value:$hero.ac,in:0...50); Stepper("Speed: \(hero.speed) ft",value:$hero.speed,in:0...300,step:5); Picker("Hit die",selection:$hero.hitDie) { ForEach([6,8,10,12],id:\.self) { Text("d\($0)").tag($0) } } }
                 Section("Spellcasting") { Picker("Casting ability",selection:$hero.castingAbility) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } }; ForEach(0..<9,id:\.self) { i in Stepper("Level \(i+1) slots: \(hero.slots[i])",value:$hero.slots[i],in:0...20) } }
+                Section("Weapon & armor training") { EquipmentTrainingEditor(grants:$hero.trainingGrants,source:"Manual character training",expanded:true); ForEach(hero.equipmentTrainingGrants) { grant in Text(trainingTargetName(grant.target)+" · "+grant.source).font(.caption) } }
                 Section("Features & traits") { Text("Manage feature descriptions and custom rolls on the Sheet.").font(.caption).foregroundStyle(.secondary) }
             }.formStyle(.grouped).editorBorder()
         }.frame(width:570,height:720).tint(accent)

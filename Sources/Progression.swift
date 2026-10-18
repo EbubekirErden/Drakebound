@@ -58,10 +58,13 @@ struct CharacterBuildDraft {
     var abilityOverrideReason = ""
     var featInsteadOfASI = false
     var selectedFeatures:[CharacterFeature] = []
+    var abilityImprovements:[UUID:AbilityImprovementChoice] = [:]
+    var appliedStarterKits:Set<String> = []
     var abilityMethod = AbilityGeneration.standard
     var abilityPool = [15,14,13,12,10,8]
     var assignments = [0,1,2,3,4,5]
     var manualScores = [8,8,8,8,8,8]
+    var originBonusMethod = OriginBonusMethod.twoOne
     var originAdjustments = [0,0,0,0,0,0]
     var rollDetails:[String] = []
     var hpMethod = HPGrowth.average
@@ -82,6 +85,7 @@ struct CharacterBuildDraft {
     var startingSkillCount:Int { Int(classTemplate?.value("numSkills") ?? "") ?? (ClassProfile.named(chosenClass.name)?.name == "Rogue" ? 4:ClassProfile.named(chosenClass.name)?.name == "Bard" ? 3:2) }
     var requiredOriginIDs:Set<UUID> { Set([ancestryTemplate,backgroundTemplate].compactMap { $0 }.flatMap { GuideRules.originFeatures($0).map(\.id) }) }
     mutating func chooseOrigin(_ entry:CompendiumEntry) {
+        let prior = entry.category == .race ? ancestryTemplate?.id:backgroundTemplate?.id
         let category:FeatureCategory = entry.category == .race ? .ancestry:.background
         selectedFeatures.removeAll { $0.category == category }
         if entry.category == .race {
@@ -89,6 +93,7 @@ struct CharacterBuildDraft {
             if let speed = Int(entry.value("speed")) { hero.speed = speed }
         } else { backgroundTemplate = entry; backgroundReference = entry.id; hero.background = entry.name }
         selectedFeatures += GuideRules.originFeatures(entry)
+        if prior != entry.id && ((hero.edition == "2024" && entry.category == .background) || (hero.edition == "2014" && entry.category == .race)) { resetOriginBonuses() }
     }
     var subclassRequirement:Int? {
         guard let entry = classTemplate,!chosenClass.subclass.isEmpty else { return nil }
@@ -175,19 +180,21 @@ struct CharacterBuildDraft {
         h.name = h.name.trimmingCharacters(in:.whitespacesAndNewlines)
         h.level = newLevel; h.classLevels = resultingClasses
         h.characterClass = resultingClasses.map { "\($0.name) \($0.level)" }.joined(separator:" / ")
-        h.featureEntries = (h.featureEntries ?? []) + selectedFeatures
+        h.featureEntries = (h.featureEntries ?? []) + selectedFeatures + improvementFeatures.compactMap { abilityImprovements[$0.id]?.feat }
         h.trainingGrants = (h.trainingGrants ?? []) + trainingAdditions
         if !isLevelUp {
             h.trainingGrants! += classSkillChoices.sorted().map { TrainingGrant(id:guideID(h.id.uuidString+"-class-"+$0),target:"skill."+$0,source:chosenClass.name+" · starting class") }
             h.trainingGrants! += hero.saveProficiencies.map { TrainingGrant(id:guideID(h.id.uuidString+"-save-\($0)"),target:"save.\($0)",source:chosenClass.name+" · starting class") }
             h.saveProficiencies = []
-            for entry in [ancestryTemplate,backgroundTemplate].compactMap({ $0 }) { h.trainingGrants! += GuideRules.training(entry) }
+            for entry in [ancestryTemplate,backgroundTemplate].compactMap({ $0 }) { h.trainingGrants! += GuideRules.training(entry)+GuideRules.equipmentTraining(entry) }
+            if let classTemplate { h.trainingGrants! += GuideRules.equipmentTraining(classTemplate) }
             h.ancestryFacts = ancestryTemplate.map(GuideRules.originFacts); h.backgroundFacts = backgroundTemplate.map(GuideRules.originFacts)
         }
         if !trainingNotes.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty {
             h.featureEntries!.append(CharacterFeature(id:guideID("training-"+h.id.uuidString+"-\(newLevel)"),name:"Languages & training",text:trainingNotes,category:.other,source:isLevelUp ? "Level \(newLevel)":"Character creation"))
         }
-        if !isLevelUp { h.scores = zip(generatedScores,originAdjustments).map(+) }
+        if !isLevelUp { h.scores = zip(zip(generatedScores,originAdjustments).map(+),improvementTotals).map(+) }
+        else if !improvementFeatures.isEmpty && !abilityImprovements.isEmpty { h.scores = zip(abilityOverrideReason.isEmpty ? original!.scores:hero.scores,improvementTotals).map(+) }
         let con = h.modifier(2)
         if let old = original {
             let die = hpMethod == .average ? chosenClass.hitDie/2+1:hpDieResult
@@ -211,7 +218,7 @@ struct CharacterBuildDraft {
         return h
     }
     var problems:[String] {
-        var list:[String] = []
+        var list:[String] = originBonusProblems + improvementProblems
         if hero.name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { list.append("Give your character a name.") }
         if chosenClass.name.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty { list.append("Choose or name a class.") }
         if let required = subclassRequirement,classLevel < required { list.append("The selected subclass requires \(chosenClass.name) class level \(required).") }
@@ -280,7 +287,7 @@ extension Hero {
     }
 }
 func validateProgression(_ h:Hero) throws {
-    let targets = Set(skills.map { "skill."+$0.0 } + (0..<6).map { "save.\($0)" })
+    let targets = Set(skills.map { "skill."+$0.0 } + (0..<6).map { "save.\($0)" } + equipmentTrainingOptions.map(\.0) + specificWeaponOptions.map { "weapon."+$0 })
     guard h.allTraining.allSatisfy({ (1...2).contains($0.rank) && targets.contains($0.target) }) else { throw CocoaError(.fileReadCorruptFile) }
     if let classes = h.classLevels {
         guard !classes.isEmpty, Set(classes.map(\.id)).count == classes.count, classes.reduce(0,{ $0+$1.level }) == h.level,

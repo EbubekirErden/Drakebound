@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.29.0
+
+- Caster table available directly in the creator’s spell browser.
+- Consolidated duplicate catalog spell choices, preserving custom entries and saved character spells.
+- Selected features grouped by category, with optional parent-feature links and safe handling of missing parents.
+- Equipment selection filters for type and source.
+- Prepare all / unprepare all level 1+ controls in creation and the spellbook.
+- Visible weapon/armor proficiency roster and direct controls in Training, Equipment, and character editing.
+- Regression coverage for catalog duplicates, class-list merging, custom entries, feature-link cycles, and JSON persistence.
+
+## 0.28.0
+
+- Guided ASI/feat choices attached to selected class milestones, with score caps and reversible allocations.
+- Source-aware weapon and armor training, feature grants, and linked weapon attack proficiency.
+- Features remain available as references during spell and equipment selection.
+- Per-class cantrip, prepared/known spell allowances and spell-level access; explicit exemptions for always-prepared extras.
+- Recover recognized cantrips omitted from XML level metadata; exact class-list filtering excludes subclass-only entries.
+- Starting equipment choices and pack previews, container expansion, and safeguards against duplicate or mutually exclusive kit additions.
+- Regression tests cover ASI choices, training, real compendium cantrips, Cleric allowances, and starting kits.
+
+## 0.27.0
+
+- Standard/custom alignment selectors in character creation and editing.
+- Equal-height ancestry browse entries and preview buttons.
+- Edition-aware origin ability choices, background ability restrictions, allocation validation, and dismissible rule help.
+- Fixed/flexible 2014 ancestry handling; no legacy ancestry increases in 2024 creation.
+- Regression coverage for origin patterns, legacy adaptation, source changes, score caps, and level-up preservation.
+
 ## 0.26.0 - Initial Git baseline
 
 This release records the current Drakebound application after its initial development. Earlier application version numbers predate this repository history; these commits do not reconstruct those earlier releases.

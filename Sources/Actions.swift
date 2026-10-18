@@ -22,6 +22,7 @@ struct CharacterFeature: Codable, Identifiable, Equatable {
     var training:[TrainingGrant]?
     var timing:ActionTiming?
     var resourceCost:ResourceCost?
+    var parentFeatureID:UUID?
 }
 struct HitDicePool: Codable, Identifiable, Equatable {
     var id = UUID()

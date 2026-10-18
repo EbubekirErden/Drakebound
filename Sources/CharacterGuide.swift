@@ -17,6 +17,7 @@ struct CharacterGuide:View {
     @State private var discard = false
     @State private var error:String?
     @State var referencePreview:CompendiumEntry?
+    @State var improvementFeature:CharacterFeature?
     @State var featureEditor:CharacterFeature?
     @State var featurePreview:CharacterFeature?
     @State var bonusEditor:Bonus?
@@ -31,6 +32,7 @@ struct CharacterGuide:View {
     @State var featureGroup = "Class"
     @State var casterLevel = 1
     @State var equipmentOpen = false
+    @State var originHelp = false
     @State var customOrigin:CompendiumCreation?
     var steps:[GuideStep] { draft.isLevelUp ? [.origin]+(draft.asiAvailable || !draft.abilityOverrideReason.isEmpty ? [.abilities]:[])+[.vitality,.training,.features,.loadout,.review]:[.identity,.origin,.abilities,.training,.features,.loadout,.review] }
     var position:Int { steps.firstIndex(of:step) ?? 0 }
@@ -71,10 +73,11 @@ struct CharacterGuide:View {
         .sheet(item:$customOrigin) { session in ReferenceTemplateEditor(draft:ReferenceTemplateDraft(category:session.category)) { entry in draft.chooseOrigin(entry) } }
 
         .sheet(item:$featurePreview) { feature in VStack(alignment:.leading,spacing:14) { HStack { Text(feature.name).font(.title2.bold()); Spacer(); Button("Done") { featurePreview = nil } }; Text(feature.source ?? "").font(.caption).foregroundStyle(sky); ScrollView { Text(feature.text).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(22).frame(width:640,height:580).background(surface) }
+        .sheet(item:$improvementFeature) { feature in GuidedImprovementEditor(feature:feature,draft:draft,feats:eligibleFeats) { choice in do { try draft.configureImprovement(feature,choice:choice) } catch { self.error=error.localizedDescription } } }
         .sheet(item:$featureEditor) { feature in FeatureEditor(feature:feature,hero:draft.result,allowDelete:!draft.requiredOriginIDs.contains(feature.id),onSave:{ updated in if let i = draft.selectedFeatures.firstIndex(where:{ $0.id == updated.id }) { draft.selectedFeatures[i] = updated } else { draft.selectedFeatures.append(updated) } },onDelete:{ draft.selectedFeatures.removeAll { $0.id == feature.id } }) }
         .sheet(item:$bonusEditor) { bonus in BonusEditor(bonus:bonus,hero:draft.result,onSave:{ updated in var list = draft.hero.bonuses ?? []; if let i = list.firstIndex(where:{ $0.id == updated.id }) { list[i] = updated } else { list.append(updated) }; draft.hero.bonuses = list },onDelete:{ draft.hero.bonuses?.removeAll { $0.id == bonus.id } }) }
         .sheet(item:$counterEditor) { counter in CounterEditor(counter:counter,onSave:{ updated in var list = draft.hero.counters ?? []; if let i = list.firstIndex(where:{ $0.id == updated.id }) { list[i] = updated } else { list.append(updated) }; draft.hero.counters = list },onDelete:{ draft.hero.counters?.removeAll { $0.id == counter.id } }) }
-        .sheet(isPresented:$spellBrowser) { GuideSpellBrowser(catalog:catalog,className:draft.chosenClass.name,alreadyKnown:draft.hero.spells,hero:draft.result) { spell in var copy = spell; copy.id = UUID(); copy.castingAbility = classCastingAbility; copy.prepared = copy.level == 0; copy.sourceClassID = draft.selectedClassID; copy.sourceClassName = draft.chosenClass.name; draft.hero.spells.append(copy) } }
+        .sheet(isPresented:$spellBrowser) { GuideSpellBrowser(catalog:catalog,className:draft.chosenClass.name,alreadyKnown:draft.hero.spells,hero:draft.result,onAdd:{ spell in var copy = spell; copy.id = UUID(); copy.castingAbility = classCastingAbility; copy.prepared = copy.level == 0; copy.sourceClassID = draft.selectedClassID; copy.sourceClassName = draft.chosenClass.name; draft.hero.spells.append(copy) },buildDraft:draft,onSlots:{ draft.hero.slots=$0 }) }
         .sheet(item:$spellEditor) { spell in SpellEditor(spell:spell,hero:draft.result) { updated in if let i = draft.hero.spells.firstIndex(where:{ $0.id == updated.id }) { draft.hero.spells[i] = updated } else { draft.hero.spells.append(updated) } } }
         .sheet(item:$itemEditor) { item in ItemEditor(item:item,hero:draft.result) { updated in if let i = draft.hero.items.firstIndex(where:{ $0.id == updated.id }) { draft.hero.items[i] = updated } else { draft.hero.items.append(updated) } } }
         .sheet(item:$attackEditor) { attack in AttackEditor(attack:attack) { updated in if let i = draft.hero.attacks.firstIndex(where:{ $0.id == updated.id }) { draft.hero.attacks[i] = updated } else { draft.hero.attacks.append(updated) } } }
@@ -111,7 +114,7 @@ struct CharacterGuide:View {
         VStack(spacing:14) {
             EditorGroup(title:"Identity") {
                 EditorField(title:"Character name") { TextField("Name your adventurer",text:$draft.hero.name) }
-                HStack { EditorField(title:"Rules edition") { Picker("Rules edition",selection:Binding(get:{ draft.hero.edition },set:{ draft.hero.rulesEdition = $0; if let profile = ClassProfile.named(draft.chosenClass.name) { selectProfile(profile.name) } else { linkClassReference() } })) { Text("2024").tag("2024"); Text("2014").tag("2014") } }; EditorField(title:"Alignment") { TextField("Alignment",text:$draft.hero.alignment) } }
+                HStack { EditorField(title:"Rules edition") { Picker("Rules edition",selection:Binding(get:{ draft.hero.edition },set:{ draft.hero.rulesEdition = $0; draft.resetOriginBonuses(); if let profile = ClassProfile.named(draft.chosenClass.name) { selectProfile(profile.name) } else { linkClassReference() } })) { Text("2024").tag("2024"); Text("2014").tag("2014") } }; EditorField(title:"Alignment") { OptionField(title:"Alignment",value:$draft.hero.alignment,choices:alignmentChoices) } }
                 Stepper("Starting level: \(draft.startingLevel)",value:$draft.startingLevel,in:1...20)
                 Text("Higher-level starts use fixed HP after level 1. You can adjust HP and choose features through the starting level.").font(.caption2).foregroundStyle(.secondary)
             }
@@ -143,19 +146,24 @@ struct CharacterGuide:View {
     }
     var abilitiesStep:some View {
         VStack(spacing:14) {
+            if draft.isLevelUp && !draft.improvementFeatures.isEmpty {
+                EditorGroup(title:"Class ability choices") { ForEach(draft.improvementFeatures) { feature in Button("Configure "+(feature.source ?? feature.name)) { improvementFeature=feature } }; ForEach(0..<6,id:\.self) { i in HStack { Text(abilities[i]); Spacer(); Text("\(draft.original!.scores[i]) → \(draft.result.scores[i])").foregroundStyle(sky) }.font(.caption) } }
+            } else {
             EditorGroup(title:draft.isLevelUp ? "Ability improvement · class level \(draft.classLevel)":"Generate & assign",badge:!draft.isLevelUp && draft.abilityMethod == .pointBuy ? "\(27-draft.pointCost) / 27 remaining":nil,badgeColor:draft.pointCost > 27 ? coral:accent) {
                 if !draft.isLevelUp {
                     Picker("Method",selection:Binding(get:{ draft.abilityMethod },set:{ draft.changeAbilityMethod($0) })) { ForEach(AbilityGeneration.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.menu)
                     if draft.abilityMethod != .manual { Button("Prioritize class abilities") { draft.prioritizeAbilities() }.font(.caption) }
 
                     if draft.abilityMethod == .rolled { HStack { Button(draft.rollDetails.isEmpty ? "Roll six scores":"Reroll six scores") { do { let rolls = try draft.rollAbilities(); if let last = rolls.last { store.record(last) } } catch { self.error = error.localizedDescription } }; Text("4d6 per score · drop the lowest").font(.caption2).foregroundStyle(.secondary) } }
-                    HStack { Text("Ability").frame(maxWidth:.infinity,alignment:.leading); Text("Base").frame(width:110); Text("Origin +/−").frame(width:90); Text("Final").frame(width:45) }.font(.system(size:10,weight:.semibold)).foregroundStyle(.secondary)
+                    originBonusControls
+                    HStack { Text("Ability").frame(maxWidth:.infinity,alignment:.leading); Text("Base").frame(width:110); Text(draft.hero.edition == "2024" ? "Background +":"Ancestry +").frame(width:90); Text("Final").frame(width:45) }.font(.system(size:10,weight:.semibold)).foregroundStyle(.secondary)
                 } else {
                     if draft.asiAvailable { Picker("Class feature choice",selection:$draft.featInsteadOfASI) { Text("Ability Score Improvement").tag(false); Text("Another feat").tag(true) }.pickerStyle(.menu); Text("This milestone comes from \(draft.chosenClass.name) level \(draft.classLevel). An ASI grants two ability points, up to 20; choose another feat in Features instead if preferred.").font(.caption).foregroundStyle(.secondary) }
                     else { Text("No ASI is granted at this class level. Ability changes require a specific feature or an explicit override.").font(.caption).foregroundStyle(.secondary) }
                 }
                 ForEach(0..<6,id:\.self) { i in abilityRow(i) }
                 if !draft.rollDetails.isEmpty && draft.abilityMethod == .rolled && !draft.isLevelUp { DisclosureGroup("Dice breakdown") { ForEach(Array(draft.rollDetails.enumerated()),id:\.offset) { i,text in Text("Score \(i+1): \(text)").font(.caption).foregroundStyle(.secondary) } } }
+            }
             }
             if !draft.isLevelUp { vitalityStep }
         }
@@ -167,7 +175,10 @@ struct CharacterGuide:View {
             else {
                 if draft.abilityMethod == .standard || draft.abilityMethod == .rolled { Picker(abilities[i],selection:Binding(get:{ draft.assignments[i] },set:{ draft.assign($0,to:i) })) { ForEach(0..<6,id:\.self) { Text("\(draft.abilityPool[$0])\(draft.abilityMethod == .rolled ? " · #\($0+1)":"")").tag($0) } }.labelsHidden().frame(width:110) }
                 else { Stepper("\(draft.manualScores[i])",value:$draft.manualScores[i],in:draft.abilityMethod == .pointBuy ? 8...15:1...30).frame(width:110) }
-                Stepper(signed(draft.originAdjustments[i]),value:$draft.originAdjustments[i],in:-5...5).frame(width:90)
+                Picker(abilities[i]+" origin increase",selection:$draft.originAdjustments[i]) {
+                    if draft.originBonusMethod == .reference { Text(signed(draft.originAdjustments[i])).tag(draft.originAdjustments[i]) }
+                    else { ForEach(draft.originBonusMethod == .custom ? Array(-5...5):Array(0...(draft.originBonusMethod == .threeOnes ? 1:2)),id:\.self) { Text(signed($0)).tag($0) } }
+                }.labelsHidden().frame(width:90).disabled(draft.originBonusMethod == .reference || (draft.originBonusMethod != .custom && !draft.originAbilityChoices.contains(i)))
             }
             Text("\(draft.result.effectiveScore(i))").font(.system(size:14,weight:.semibold,design:.rounded)).foregroundStyle(sky).frame(width:45)
         }.padding(.vertical,5)

@@ -8,6 +8,7 @@ import Foundation
         creation.classSkillChoices = ["Athletics","Perception"]
         creation.hero.name = "  Guide Test  "
         creation.hero.ancestry = "Custom ancestry"; creation.hero.background = "Custom background"
+        creation.originAdjustments=[0,0,0,2,1,0]
         creation.changeAbilityMethod(.manual); creation.manualScores = [15,14,14,12,10,8]
         assert(creation.result.maxHP == 12 && creation.result.ac == 12)
         assert(creation.result.hitDicePools?.first?.total == 1)
@@ -175,7 +176,7 @@ import Foundation
             defaults.chooseOrigin(dwarf)
             assert(Set(GuideRules.originFeatures(dwarf).map(\.id)).isSubset(of:Set(defaults.selectedFeatures.map(\.id))))
             let guideCatalog = GuideCatalog(compendium:imported.entries,library:starterSpells)
-            assert(guideCatalog.spells.first { $0.name == "Fire bolt" }?.classes?.contains("Wizard") == true)
+            assert(guideCatalog.spells.first { $0.name.caseInsensitiveCompare("Fire bolt") == .orderedSame }?.classes?.contains("Wizard") == true)
             let ray = imported.entries.first { $0.name == "Ray of Frost [2024]" && $0.category == .spell }!
             assert(ray.value("level").isEmpty)
             let reviewed = try GuideRules.reviewedSpell(ray,level:0,hero:old)

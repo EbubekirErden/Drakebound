@@ -61,7 +61,7 @@ extension Hero {
         let prefix = damage ? "damage" : "attack"
         return [prefix, (a.isSpell ?? false) ? (damage ? "spellDamage":"spellAttack") : (damage ? "weaponDamage":"weaponAttack"), "\(prefix).\(a.id.uuidString)"]
     }
-    func attackBonus(_ a: Attack) -> Int { modifier(a.ability) + (a.proficient ? proficiency:0) + flat(attackTargets(a)) }
+    func attackBonus(_ a: Attack) -> Int { modifier(a.ability) + (attackIsProficient(a) ? proficiency:0) + flat(attackTargets(a)) }
     func damageBonus(_ a: Attack) -> Int { (a.addDamageModifier ? modifier(a.ability):0) + flat(attackTargets(a,damage:true)) }
     func expression(_ base: String, bonus: Int, targets: [String]) -> String {
         base + signed(bonus) + activeBonuses.filter { targets.contains($0.target) && !$0.dice.isEmpty }.map { b in

@@ -74,11 +74,12 @@ struct FeaturePanel: View {
                 if !entries.isEmpty && (filter == nil || filter == category) {
                     Text("\(category.rawValue) · \(entries.count)").font(.system(size:11,weight:.semibold)).foregroundStyle(gold).padding(.top,8)
                     LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:10),count:min(2,max(1,entries.count))),alignment:.leading,spacing:10) {
-                        ForEach(entries) { feature in
+                        ForEach(SelectionRules.outline(entries)) { row in
+                            let feature=row.feature
                             VStack(alignment:.leading,spacing:10) {
                                 HStack(alignment:.top) {
                                     Button { if expanded.contains(feature.id) { expanded.remove(feature.id) } else { expanded.insert(feature.id) } } label: {
-                                        HStack(alignment:.top,spacing:8) { Image(systemName:expanded.contains(feature.id) ? "chevron.down":"chevron.right").font(.system(size:9)).padding(.top,3); VStack(alignment:.leading,spacing:5) { Text(feature.name).font(.system(size:13,weight:.medium)); if let source = feature.source, !source.isEmpty { Text(source).font(.system(size:9)).foregroundStyle(sky) } }; Spacer(minLength:0) }.contentShape(Rectangle())
+                                        HStack(alignment:.top,spacing:8) { Image(systemName:expanded.contains(feature.id) ? "chevron.down":"chevron.right").font(.system(size:9)).padding(.top,3); VStack(alignment:.leading,spacing:5) { Text(feature.name).font(.system(size:13,weight:.medium)); if let parent=(hero.featureEntries ?? []).first(where:{ $0.id == feature.parentFeatureID }) { Text("↳ "+parent.name).font(.caption2).foregroundStyle(accent) }; if let source = feature.source, !source.isEmpty { Text(source).font(.system(size:9)).foregroundStyle(sky) } }; Spacer(minLength:0) }.contentShape(Rectangle())
                                     }.buttonStyle(.plain)
                                     Button { editing = feature } label: { Image(systemName:"pencil") }.buttonStyle(.plain).help("Edit feature, source, uses, and rolls")
                                 }
@@ -114,6 +115,10 @@ struct FeatureEditor:View {
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity & source") { TextField("Feature name",text:$feature.name); HStack { Picker("Category",selection:Binding(get:{ feature.category ?? .other },set:{ feature.category = $0 })) { ForEach(FeatureCategory.allCases,id:\.self) { Text($0.rawValue).tag($0) } }; TextField("Source · race, class, book",text:Binding(get:{ feature.source ?? "" },set:{ feature.source = $0 })) } }
+                Picker("Group under feature",selection:$feature.parentFeatureID) {
+                    Text("None").tag(Optional<UUID>.none)
+                    ForEach(SelectionRules.parentOptions(for:feature,in:hero.featureEntries ?? [])) { parent in Text(parent.name).tag(Optional(parent.id)) }
+                }.help("Groups this feature visually under another feature. Resources and effects remain independent.")
                 ActionTimingPicker(timing:$feature.timing)
                 EditorGroup(title:"Description") { BorderedTextEditor(text:$feature.text,height:120) }
                 EditorGroup(title:"Uses & recovery") { Toggle("Track uses",isOn:Binding(get:{ feature.counter != nil },set:{ feature.counter = $0 ? ResourceCounter(name:feature.name):nil })); if feature.counter != nil { let counter = Binding(get:{ feature.counter ?? ResourceCounter() },set:{ feature.counter = $0 }); HStack { EditorField(title:"Maximum") { TextField("Maximum",value:counter.maximum,format:.number) }; EditorField(title:"Remaining") { TextField("Remaining",value:counter.current,format:.number) } }; CounterResetPicker(counter:counter) } }
@@ -152,6 +157,7 @@ struct SpellEditor:View {
                     }
                     if let source = spell.sourceClassName { Text("Casting source: \(source)").font(.caption2).foregroundStyle(sky) }
                     HStack { Toggle("Prepared",isOn:$spell.prepared); Toggle("Ritual",isOn:Binding(get:{ spell.ritual ?? false },set:{ spell.ritual = $0 })); if spell.level > 0 { Toggle("Uses slot",isOn:Binding(get:{ spell.usesSlot ?? true },set:{ spell.usesSlot = $0 })) } }
+                    Toggle("Extra / always-prepared spell · exclude from class allowance",isOn:Binding(get:{ spell.exemptFromClassLimit ?? false },set:{ spell.exemptFromClassLimit = $0 }))
                     Toggle("Requires concentration",isOn:Binding(get:{ spell.requiresConcentration },set:{ spell.concentration = $0 }))
                     ResourceCostPicker(cost:$spell.resourceCost,hero:hero)
                     Text("A linked resource is spent on casting, in addition to any spell slot or free use. Automatic rolls also spend their own configured cost.").font(.caption2).foregroundStyle(.secondary)

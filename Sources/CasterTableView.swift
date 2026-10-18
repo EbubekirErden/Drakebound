@@ -10,16 +10,21 @@ struct CasterTableView:View {
         VStack(alignment:.leading,spacing:14) {
             Text("Spellcasting progression").font(.headline)
             ScrollView { VStack(alignment:.leading,spacing:12) {
-                EditorGroup(title:"Cantrips · by class") {
+                EditorGroup(title:"Spell allowances · by class") {
                     ForEach(draft.resultingClasses) { record in
-                        HStack(alignment:.top) {
-                            Text("\(record.name) \(record.level)").font(.caption)
-                            Spacer()
-                            if let entry = reference(record),let count = GuideRules.importedCantrips(entry,at:record.level) { Text("\(count) cantrips").font(.caption).foregroundStyle(sky) }
-                            else { Text("Check class rules").font(.caption2).foregroundStyle(.secondary) }
-                        }
+                        let allowance=GuideRules.spellAllowance(record,entry:reference(record),hero:draft.result)
+                        let base=ClassProfile.named(record.name)?.name ?? record.name
+                        let selected=draft.hero.spells.filter { spell in spell.sourceClassID == record.id || (draft.resultingClasses.count == 1 && spell.sourceClassID == nil) || spell.sourceClassName.map { (ClassProfile.named($0)?.name ?? $0) == base } == true }
+                        VStack(alignment:.leading,spacing:6) {
+                            Text("\(record.name) \(record.level)").font(.system(size:12,weight:.semibold))
+                            Text("Cantrips: \(selected.filter { $0.level == 0 && $0.exemptFromClassLimit != true }.count) / \(allowance.cantrips.map(String.init) ?? "check reference")").font(.caption).foregroundStyle(sky)
+                            Text("Prepared level 1+: \(selected.filter { $0.level > 0 && $0.prepared && $0.exemptFromClassLimit != true }.count) / \(allowance.prepared.map(String.init) ?? "check reference")").font(.caption)
+                            if let count=allowance.known { Text(allowance.knownLabel+": \(count)").font(.caption) }
+                            else if ["Cleric","Druid","Paladin"].contains(base) { Text("Access: class spell list").font(.caption) }
+                            if let maximum=allowance.maximumLevel { Text("Choose any mix across spell levels 1–\(maximum)").font(.caption2).foregroundStyle(.secondary) }
+                        }.padding(.vertical,5)
                     }
-                    Text("Counts come from each class’s own table, not combined caster level. Ancestry, feats, and other extra cantrips are separate. Cantrips never use spell slots.").font(.caption2).foregroundStyle(.secondary)
+                    Text("These are per-class totals, not counts at each spell level. Extra/always-prepared spells can be marked exempt in the spell editor.").font(.caption2).foregroundStyle(.secondary)
                 }
                 EditorGroup(title:"Spell slots · combined caster level") {
                     Stepper("Caster level: \(level)",value:$level,in:0...20)
@@ -30,7 +35,7 @@ struct CasterTableView:View {
                 }
             }.padding(2) }.frame(maxHeight:430)
             HStack { Button("Cancel") { dismiss() }; Spacer(); Button("Apply slot totals") { apply(GuideRules.slots(at:level)) }.buttonStyle(.borderedProminent) }
-        }.padding(18).frame(width:420).background(surface).foregroundStyle(ink).tint(sky)
+        }.padding(18).frame(width:460).background(surface).foregroundStyle(ink).tint(sky)
     }
     func reference(_ record:CharacterClassLevel) -> CompendiumEntry? {
         if record.id == draft.selectedClassID,let entry = draft.classTemplate { return entry }

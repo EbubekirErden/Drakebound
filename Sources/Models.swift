@@ -25,6 +25,7 @@ struct Spell: Codable, Identifiable, Equatable {
     var classes:String?
     var sourceClassID:UUID?
     var sourceClassName:String?
+    var exemptFromClassLimit:Bool?
     var concentration:Bool?
     var resourceCost:ResourceCost?
 }

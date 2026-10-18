@@ -27,7 +27,7 @@ extension Hero {
     func saveExplanation(_ index:Int) -> String { d20Explanation(abilities[index]+" saving throw",ability:index,rank:isSaveProficient(index) ? 1:0,targets:["saves","save.\(index)"],total:saveBonus(index),sources:trainingSources("save.\(index)")) }
     func skillExplanation(_ name:String,ability:Int) -> String { d20Explanation(name+" skill check",ability:ability,rank:effectiveSkillRank(name),targets:["checks","check.\(ability)","skill."+name],total:skillBonus(name,ability),sources:trainingSources("skill."+name)) }
     var initiativeExplanation:String { d20Explanation("Initiative check",ability:1,rank:0,targets:["initiative","checks","check.1"],total:initiative) }
-    func attackExplanation(_ attack:Attack) -> String { d20Explanation(attack.name+" attack roll",ability:attack.ability,rank:attack.proficient ? 1:0,targets:attackTargets(attack),total:attackBonus(attack)) }
+    func attackExplanation(_ attack:Attack) -> String { d20Explanation(attack.name+" attack roll",ability:attack.ability,rank:attackIsProficient(attack) ? 1:0,targets:attackTargets(attack),total:attackBonus(attack)) }
     var spellAttackExplanation:String { d20Explanation("Spell attack roll",ability:castingAbility,rank:1,targets:["attack","spellAttack"],total:spellAttack,rollHint:false) }
     func damageExplanation(_ attack:Attack) -> String {
         var lines = [attack.name+" damage","Base formula: "+attack.damage]
