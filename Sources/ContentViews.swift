@@ -174,7 +174,17 @@ struct CreatureCard: View {
     var body:some View {
         Card(title:creature.kind,tip:.creatures) {
             HStack { Label("Active in play",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(accent); Spacer(); Button(action:deactivate) { Label(creature.isSummon ? "Dismiss":"Deactivate",systemImage:"moon.zzz").padding(.horizontal,6).frame(minHeight:28).contentShape(Rectangle()) }.buttonStyle(.bordered).tint(gold).font(.caption).help("Move to Inactive without changing HP or notes").accessibilityLabel((creature.isSummon ? "Dismiss ":"Deactivate ")+creature.name) }
-            CreatureBanner(creature:$creature,edit:edit,remove:remove)
+            if creature.imageLayout == nil || creature.imageLayout == .banner { CreatureBanner(creature:$creature,edit:edit,remove:remove) }
+            if creature.imageLayout == nil || creature.imageLayout == .banner { creatureDetails }
+            else { HStack(alignment:.top,spacing:16) {
+                if creature.imageLayout == .left { sidePortrait }
+                VStack(alignment:.leading,spacing:12) { CreatureCompactHeader(creature:$creature,edit:edit,remove:remove);creatureDetails }.frame(maxWidth:.infinity)
+                if creature.imageLayout == .right { sidePortrait }
+            } }
+        }.popover(item:$detail) { attack in AttackDescription(name:attack.name,text:attack.description ?? "",edit:{ detail = nil; edit() }) }
+    }
+    var sidePortrait:some View { CroppedImage(data:creature.image,crop:creature.bannerCrop ?? BannerCrop()).frame(width:150,height:250).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).accessibilityLabel(creature.name+" portrait") }
+    var creatureDetails:some View { VStack(alignment:.leading,spacing:12) {
             HStack {
                 Text("\(creature.hp)").font(.system(size:27,weight:.semibold,design:.rounded)).foregroundStyle(healthColor(creature.hp,creature.maximumHP)); Text("/ \(creature.maximumHP) HP").font(.caption).foregroundStyle(.secondary); Spacer()
                 Button { health = .damage } label: { Label("Damage",systemImage:"minus") }.tint(coral).popover(isPresented:Binding(get:{ health == .damage },set:{ if !$0 { health = nil } })) { CreatureHealthPopup(creature:$creature,healing:false) }
@@ -204,8 +214,8 @@ struct CreatureCard: View {
                 }
             }
             if !creature.description.isEmpty { DisclosureGroup("Notes & source") { DetailText(text:creature.description) }.font(.caption) }
-        }.popover(item:$detail) { attack in AttackDescription(name:attack.name,text:attack.description ?? "",edit:{ detail = nil; edit() }) }
-    }
+    } }
+
 }
 struct CreatureHealthPopup:View {
     @Binding var creature:Creature
@@ -231,6 +241,7 @@ struct CreatureEditor:View {
             SaveTemplateToggle(selected:$saveToCompendium)
             ScrollView { VStack(spacing:12) {
                 EditorGroup(title:"Identity") { TextField("Creature name",text:$creature.name); HStack { Picker("Role",selection:$creature.kind) { ForEach(["Companion","Familiar","Summon","Encounter","Reference"],id:\.self) { Text($0).tag($0) } }; TextField("Size / type / challenge",text:$creature.type) }; DisclosureGroup("Image") { PictureControls(data:$creature.image,label:"Creature image") } }
+                CreatureLayoutPicker(creature:$creature)
                 Toggle("Active in play",isOn:Binding(get:{ creature.isActive },set:{ creature.isActive = $0 })).font(.caption).help("Inactive creatures remain saved and can be activated at any time. Companions stay active until you deactivate them.")
                 EditorGroup(title:"Combat stats") {
                     HStack { EditorField(title:"HP") { TextField("Current HP",value:$creature.hp,format:.number) }; EditorField(title:"Maximum") { TextField("Maximum HP",value:$creature.maximumHP,format:.number) }; EditorField(title:"AC") { TextField("Armor class",value:$creature.ac,format:.number) }; EditorField(title:"Speed · ft") { TextField("Speed",value:$creature.speed,format:.number) } }

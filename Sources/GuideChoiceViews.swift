@@ -30,13 +30,13 @@ struct GuideReferencePicker:View {
                 if options.first?.category == .item {
                     HStack { Picker("Type",selection:$equipmentType) { Text("All types").tag("All types");ForEach(Array(Set(options.map(\.subcategory))).sorted(),id:\.self) { Text($0).tag($0) } }; Picker("Source",selection:$equipmentSource) { ForEach(CompendiumScope.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }.labelsHidden().font(.caption)
                 }
-                ScrollView { LazyVStack(spacing:4) {
+                GeometryReader { geometry in ScrollView { LazyVStack(spacing:4) {
                     ForEach(matches.prefix(80)) { entry in
                         HStack(spacing:6) { Button { selection = entry.id; browsing = false } label: { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.medium)); Text(summary(entry)).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,9).frame(height:56).background(selection == entry.id ? accent.opacity(0.12):surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain); Button { browsing = false; onPreview(entry) } label: { Image(systemName:"eye").frame(width:36,height:56).background(surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain).accessibilityLabel("Preview "+entry.name).help("Preview \(entry.name)") }
                     }
-                    if matches.isEmpty { Text("No matching entries").font(.caption).foregroundStyle(.secondary).padding() }
+                    if matches.isEmpty { ContentUnavailableView("No matching entries",systemImage:"magnifyingglass",description:Text("Try another search or filter.")).frame(width:geometry.size.width,height:geometry.size.height) }
                     if matches.count > 80 { Text("\(matches.count) matches · narrow your search").font(.caption).foregroundStyle(.secondary) }
-                } }
+                } } }
             }.padding(16).frame(width:400,height:410).background(paper).foregroundStyle(ink).tint(accent)
         }
     }
@@ -87,7 +87,7 @@ struct GuideSpellBrowser:View {
                 .onChange(of:level) { _,value in if value >= 0 { withAnimation(.easeInOut(duration:0.2)) { scroll.scrollTo(value,anchor:.top) } } }
                 Text("Scroll through spell levels, or jump with the level menu. Class levels determine which spells you can learn; multiclass slot levels do not.").font(.caption2).foregroundStyle(.secondary)
                 if !catalog.unleveledSpells.isEmpty { Button(level == -1 ? "Showing XML entries without a level":"Missing cantrips? Review entries without an XML level…") { level = -1 }.font(.caption).buttonStyle(.plain).foregroundStyle(sky) }
-                ScrollView { LazyVStack(alignment:.leading,spacing:6,pinnedViews:[.sectionHeaders]) {
+                GeometryReader { geometry in ScrollView { LazyVStack(alignment:.leading,spacing:6,pinnedViews:[.sectionHeaders]) {
                     if level == -1 {
                         Text("These references omit their level. Preview and confirm that each is a spell before adding it.").font(.caption).foregroundStyle(gold)
                         ForEach(referenceMatches.prefix(120)) { entry in HStack { Text(entry.name).font(.system(size:12)).frame(maxWidth:.infinity,alignment:.leading); Button("Review level…") { levelReview = entry }.accessibilityLabel("Review level for \(entry.name)").disabled(alreadyKnown.contains { $0.name.caseInsensitiveCompare(entry.name) == .orderedSame }) }.padding(10).background(paper).clipShape(RoundedRectangle(cornerRadius:7)) }
@@ -102,9 +102,9 @@ struct GuideSpellBrowser:View {
                                 HStack { Text(tier == 0 ? "CANTRIPS":"LEVEL \(tier)"); Spacer(); Text("\(spells.count)") }.font(.system(size:10,weight:.semibold)).foregroundStyle(sky).padding(.vertical,9).background(surface).id(tier)
                             } }
                         }
-                        if matches.isEmpty { ContentUnavailableView("No matching spells",systemImage:"sparkles",description:Text("Try another level, search, or turn off the class filter.")) }
+                        if matches.isEmpty { ContentUnavailableView("No matching spells",systemImage:"sparkles",description:Text("Try another level, search, or turn off the class filter.")).frame(width:geometry.size.width,height:geometry.size.height) }
                     }
-                } }
+                } } }
             }
         }.padding(20).frame(width:660,height:580).background(surface).foregroundStyle(ink).tint(sky)
         .popover(isPresented:$casterOpen) { if let buildDraft { CasterTableView(draft:buildDraft,catalog:catalog,level:$casterLevel) { slots in onSlots?(slots);casterOpen=false } } }

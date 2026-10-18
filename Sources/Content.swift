@@ -16,6 +16,7 @@ struct CreatureAttack: Codable, Identifiable, Equatable {
     var timing:ActionTiming?
     var resolution:CreatureResolution?
 }
+enum CreatureImageLayout:String,Codable,CaseIterable { case banner="Banner",left="Left portrait",right="Right portrait" }
 struct Creature: Codable, Identifiable, Equatable {
     var id = UUID()
     var name = "New creature"
@@ -30,6 +31,7 @@ struct Creature: Codable, Identifiable, Equatable {
     var description = ""
     var image: Data?
     var bannerCrop: BannerCrop?
+    var imageLayout:CreatureImageLayout?
     var traits: [CharacterFeature]?
     var active: Bool?
     var isActive: Bool {

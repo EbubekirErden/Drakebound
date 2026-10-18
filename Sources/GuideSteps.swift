@@ -66,7 +66,7 @@ extension CharacterGuide {
             if !draft.isLevelUp { starterEquipmentChoices }
             EditorGroup(title:"Equipment · \(draft.hero.items.count)") {
                 GuideReferencePicker(title:"Equipment",options:catalog.items,selection:$equipmentChoice,onPreview:{ referencePreview = $0 })
-                HStack { Button("Custom item") { itemEditor = Item(name:"") }; Spacer(); Stepper("\(draft.hero.gold) gp",value:$draft.hero.gold,in:0...999999).frame(width:140) }
+                HStack { Button("Custom item") { itemEditor = Item(name:"") }; Spacer(); CurrencyButton(hero:$draft.hero) }
                 Text("Select your class and background’s equipment or starting wealth. Edit items to configure armor and effects; equipping them updates the preview.").font(.caption2).foregroundStyle(.secondary)
                 ForEach(draft.hero.items) { item in HStack(spacing:9) {
                     Toggle("Equip \(item.name)",isOn:Binding(get:{ draft.hero.items.first { $0.id == item.id }?.equipped ?? false },set:{ value in if let i = draft.hero.items.firstIndex(where:{ $0.id == item.id }) { draft.hero.items[i].equipped = value } })).labelsHidden().toggleStyle(.checkbox)

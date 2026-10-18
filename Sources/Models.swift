@@ -90,6 +90,8 @@ struct Hero: Codable, Identifiable, Equatable {
     var items: [Item] = []
     var attacks = [Attack(name:"Longsword")]
     var gold = 15
+    var goldMinorUnits:Int?
+    var currencies:[CurrencyBalance]?
     var features = "Second Wind\nOnce per short or long rest, use a bonus action to regain 1d10 + fighter level hit points. Track use in your notes."
     var notes = ""
     var bonuses: [Bonus]?
@@ -222,6 +224,7 @@ func validate(_ archive: Archive) throws {
     guard archive.version == 1, !archive.heroes.isEmpty,
           Set(archive.heroes.map(\.id)).count == archive.heroes.count else { throw CocoaError(.fileReadCorruptFile) }
     for h in archive.heroes {
+        try validateCurrency(h)
         try validateInventory(h)
         try validateContent(h)
         try validateActions(h)

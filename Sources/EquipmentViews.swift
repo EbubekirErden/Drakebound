@@ -7,6 +7,7 @@ struct EquipmentPanel:View {
     var edit:(Item)->Void
     @State private var search = ""
     @State private var trainingOpen = false
+    @State private var adding=false
     @State private var kind = "All types"
     @State private var equippedOnly = false
     @State private var collapsed:Set<UUID> = []
@@ -20,9 +21,9 @@ struct EquipmentPanel:View {
             DisclosureGroup("Weapon & armor proficiency",isExpanded:$trainingOpen) { EquipmentTrainingRoster(hero:hero);EquipmentTrainingEditor(grants:$hero.trainingGrants,source:"Manual character training",expanded:true) }.font(.caption)
             HStack {
                 Label(String(format:"%.1f / %d lb",hero.items.reduce(0) { $0+Double($1.quantity)*$1.weight },hero.effectiveScore(0)*15),systemImage:"scalemass").font(.caption).foregroundStyle(.secondary)
-                Spacer(); Stepper("\(hero.gold) gp",value:$hero.gold,in:0...999999).frame(width:130)
+                Spacer(); CurrencyButton(hero:$hero)
                 Button { containerEditor = EquipmentContainer(name:"") } label: { Label("Container",systemImage:"shippingbox") }
-                Button("Compendium") { store.showCompendium = true }; Button { edit(Item(name:"",kind:.gear)) } label: { Label("Add item",systemImage:"plus") }.buttonStyle(.borderedProminent)
+                Button("Compendium") { store.showCompendium = true }; Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
             }
             HStack { TextField("Search equipment",text:$search).focused($searchFocused); Picker("Type",selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.labelsHidden().frame(width:175); Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox) }.textFieldStyle(.roundedBorder)
             LazyVStack(spacing:10) {

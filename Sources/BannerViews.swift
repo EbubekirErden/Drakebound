@@ -81,7 +81,7 @@ struct CreatureBanner:View {
                 }; Spacer()
                 Button { framing = true } label: { Image(systemName:"crop") }.help("Frame creature banner")
                 Button("Edit",action:edit)
-                Menu { Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20)
+                Menu { CreatureLayoutPicker(creature:$creature);Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20)
             }.padding(18)
         }.frame(height:190).contentShape(Rectangle()).clipShape(RoundedRectangle(cornerRadius:10))
         .sheet(isPresented:$framing) { CreatureBannerEditor(creature:$creature) }
@@ -94,13 +94,27 @@ struct CreatureBannerEditor:View {
     init(creature:Binding<Creature>) { _creature = creature; _crop = State(initialValue:creature.wrappedValue.bannerCrop ?? BannerCrop()) }
     var body:some View {
         VStack(alignment:.leading,spacing:16) {
-            Text("\(creature.name) · banner framing").font(.headline)
-            CroppedImage(data:creature.image,crop:crop).frame(height:190).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
+            Text("\(creature.name) · image framing").font(.headline)
+            CroppedImage(data:creature.image,crop:crop).frame(width:creature.imageLayout == nil || creature.imageLayout == .banner ? 612:150,height:creature.imageLayout == nil || creature.imageLayout == .banner ? 190:250).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
             if creature.image == nil { Text("Add an image in the creature editor.").font(.caption).foregroundStyle(.secondary) }
             HStack { Text("Left / right").frame(width:90,alignment:.leading); Slider(value:$crop.x,in:0...1) }
             HStack { Text("Top / bottom").frame(width:90,alignment:.leading); Slider(value:$crop.y,in:0...1) }
             HStack { Text("Zoom").frame(width:90,alignment:.leading); Slider(value:$crop.zoom,in:1...3) }
             HStack { Button("Reset") { crop = BannerCrop() }; Spacer(); Button("Cancel") { dismiss() }; Button("Apply banner") { creature.bannerCrop = crop; dismiss() }.buttonStyle(.borderedProminent) }
         }.padding(24).frame(width:660)
+    }
+}
+
+struct CreatureLayoutPicker:View {
+    @Binding var creature:Creature
+    var body:some View { Picker("Image layout",selection:Binding(get:{ creature.imageLayout ?? .banner },set:{ creature.imageLayout=$0 })) { ForEach(CreatureImageLayout.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }
+}
+struct CreatureCompactHeader:View {
+    @Binding var creature:Creature
+    var edit:()->Void
+    var remove:()->Void
+    @State private var framing=false
+    var body:some View {
+        HStack(alignment:.top) { VStack(alignment:.leading,spacing:7) { Text(creature.name).font(.title2.bold());Text(creature.type).font(.caption).foregroundStyle(.secondary);HStack { Label("AC \(creature.ac)",systemImage:"shield");Label("\(creature.speed) ft",systemImage:"figure.walk") }.font(.caption).foregroundStyle(sky) };Spacer();Button { framing=true } label: { Image(systemName:"crop") };Button("Edit",action:edit);Menu { CreatureLayoutPicker(creature:$creature);Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20) }.sheet(isPresented:$framing) { CreatureBannerEditor(creature:$creature) }
     }
 }
