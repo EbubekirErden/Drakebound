@@ -100,7 +100,7 @@ struct CompendiumView:View {
             }
             if store.compendium.isEmpty && category == .spell {
                 ScrollView { customSpells }
-            } else if matches.isEmpty && (category != .spell || extraSpells.isEmpty) { ContentUnavailableView("No matching entries",systemImage:"books.vertical",description:Text(store.compendium.isEmpty ? "Import a Fight Club compendium to browse this category.":"Try a different name or category.")) }
+            } else if matches.isEmpty && (category != .spell || extraSpells.isEmpty) { CenteredEmptyState("No matching entries",systemImage:"books.vertical",description:Text(store.compendium.isEmpty ? "Import a Fight Club compendium to browse this category.":"Try a different name or category.")) }
             else {
                 ScrollView {
                     if category == .spell && !extraSpells.isEmpty { Text("Custom & starter spells").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading); customSpells.padding(.bottom,16); if !matches.isEmpty { Text("Imported references").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading) } }

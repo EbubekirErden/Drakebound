@@ -47,6 +47,8 @@ struct Item: Codable, Identifiable, Equatable {
     var sourceType: String?
     var timing:ActionTiming?
     var containerID: UUID?
+    var weaponProfile:WeaponProfile?
+    var automaticAttack:Bool?
 }
 struct Attack: Codable, Identifiable, Equatable {
     var id = UUID()
@@ -60,6 +62,7 @@ struct Attack: Codable, Identifiable, Equatable {
     var description: String?
     var equipmentID:UUID?
     var timing:ActionTiming?
+    var automaticWeaponAttack:Bool?
 }
 struct Hero: Codable, Identifiable, Equatable {
     var id = UUID()
@@ -225,6 +228,7 @@ func validate(_ archive: Archive) throws {
           Set(archive.heroes.map(\.id)).count == archive.heroes.count else { throw CocoaError(.fileReadCorruptFile) }
     for h in archive.heroes {
         guard (h.featureEntries ?? []).allSatisfy(validFeatureEffects) else { throw CocoaError(.fileReadCorruptFile) }
+        guard h.items.allSatisfy({ $0.weaponProfile?.valid ?? true }) else { throw CocoaError(.fileReadCorruptFile) }
         try validateCurrency(h)
         try validateInventory(h)
         try validateContent(h)

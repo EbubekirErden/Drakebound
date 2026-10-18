@@ -12,6 +12,10 @@ struct RollListEditor: View {
                 VStack(alignment:.leading,spacing:6) {
                     HStack { TextField("Roll name",text:$roll.name); Button { let id = roll.id; rolls?.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain).help("Remove roll") }
                     DiceFormulaField(value:$roll.expression,hero:hero,spell:spell,slot:roll.slotLevel ?? spell?.level ?? 0,allowTokens:true)
+                    EditorField(title:"Damage type") { OptionField(title:"Damage type",value:Binding(get:{ roll.damageType ?? "None" },set:{ roll.damageType = $0 == "None" ? nil:$0 }),choices:damageTypeChoices) }
+                    if let spell, spell.level > 0 {
+                        SpellUpcastEditor(roll:$roll,spell:spell)
+                    }
                     if let spell {
                         if spell.level == 0 { Stepper("Character level \(roll.minimumCharacterLevel ?? 1)+",value:Binding(get:{ roll.minimumCharacterLevel ?? 1 },set:{ roll.minimumCharacterLevel = $0 }),in:1...20); Toggle("Use as cantrip scaling tier",isOn:Binding(get:{ roll.minimumCharacterLevel != nil },set:{ roll.minimumCharacterLevel = $0 ? 1:nil })) }
                         else { Stepper("Slot level \(roll.slotLevel ?? spell.level)",value:Binding(get:{ roll.slotLevel ?? spell.level },set:{ roll.slotLevel = $0 }),in:max(1,spell.level)...9); Toggle("Label as slot-level option",isOn:Binding(get:{ roll.slotLevel != nil },set:{ roll.slotLevel = $0 ? max(1,spell.level):nil })) }
@@ -50,14 +54,14 @@ struct RollButtons: View {
         if !(rolls ?? []).isEmpty {
             LazyVGrid(columns:[GridItem(.adaptive(minimum:180),alignment:.leading)],alignment:.leading,spacing:6) {
                 ForEach(rolls ?? []) { roll in
-                    let resolved = (try? hero.resolveRoll(roll.expression,spell:spell,slot:slot)) ?? roll.expression
+                    let resolved = (try? hero.resolveRoll(roll.expression(spell:spell,slot:slot),spell:spell,slot:slot)) ?? roll.expression
                     let shown = resolved + (roll.kind != nil && hero.testPenalty != 0 ? signed(hero.testPenalty):"")
                     RollChoiceButton(enabled:resolved.lowercased().hasPrefix("1d20"),explanation:roll.name+": "+shown+(roll.resourceCost.map { "\nSpends "+hero.resourceSummary($0) } ?? "")) { mode in if var ref = actionSource { ref.rollID = roll.id; store.performAction(ref,heroID:hero.id,mode:mode,slot:slot) } else { do { store.record(try hero.performNamedRoll(roll,source:source,spell:spell,slot:slot,manual:mode ?? store.rollMode)) } catch { store.error = error.localizedDescription } } } label: {
                         HStack(spacing:9) {
                             Image(systemName:"dice").foregroundStyle(sky)
                             VStack(alignment:.leading,spacing:4) {
                                 if roll.name != "Roll" { Text(roll.name).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary) }
-                                Text(shown).font(.system(size:13,weight:.semibold,design:.monospaced)).foregroundStyle(ink)
+                                Text(shown + (roll.damageLabel.isEmpty ? "":" · " + roll.damageLabel)).font(.system(size:13,weight:.semibold,design:.monospaced)).foregroundStyle(ink)
                                 if let range = Dice.bounds(shown) { Text("\(range.lowerBound)–\(range.upperBound) range").font(.system(size:10)).foregroundStyle(.secondary) }
                             }; Spacer(minLength:0)
                         }.padding(10).frame(maxWidth:.infinity,alignment:.leading).background(sky.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:8)).overlay(RoundedRectangle(cornerRadius:8).stroke(sky.opacity(0.18)))
@@ -162,7 +166,8 @@ struct SpellEditor:View {
                     TextField("Spell name",text:$spell.name)
                     HStack { Stepper(spell.level == 0 ? "Cantrip":"Level \(spell.level)",value:$spell.level,in:0...9).frame(width:140); EditorField(title:"School") { OptionField(title:"School",value:$spell.school,choices:spellSchoolChoices) } }
                     HStack { EditorField(title:"Casting time") { OptionField(title:"Casting time",value:$spell.time,choices:["1 action","1 bonus action","1 reaction","1 minute","10 minutes","1 hour","8 hours"]) }; EditorField(title:"Range") { OptionField(title:"Range",value:$spell.range,choices:["Self","Touch","30 feet","60 feet","90 feet","120 feet","150 feet","300 feet","1 mile","Sight","Unlimited"]) } }
-                    HStack { EditorField(title:"Duration") { OptionField(title:"Duration",value:$spell.duration,choices:["Instantaneous","1 round","1 minute","10 minutes","1 hour","8 hours","24 hours","Until dispelled","Concentration, up to 1 minute","Concentration, up to 10 minutes","Concentration, up to 1 hour"]) }; EditorField(title:"Components") { OptionField(title:"Components",value:$spell.components,choices:["V","S","M","V, S","V, M","S, M","V, S, M"]) } }
+                    HStack { EditorField(title:"Duration") { OptionField(title:"Duration",value:$spell.duration,choices:["Instantaneous","1 round","1 minute","10 minutes","1 hour","8 hours","24 hours","Until dispelled","Concentration, up to 1 minute","Concentration, up to 10 minutes","Concentration, up to 1 hour"]) }; EditorField(title:"Components") { SpellComponentButtons(value:$spell.components) } }
+                    SpellMaterialField(components:$spell.components)
                 }
                 EditorGroup(title:"Description") { BorderedTextEditor(text:$spell.text,height:110) }
                 EditorGroup(title:"Casting") {
@@ -185,12 +190,11 @@ struct SpellEditor:View {
                 }
                 EditorGroup(title:spell.level == 0 ? "Cantrip scaling & custom rolls":"Upcasting & custom rolls") {
                     if spell.level > 0 {
-                        Text("Higher-level slots are available when casting. For a stronger effect, add an upcast roll for each slot level and set its full dice formula.").font(.caption).foregroundStyle(.secondary)
-                        Text("Example: base level 3 → 8d6; slot level 4 → 9d6. A spell without a stronger effect needs no extra roll.").font(.caption2).foregroundStyle(.secondary)
+                        Text("Add a base damage roll, then enable automatic upcasting on that roll.").font(.caption).foregroundStyle(.secondary)
                     }
                     RollListEditor(rolls:$spell.rolls,hero:hero,spell:spell,allowsResourceCosts:!isCompendium)
                     Picker("Roll when cast",selection:$spell.automaticRollID) { Text("None · log casting").tag(Optional<UUID>.none); ForEach(spell.rolls ?? []) { Text($0.name).tag(Optional($0.id)) } }
-                    Text(spell.level == 0 ? "Cantrip tiers use character levels. Set each roll’s level requirement below its formula.":"Upcast rolls are manual roll options. Roll when cast uses the selected formula; choosing a higher slot does not switch it automatically.").font(.caption2).foregroundStyle(.secondary)
+                    Text(spell.level == 0 ? "Cantrip tiers use character levels. Set each roll’s level requirement below its formula.":"Automatic upcasting uses the casting slot. Select that damage roll in Roll when cast to roll it during casting. Separate rolls spend no slot.").font(.caption2).foregroundStyle(.secondary)
                 }
             } }
         }.padding(20).frame(width:610,height:700).textFieldStyle(.roundedBorder).tint(sky)
@@ -229,6 +233,10 @@ struct CastControl: View {
         .accessibilityLabel(title+" "+spell.name)
         .modifier(PreparedCasting(prepared:spell.prepared))
     }
+    func castDamage(at slot: Int) -> String {
+        guard let roll = (spell.rolls ?? []).first(where:{ $0.id == spell.automaticRollID }), let expression = try? hero.resolveRoll(roll.expression(spell:spell,slot:slot),spell:spell,slot:slot) else { return "" }
+        return " · " + expression + (roll.damageLabel.isEmpty ? "":" " + roll.damageLabel)
+    }
     @ViewBuilder var castingChoices:some View {
         if spell.level == 0 {
             Button("Cast cantrip · no slot") { cast(.slot) }
@@ -237,7 +245,7 @@ struct CastControl: View {
             }
         } else {
             ForEach(Array(spell.level...9).filter { !compact || hero.slots[$0-1] > 0 },id:\.self) { level in
-                Button("Level \(level) · \(max(0,hero.slots[level-1]-hero.usedSlots[level-1])) left") { cast(.slot,level) }.disabled(hero.slots[level-1] <= hero.usedSlots[level-1])
+                Button("Level \(level) · \(max(0,hero.slots[level-1]-hero.usedSlots[level-1])) left" + castDamage(at:level)) { cast(.slot,level) }.disabled(hero.slots[level-1] <= hero.usedSlots[level-1])
             }
             if compact && !(spell.level...9).contains(where:{ hero.slots[$0-1] > 0 }) { Text("No spell slots configured").font(.caption).foregroundStyle(.secondary) }
             if spell.ritual == true { Divider(); Button("Cast as ritual · no slot") { cast(.ritual) } }

@@ -17,7 +17,7 @@ struct EquipmentQuickAdd:View {
             HStack { Picker("Type",selection:$kind) { Text("All types").tag("All types");ForEach(Array(Set(entries.map(\.subcategory))).sorted(),id:\.self) { Text($0).tag($0) } };Picker("Source",selection:$source) { ForEach(CompendiumScope.allCases,id:\.self) { Text($0.rawValue).tag($0) } } }.labelsHidden().font(.caption)
             GeometryReader { geometry in ScrollView { LazyVStack(spacing:6) {
                 ForEach(matches.prefix(80)) { entry in HStack { Button { preview=entry } label: { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.medium));Text(entry.summary).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain);Button("Add") { onAdd(entry.equippedItemCopy());dismiss() }.accessibilityLabel("Add "+entry.name) }.padding(10).background(paper).clipShape(RoundedRectangle(cornerRadius:7)) }
-                if matches.isEmpty { ContentUnavailableView("No matching equipment",systemImage:"backpack",description:Text("Try another search, type, or source.")).frame(width:geometry.size.width,height:geometry.size.height) }
+                if matches.isEmpty { CenteredEmptyState("No matching equipment",systemImage:"backpack",description:Text("Try another search, type, or source.")).frame(width:geometry.size.width,height:geometry.size.height) }
                 if matches.count > 80 { Text("\(matches.count) matches · narrow your search").font(.caption2).foregroundStyle(.secondary) }
             } } }
         }.padding(16).frame(width:470,height:440).background(surface).foregroundStyle(ink).tint(gold).sheet(item:$preview) { GuideReferencePreview(entry:$0) }

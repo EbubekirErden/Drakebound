@@ -52,9 +52,9 @@ struct CompendiumEntry:Codable,Identifiable,Equatable {
         var warnings:[String] = []; var s = FightClubImport.spell(node,hero:Hero(),ability:nil,isCharacter:false,warnings:&warnings); s.id = id; return s
     }
     func item() -> Item {
-        if var item = template?.item { item.id = UUID(); item.quantity = 1; item.equipped = false; item.attuned = false; item.containerID = nil; item.rolls = cleanResourceLinks(item.rolls); return item }
+        if var item = template?.item { item.bonuses=cleanWeaponTemplateBonuses(item); item.id = UUID(); item.quantity = 1; item.equipped = false; item.attuned = false; item.containerID = nil; item.rolls = cleanResourceLinks(item.rolls); return item }
         var item = Item(name:name,weight:Double(value("weight")) ?? 0,notes:fields.filter { !["name","type","weight"].contains($0.name) }.map(\.readable).filter { !$0.isEmpty }.joined(separator:"\n\n"))
-        item.kind = EquipmentKind.code(value("type")); item.sourceType = value("type")
+        item.kind = EquipmentKind.code(value("type")); item.sourceType = value("type"); item.weaponProfile=weaponProfile
         item.weight = max(0,min(100000,item.weight.isFinite ? item.weight:0))
         var warnings:[String] = []; item.rolls = FightClubImport.readRolls(node,hero:Hero(),warnings:&warnings)
         return item

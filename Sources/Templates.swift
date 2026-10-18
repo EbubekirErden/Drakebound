@@ -18,7 +18,7 @@ enum TemplateFactory {
         return CompendiumEntry(category:.spell,name:spell.name,fields:fields,custom:true,template:CompendiumTemplate(spell:spell))
     }
     static func item(_ input:Item) -> CompendiumEntry {
-        var item = input; item.quantity = 1; item.equipped = false; item.attuned = false; item.containerID = nil
+        var item = input; item.bonuses=cleanWeaponTemplateBonuses(item); item.quantity = 1; item.equipped = false; item.attuned = false; item.containerID = nil
         item.rolls = cleanResourceLinks(item.rolls)
         let type = [EquipmentKind.gear:"G",.melee:"M",.ranged:"R",.lightArmor:"LA",.mediumArmor:"MA",.heavyArmor:"HA",.shield:"S",.wondrous:"W",.potion:"P",.staff:"ST",.wand:"WD",.valuables:"$",.ring:"RG",.ammunition:"A",.rod:"RD",.scroll:"SC"][item.equipmentKind] ?? "G"
         return CompendiumEntry(category:.item,name:item.name,fields:[ReferenceField(name:"name",text:item.name),ReferenceField(name:"type",text:type),ReferenceField(name:"weight",text:String(item.weight)),ReferenceField(name:"text",text:item.notes)],custom:true,template:CompendiumTemplate(item:item))

@@ -69,13 +69,13 @@ extension CharacterGuide {
                 HStack { Button("Custom item") { itemEditor = Item(name:"") }; Spacer(); CurrencyButton(hero:$draft.hero) }
                 Text("Select your class and background’s equipment or starting wealth. Edit items to configure armor and effects; equipping them updates the preview.").font(.caption2).foregroundStyle(.secondary)
                 ForEach(draft.hero.items) { item in HStack(spacing:9) {
-                    Toggle("Equip \(item.name)",isOn:Binding(get:{ draft.hero.items.first { $0.id == item.id }?.equipped ?? false },set:{ value in if let i = draft.hero.items.firstIndex(where:{ $0.id == item.id }) { draft.hero.items[i].equipped = value } })).labelsHidden().toggleStyle(.checkbox)
+                    Toggle("Equip \(item.name)",isOn:Binding(get:{ draft.hero.items.first { $0.id == item.id }?.equipped ?? false },set:{ value in draft.hero.setItemEquipped(item.id,value,compendium:store.compendium) })).labelsHidden().toggleStyle(.checkbox)
                     Button { itemEditor = item } label: { VStack(alignment:.leading,spacing:3) { Text(item.name).font(.system(size:12)); Text("\(item.equipmentKind.rawValue) · ×\(item.quantity)").font(.system(size:10)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain)
                     if [.melee,.ranged,.staff].contains(item.equipmentKind) { Button { attackEditor = suggestedAttack(item) } label: { Image(systemName:"scope") }.help("Configure an attack for this weapon") }
                     Button { itemEditor = item } label: { Image(systemName:"pencil") }.help("Edit equipment")
                     Button { draft.hero.items.removeAll { $0.id == item.id } } label: { Image(systemName:"minus.circle") }.help("Remove item from draft")
                 } }
-                DisclosureGroup("Attacks · \(draft.hero.attacks.count)") { ForEach(draft.hero.attacks) { attack in HStack { Button(attack.name) { attackEditor = attack }; Spacer(); Text(attack.damage).font(.caption).foregroundStyle(coral); Button { draft.hero.attacks.removeAll { $0.id == attack.id } } label: { Image(systemName:"minus.circle") } } }; Button("Custom attack") { attackEditor = Attack(name:"") } }
+                DisclosureGroup("Attacks · \(draft.hero.attacks.count)") { ForEach(draft.hero.attacks) { attack in HStack { Button(attack.name) { attackEditor = attack }; Spacer(); Text(attack.damage).font(.caption).foregroundStyle(coral); Button { draft.hero.removeWeaponAttack(attack.id) } label: { Image(systemName:"minus.circle") } } }; Button("Custom attack") { attackEditor = Attack(name:"") } }
             }
         }.popover(isPresented:$equipmentOpen) { CasterTableView(draft:draft,catalog:catalog,level:$casterLevel) { slots in draft.hero.slots = slots; equipmentOpen = false } }
 

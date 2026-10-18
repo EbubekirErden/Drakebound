@@ -93,7 +93,10 @@ struct QuickActionsPanel:View {
                 if fullPage { TextField("Search actions",text:$query).focused($searchFocused).textFieldStyle(.plain).font(.system(size:11)).padding(.horizontal,8).frame(minWidth:130,maxWidth:.infinity).frame(height:26).background(ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6)).overlay(RoundedRectangle(cornerRadius:6).stroke(ink.opacity(0.12))) }
                 Spacer(minLength:0); Text("\(actions.count) \(actions.count == 1 ? "action":"actions")").font(.caption2).foregroundStyle(.secondary)
             }.frame(height:26)
-            if actions.isEmpty { Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All.").font(.caption).foregroundStyle(.secondary).padding(.vertical,4) }
+            if actions.isEmpty {
+                if fullPage { CenteredEmptyState("No matching actions",systemImage:"bolt",description:Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All."),height:240) }
+                else { Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All.").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity).multilineTextAlignment(.center).padding(.vertical,4) }
+            }
             LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8)],spacing:8) {
                 ForEach(fullPage || expanded ? actions:Array(actions.prefix(6))) { action in GroupedActionCard(hero:$hero,store:store,action:action) }
             }
@@ -117,7 +120,7 @@ struct GroupedActionCard:View {
     var rolls:[NamedRoll] { hero.quickRolls(action.ref) }
     var chosenRoll:NamedRoll? { rolls.first { $0.id == selectedRollID } ?? rolls.first }
     var slot:Int { chosenRoll?.slotLevel ?? spell.flatMap { hero.availableSlot(for:$0) } ?? spell?.level ?? 0 }
-    var rollExpression:String { guard let roll = chosenRoll else { return "" }; return (try? hero.resolveRoll(roll.expression,spell:spell,slot:slot)) ?? roll.expression }
+    var rollExpression:String { guard let roll = chosenRoll else { return "" }; return (try? hero.resolveRoll(roll.expression(spell:spell,slot:slot),spell:spell,slot:slot)) ?? roll.expression }
     var canUseFeature:Bool { (hero.featureEntries ?? []).contains { $0.id == action.ref.sourceID && ($0.counter != nil || $0.resourceCost != nil) } }
     var body:some View {
         VStack(alignment:.leading,spacing:6) {

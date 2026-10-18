@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.33.0
+
+- Edit material requirements below V/S/M; retain embedded component details and import separate XML material fields.
+- Damage rolls have an optional damage-type selector and an explicit automatic upcasting rule, with per-slot previews. Casting and separate damage rolls use the chosen slot while preserving existing manual roll options.
+- Shared centered empty states and compact V/S/M controls with explicit selected indicators.
+
+## 0.32.0
+
+- Equipping a recognized weapon creates a linked attack, using stored/compendium damage, finesse or ranged ability, and source-aware proficiency.
+- Existing equipped weapons are reconciled when loading/saving; manual attacks are preserved and unambiguous existing attacks are linked instead of duplicated.
+- Unequipped attacks remain stowed. Removing an attack disables automatic creation for its item; custom weapon stats and automatic creation can be configured in the item editor.
+- Structured magic weapon bonuses apply only to the linked attack while item effects are active, and reusable templates exclude generated attack links.
+
 ## Unreleased
 
 - Import and Export share an aligned sidebar row; character banners keep Edit/Expand visible and group other actions in the character menu.

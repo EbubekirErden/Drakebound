@@ -23,7 +23,7 @@ struct FeatQuickAdd:View {
                         Button(owned ? "Added":"Add") { do { let result=try CompendiumTransfer.applying([CompendiumPick(entry)],to:hero,through:hero.level);hero=result.0;error=nil } catch { self.error=error.localizedDescription } }.disabled(owned).accessibilityLabel((owned ? "Added ":"Add ")+entry.name)
                     }.padding(10).background(paper).clipShape(RoundedRectangle(cornerRadius:7))
                 }
-                if matches.isEmpty { ContentUnavailableView("No matching feats",systemImage:"books.vertical",description:Text(entries.isEmpty ? "Import a compendium with feats to browse them here.":"Try another search or source.")).frame(width:geometry.size.width,height:geometry.size.height) }
+                if matches.isEmpty { CenteredEmptyState("No matching feats",systemImage:"books.vertical",description:Text(entries.isEmpty ? "Import a compendium with feats to browse them here.":"Try another search or source.")).frame(width:geometry.size.width,height:geometry.size.height) }
                 if matches.count > 80 { Text("\(matches.count) matches · narrow your search").font(.caption2).foregroundStyle(.secondary) }
             } } }
             if let error { Text(error).font(.caption).foregroundStyle(coral) }

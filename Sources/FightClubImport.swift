@@ -53,7 +53,9 @@ enum FightClubImport {
         s.castingAbility = ability
         let lists = node.value("classes").isEmpty ? node.nodes("sclass").map { $0.text.trimmingCharacters(in:.whitespacesAndNewlines) }.joined(separator:", "):node.value("classes")
         s.classes = lists.isEmpty ? nil:lists
-        if s.components.isEmpty { s.components = [node.int("v") == 1 ? "V":nil,node.int("s") == 1 ? "S":nil,node.int("m") == 1 ? "M":nil].compactMap { $0 }.joined(separator:", "); if !node.value("materials").isEmpty { s.components += " (\(node.value("materials")))" } }
+        if s.components.isEmpty { s.components = [node.int("v") == 1 ? "V":nil,node.int("s") == 1 ? "S":nil,node.int("m") == 1 ? "M":nil].compactMap { $0 }.joined(separator:", ") }
+        let materials = node.value("materials").isEmpty ? node.value("material"):node.value("materials")
+        if !materials.isEmpty && SpellComponents(s.components).material.isEmpty { s.components = SpellComponents(s.components).settingMaterial(materials) }
         s.ritual = node.int("ritual") == 1
         if s.name.localizedCaseInsensitiveContains("free once") { s.usesSlot = false; s.freeUses = 1; s.freeRemaining = 1; warnings.append("\(s.name): imported as one free use per long rest from its explicit name; verify its recharge rule.") }
         s.rolls = readRolls(node,hero:hero,spell:s,warnings:&warnings)

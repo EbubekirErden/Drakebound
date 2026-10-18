@@ -24,7 +24,7 @@ struct CreatureQuickAdd:View {
                     Button { preview=entry } label: { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.medium));Text(entry.summary).font(.caption2).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain).help("Preview "+entry.name)
                     Button("Add") { var creature=entry.creature();creature.kind=role;onAdd(creature);dismiss() }.accessibilityLabel("Add "+entry.name)
                 }.padding(10).background(paper).clipShape(RoundedRectangle(cornerRadius:7)) }
-                if matches.isEmpty { ContentUnavailableView("No matching creatures",systemImage:"pawprint",description:Text(entries.isEmpty ? "Import a compendium with creatures or create a custom creature.":"Try another search, type, CR, or source.")).frame(width:geometry.size.width,height:geometry.size.height) }
+                if matches.isEmpty { CenteredEmptyState("No matching creatures",systemImage:"pawprint",description:Text(entries.isEmpty ? "Import a compendium with creatures or create a custom creature.":"Try another search, type, CR, or source.")).frame(width:geometry.size.width,height:geometry.size.height) }
                 if matches.count > 80 { Text("\(matches.count) matches · narrow your search").font(.caption2).foregroundStyle(.secondary) }
             } } }
         }.padding(16).frame(width:570,height:480).background(surface).foregroundStyle(ink).tint(leaf).sheet(item:$preview) { GuideReferencePreview(entry:$0) }

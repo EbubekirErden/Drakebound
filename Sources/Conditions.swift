@@ -65,9 +65,10 @@ extension Hero {
         return try Dice.d20(adjusted,label:label,mode:rollMode(for:kind,ability:ability,manual:manual))
     }
     func performNamedRoll(_ roll:NamedRoll,source:String,spell:Spell? = nil,slot:Int = 0,manual:RollMode = .normal) throws -> RollResult {
-        let expression = try resolveRoll(roll.expression,spell:spell,slot:slot)
+        guard roll.upcast == nil || (roll.upcast!.valid && roll.kind == nil && (spell?.level ?? 0) > 0) else { throw ActionError.invalidRoll(roll.expression) }
+        let expression = try resolveRoll(roll.expression(spell:spell,slot:slot),spell:spell,slot:slot)
         if let kind = roll.kind { return try performD20(expression,label:"\(source) · \(roll.name)",kind:kind,ability:roll.ability,manual:manual) }
-        return try Dice.d20(expression,label:"\(source) · \(roll.name)",mode:manual)
+        return try Dice.d20(expression,label:"\(source) · \(roll.name)" + (roll.damageLabel.isEmpty ? "":" · " + roll.damageLabel),mode:manual)
     }
 }
 extension Dice {

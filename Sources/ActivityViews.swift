@@ -70,7 +70,7 @@ struct ActivityPanel:View {
             HStack { VStack(alignment:.leading,spacing:3) { Text("Character activity").font(.headline); Text(store.heroes.first { $0.id == store.selected }?.name ?? "Select a character").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button("Done") { store.showActivity = false } }
             Button { store.undoActivity() } label: { Label("Undo last change",systemImage:"arrow.uturn.backward").font(.caption.weight(.semibold)).frame(maxWidth:.infinity).padding(9).background(accent.opacity(0.12)).clipShape(RoundedRectangle(cornerRadius:7)) }.buttonStyle(.plain).disabled(!store.canUndoActivity).help("Undo the newest remaining play change for this character · ⌘Z outside text editing")
             Divider()
-            if entries.isEmpty { ContentUnavailableView("No play changes yet",systemImage:"list.bullet.rectangle",description:Text("HP, slots, counters, equipment, concentration, and creatures appear here as you play.")) }
+            if entries.isEmpty { CenteredEmptyState("No play changes yet",systemImage:"list.bullet.rectangle",description:Text("HP, slots, counters, equipment, concentration, and creatures appear here as you play.")) }
             else { ScrollView { LazyVStack(alignment:.leading,spacing:12) {
                 ForEach(entries) { entry in
                     VStack(alignment:.leading,spacing:5) {

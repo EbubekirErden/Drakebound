@@ -6,7 +6,7 @@ struct AttackEditor: View {
     @Environment(\.dismiss) var dismiss
     var body:some View {
         VStack(alignment:.leading,spacing:16) {
-            HStack { Text("Attack").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save") { onSave(attack); dismiss() }.buttonStyle(.borderedProminent).disabled(attack.name.trimmingCharacters(in:.whitespaces).isEmpty || (try? Dice.roll(attack.damage)) == nil) }
+            HStack { Text("Attack").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save") { attack.automaticWeaponAttack=false;onSave(attack); dismiss() }.buttonStyle(.borderedProminent).disabled(attack.name.trimmingCharacters(in:.whitespaces).isEmpty || (try? Dice.roll(attack.damage)) == nil) }
             EditorGroup(title:"Identity") { TextField("Attack name",text:$attack.name); HStack { EditorField(title:"Ability") { Picker("Ability",selection:$attack.ability) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } } }; Toggle("Proficient",isOn:$attack.proficient); Toggle("Spell attack",isOn:Binding(get:{ attack.isSpell ?? false },set:{ attack.isSpell = $0 })) } }
             ActionTimingPicker(timing:$attack.timing,defaultLabel:"Default · Action")
             EditorGroup(title:"Damage") { HStack { EditorField(title:"Dice formula") { DiceFormulaField(value:$attack.damage) }; EditorField(title:"Damage type") { OptionField(title:"Damage type",value:$attack.type,choices:damageTypeChoices) } }; Toggle("Add ability modifier",isOn:$attack.addDamageModifier) }
@@ -195,7 +195,7 @@ struct ItemEditor: View {
     @Environment(\.templateSaveAction) private var saveTemplate
     @Environment(\.dismiss) var dismiss
     @State private var editingBonus:Bonus?
-    var valid:Bool { !item.name.trimmingCharacters(in:.whitespaces).isEmpty && (0...999).contains(item.quantity) && item.weight.isFinite && (0...100000).contains(item.weight) && validRolls(item.rolls,hero:hero) }
+    var valid:Bool { !item.name.trimmingCharacters(in:.whitespaces).isEmpty && (0...999).contains(item.quantity) && item.weight.isFinite && (0...100000).contains(item.weight) && validRolls(item.rolls,hero:hero) && (item.weaponProfile?.valid ?? true) }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
             HStack { Text("Equipment").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save item") { if saveToCompendium { saveTemplate?(TemplateFactory.item(item)) }; onSave(item); dismiss() }.buttonStyle(.borderedProminent).disabled(!valid) }
@@ -209,6 +209,7 @@ struct ItemEditor: View {
                         HStack { Toggle("Equipped",isOn:$item.equipped); Toggle("Requires attunement",isOn:Binding(get:{ item.requiresAttunement ?? false },set:{ item.requiresAttunement = $0 })); if item.requiresAttunement == true { Toggle("Attuned",isOn:Binding(get:{ item.attuned ?? false },set:{ item.attuned = $0 })) } }.font(.caption)
                     }
                     EditorGroup(title:"Description & properties") { BorderedTextEditor(text:$item.notes,height:90) }
+                    WeaponProfileEditor(item:$item)
                     EditorGroup(title:"Armor & modifiers") {
                         Toggle("Use as base armor",isOn:Binding(get:{ item.armorBase != nil },set:{ item.armorBase = $0 ? 12:nil }))
                         if item.armorBase != nil {

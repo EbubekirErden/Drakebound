@@ -15,7 +15,7 @@ struct AttacksPanel: View {
                         HStack(spacing:10) {
                             Image(systemName:attack.isSpell == true ? "sparkles":"scope").foregroundStyle(attack.isSpell == true ? sky:coral).frame(width:30,height:30).background((attack.isSpell == true ? sky:coral).opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:7))
                             Button { details = attack } label: { VStack(alignment:.leading,spacing:3) { Text(attack.name).font(.system(size:14,weight:.semibold)).lineLimit(1); Text(attack.type).font(.system(size:10)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain)
-                            Menu { Button("Edit attack") { edit(attack) }; Button("Remove attack",role:.destructive) { hero.attacks.removeAll { $0.id == attack.id } } } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20)
+                            Menu { Button("Edit attack") { edit(attack) }; Button("Remove attack",role:.destructive) { hero.removeWeaponAttack(attack.id) } } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20)
                         }
                         Label(unavailable ?? (hero.linkedEquipment(attack) != nil ? "Equipped":attack.isSpell == true ? "Spell attack":"Attack"),systemImage:unavailable != nil ? "backpack":"checkmark.circle").font(.system(size:10,weight:.medium)).foregroundStyle(unavailable != nil ? gold:Color.secondary).frame(height:13)
                         HStack(spacing:8) {
@@ -35,7 +35,7 @@ struct AttacksPanel: View {
                     ForEach(hero.stowedAttacks) { attack in HStack(spacing:10) {
                         Button { details = attack } label: { Text(attack.name).frame(maxWidth:.infinity,alignment:.leading) }.buttonStyle(.plain)
                         Text(hero.attackUnavailableReason(attack) ?? "Stowed").foregroundStyle(.secondary)
-                        if let item = hero.linkedEquipment(attack),item.quantity > 0 { Button("Equip") { if let i = hero.items.firstIndex(where:{ $0.id == item.id }) { hero.items[i].equipped = true } }.accessibilityLabel("Equip \(item.name) for attacks") }
+                        if let item = hero.linkedEquipment(attack),item.quantity > 0 { Button("Equip") { hero.setItemEquipped(item.id,true,compendium:store.compendium) }.accessibilityLabel("Equip \(item.name) for attacks") }
                         Button { edit(attack) } label: { Image(systemName:"pencil") }.help("Edit \(attack.name)")
                     }.font(.system(size:11)).padding(.vertical,6) }
                 }.font(.caption).foregroundStyle(.secondary)

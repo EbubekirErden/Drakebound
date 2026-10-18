@@ -70,6 +70,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
         }
         let lists = Dictionary(compendium.filter { $0.category == .spell }.map { ($0.id,$0.value("classes")) },uniquingKeysWith:{ first,_ in first })
         for i in library.indices where library[i].classes == nil { library[i].classes = lists[library[i].id] }
+        for i in heroes.indices { heroes[i].synchronizeWeaponAttacks(compendium:compendium) }
         selected = heroes.first?.id
         loadActivity()
     }
@@ -84,7 +85,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
     func save() {
         guard !heroes.isEmpty else { return }
         do {
-            for i in heroes.indices { heroes[i].reconcileConcentration() }
+            for i in heroes.indices { heroes[i].synchronizeWeaponAttacks(compendium:compendium);heroes[i].reconcileConcentration() }
             captureActivity()
             let archive = Archive(heroes:heroes,library:library); try validate(archive)
             try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
@@ -251,7 +252,7 @@ struct RootView: View {
                     else if let i = store.heroes.firstIndex(where:{ $0.id == store.selected }) {
                         HeroView(hero:$store.heroes[i],store:store,tab:tab).id(store.selected)
                     } else {
-                        ContentUnavailableView("Your next adventure",systemImage:"shield",description:Text("Create a character or import a backup."))
+                        CenteredEmptyState("Your next adventure",systemImage:"shield",description:Text("Create a character or import a backup."))
                         Button("Create character") { store.addHero() }
                     }
                     Divider()
@@ -331,7 +332,7 @@ struct HeroView: View {
         }
         .sheet(isPresented:$edit) { HeroEditor(hero:$hero) }
         .sheet(item:$attackEditor) { a in AttackEditor(attack:a) { edited in if let i = hero.attacks.firstIndex(where:{ $0.id == edited.id }) { hero.attacks[i] = edited } else { hero.attacks.append(edited) } } }
-        .sheet(item:$itemEditor) { item in ItemEditor(item:item,hero:hero) { edited in if let i = hero.items.firstIndex(where:{ $0.id == edited.id }) { hero.items[i] = edited } else { hero.items.append(edited) } } }
+        .sheet(item:$itemEditor) { item in ItemEditor(item:item,hero:hero) { edited in if let i = hero.items.firstIndex(where:{ $0.id == edited.id }) { hero.items[i] = edited } else { hero.items.append(edited) };hero.synchronizeWeaponAttacks(compendium:store.compendium) } }
         .sheet(item:Binding(get:{ adding.map { AddKind(name:$0) } },set:{ adding = $0?.name })) { kind in SpellEditor(spell:Spell(name:"",level:1),hero:hero,isCompendium:kind.name == "Library spell",classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name)) { spell in if kind.name == "Library spell" { store.library.append(spell); store.save() } else { hero.spells.append(spell) } } }
         .sheet(isPresented:$managingSlots) { SlotManager(hero:$hero) }
         .sheet(isPresented:$rest) { RestEditor(hero:$hero,store:store) }
@@ -431,7 +432,10 @@ struct HeroView: View {
                 if !matching.isEmpty { Card(title:level == 0 ? "Cantrips" : "Level \(level)") { ForEach(matching) { spell in SpellbookRow(hero:$hero,store:store,spell:spell,navigationIDs:spellNavigationIDs) } } }
             }
             Button("Browse the compendium") { store.showCompendium = true }.buttonStyle(.plain).foregroundStyle(sky)
-            if hero.spells.isEmpty { ContentUnavailableView("Your spellbook is empty",systemImage:"sparkles",description:Text("Add a custom spell or choose one from the compendium.")) }
+            if !hero.spells.isEmpty && !hero.spells.contains(where: { (spellLevel == -1 || $0.level == spellLevel) && preparation.includes($0) && (search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)) }) {
+                CenteredEmptyState("No matching spells",systemImage:"sparkles",description:Text("Try another level, preparation filter, or search."),height:300)
+            }
+            if hero.spells.isEmpty { CenteredEmptyState("Your spellbook is empty",systemImage:"sparkles",description:Text("Add a custom spell or choose one from the compendium."),height:300) }
         }
     }
     var equipment: some View { EquipmentPanel(hero:$hero,store:store,edit:{ itemEditor = $0 }) }
@@ -483,7 +487,7 @@ struct AddEntry: View {
             Text("Add \(kind.lowercased())").font(.title2).fontDesign(.serif)
             Form {
                 TextField("Name",text:$name)
-                if isSpell { Stepper("Spell level: \(level) (0 = cantrip)",value:$level,in:0...9); TextField("School",text:$school); TextField("Casting time",text:$time); TextField("Range",text:$range); TextField("Duration",text:$duration); TextField("Components",text:$components); Text("Description"); TextEditor(text:$text).frame(height:130) }
+                if isSpell { Stepper("Spell level: \(level) (0 = cantrip)",value:$level,in:0...9); TextField("School",text:$school); TextField("Casting time",text:$time); TextField("Range",text:$range); TextField("Duration",text:$duration); SpellComponentButtons(value:$components); SpellMaterialField(components:$components); Text("Description"); TextEditor(text:$text).frame(height:130) }
                 else if kind == "Attack" { Picker("Ability",selection:$ability) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } }; DiceFormulaField(value:$damage); OptionField(title:"Damage type",value:$damageType,choices:damageTypeChoices); Toggle("Spell attack",isOn:$spellAttack); Toggle("Add ability modifier to damage",isOn:$addModifier) }
                 else { Stepper("Quantity: \(quantity)",value:$quantity,in:1...999); TextField("Weight each (lb)",value:$weight,format:.number); TextField("Notes",text:$text) }
             }.textFieldStyle(.roundedBorder)

@@ -8,6 +8,10 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 
 ## Included
 
+- Equipping a recognized weapon creates a linked attack automatically. Existing equipped weapons are checked on loading/saving. Finesse uses the better initial Strength/Dexterity modifier; ranged weapons use Dexterity. Proficiency follows the recorded weapon training.
+- Unequipping stows the linked attack. Editing an attack preserves custom choices; removing it disables automatic creation for that item. Item editor → Weapon attack supports opt-out and custom weapon stats. Unknown weapons need explicit stats rather than guessed damage.
+
+
 - Equipment, Spells, Journal and Creatures use matching search and action toolbars that adapt to window width. Equipment’s **…** menu contains New container, Browse compendium and Weapon & armor proficiency. Banner controls keep Edit and Expand visible; Level up and Frame banner are in its **…** menu.
 
 - Feature editor → Applied effects supports recognized rules, custom flat/per-level modifiers, and reference-only entries. Tough from Compendium automatically grants +2 maximum HP per total character level. Imported Fight Club feats require explicit opt-in to avoid duplicating effects already included in saved stats. Other feat descriptions do not automatically apply arbitrary rules.

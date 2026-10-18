@@ -29,6 +29,7 @@ struct CharacterPlayState:Codable,Equatable {
         // A setup edit forms an undo boundary, so a level-up cannot be partly reversed.
         boundary = [String(h.level),String(h.maxHP),String(h.hitDie),h.scores.description,h.slots.description,h.edition]
         boundary += (h.classLevels ?? []).map { "class:\($0.id):\($0.level)" }
+        boundary += h.attacks.map { "attack:\($0.id):\($0.equipmentID?.uuidString ?? "manual")" }
         boundary += h.items.map { "item:\($0.id)" }
         boundary += (h.featureEntries ?? []).map { feature in
             "effects:"+feature.id.uuidString+":"+(feature.effectMode?.rawValue ?? "legacy")+":"+feature.resolvedEffects.map { effect in "\(effect.id):\(effect.target):\(effect.amount):\(effect.perLevel):\(effect.enabled)" }.joined(separator:";")

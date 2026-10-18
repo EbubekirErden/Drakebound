@@ -9,6 +9,8 @@ struct NamedRoll: Codable, Identifiable, Equatable {
     var kind: D20Kind?
     var ability: Int?
     var resourceCost:ResourceCost?
+    var damageType:String?
+    var upcast:UpcastDice?
 }
 enum FeatureCategory:String,Codable,CaseIterable { case ancestry = "Race / ancestry", classFeature = "Class", feat = "Feat", background = "Background", other = "Other" }
 struct CharacterFeature: Codable, Identifiable, Equatable {
@@ -82,7 +84,7 @@ extension Hero {
         }
         // Resolve and validate before consuming any resource.
         let automatic = (spell.level == 0 && cantripLevel != nil ? cantripRoll(spell,at:cantripLevel!):nil) ?? (spell.rolls ?? []).first { $0.id == spell.automaticRollID }
-        let resolved = try automatic.map { try resolveRoll($0.expression,spell:spell,slot:castLevel) }
+        let resolved = try automatic.map { try resolveRoll($0.expression(spell:spell,slot:castLevel),spell:spell,slot:castLevel) }
         let costs = [spell.resourceCost,automatic?.resourceCost].compactMap { $0 }
         try checkResources(costs)
         var result = try automatic.map { try performNamedRoll($0,source:spell.name,spell:spell,slot:castLevel) } ?? RollResult(label:"Cast \(spell.name)",expression:spell.level == 0 ? "Cantrip cast · no spell slot required" : mode == .slot ? "Level \(castLevel) slot" : mode == .ritual ? "Ritual · add ritual casting time" : "Free use · no slot",dice:[],total:0,event:true)
@@ -121,7 +123,7 @@ extension Hero {
 }
 func validRolls(_ rolls: [NamedRoll]?, hero: Hero, spell: Spell? = nil) -> Bool {
     let all = rolls ?? []
-    return Set(all.map(\.id)).count == all.count && all.allSatisfy { ($0.resourceCost == nil || (1...999).contains($0.resourceCost!.amount)) && ($0.minimumCharacterLevel == nil || (1...20).contains($0.minimumCharacterLevel!)) && ($0.slotLevel == nil || (1...9).contains($0.slotLevel!)) && !$0.name.trimmingCharacters(in:.whitespaces).isEmpty && ($0.kind == nil || $0.expression.lowercased().hasPrefix("1d20")) && ($0.ability == nil || (0...5).contains($0.ability!)) && (try? hero.resolveRoll($0.expression,spell:spell,slot:max(1,spell?.level ?? 1))) != nil }
+    return Set(all.map(\.id)).count == all.count && all.allSatisfy { ($0.upcast == nil || ($0.upcast!.valid && $0.kind == nil && (spell?.level ?? 0) > 0)) && ($0.resourceCost == nil || (1...999).contains($0.resourceCost!.amount)) && ($0.minimumCharacterLevel == nil || (1...20).contains($0.minimumCharacterLevel!)) && ($0.slotLevel == nil || (1...9).contains($0.slotLevel!)) && !$0.name.trimmingCharacters(in:.whitespaces).isEmpty && ($0.kind == nil || $0.expression.lowercased().hasPrefix("1d20")) && ($0.ability == nil || (0...5).contains($0.ability!)) && (try? hero.resolveRoll($0.expression,spell:spell,slot:max(1,spell?.level ?? 1))) != nil && (try? hero.resolveRoll($0.expression(spell:spell,slot:9),spell:spell,slot:9)) != nil }
 }
 func validateActions(_ hero: Hero) throws {
     let saves = hero.pendingConcentrationSaves ?? []
@@ -134,4 +136,26 @@ func validateActions(_ hero: Hero) throws {
           (hero.featureEntries ?? []).allSatisfy({ validRolls($0.rolls,hero:hero) && ($0.counter == nil || ((1...999).contains($0.counter!.maximum) && (0...$0.counter!.maximum).contains($0.counter!.current))) }),
           (hero.hitDicePools ?? []).allSatisfy({ [6,8,10,12].contains($0.sides) && (1...20).contains($0.total) && (0...$0.total).contains($0.used) }),
           hero.sourceXML == nil || hero.sourceXML!.count <= 40_000_000 else { throw CocoaError(.fileReadCorruptFile) }
+}
+
+/// Explicit per-roll rules; old custom rolls keep their existing formulas.
+struct UpcastDice: Codable, Equatable {
+    var count = 1
+    var sides = 6
+    var everySlots = 1
+    var valid: Bool { (1...20).contains(count) && [4,6,8,10,12,20,100].contains(sides) && (1...8).contains(everySlots) }
+}
+extension NamedRoll {
+    func expression(spell: Spell?, slot: Int) -> String {
+        guard let spell, spell.level > 0, let upcast, upcast.valid else { return expression }
+        let extra = max(0,min(9,slot)-spell.level) / upcast.everySlots * upcast.count
+        guard extra > 0 else { return expression }
+        let clean = expression.lowercased().filter { !$0.isWhitespace }
+        let pieces = clean.split(separator:"d",omittingEmptySubsequences:false)
+        if pieces.count == 2, let count = Int(pieces[0]), count <= 1000, let sides = Int(pieces[1]), sides == upcast.sides {
+            return "\(count+extra)d\(sides)"
+        }
+        return expression + "+\(extra)d\(upcast.sides)"
+    }
+    var damageLabel: String { guard let damageType, !damageType.isEmpty, damageType != "None" else { return "" }; return damageType }
 }

@@ -215,7 +215,10 @@ struct JournalPanel: View {
             PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images",color:journalTint,searchTitle:"Search notes",query:$search) {
                 Button { editing = JournalEntry() } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
             }
-            if entries.wrappedValue.isEmpty { ContentUnavailableView("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea.")) }
+            if entries.wrappedValue.isEmpty { CenteredEmptyState("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea."),height:300) }
+            if !entries.wrappedValue.isEmpty && !entries.wrappedValue.contains(where: { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.description.localizedCaseInsensitiveContains(search) }) {
+                CenteredEmptyState("No matching notes",systemImage:"book.closed",description:Text("Try another title or text from your notes."),height:300)
+            }
             ForEach(entries) { $entry in
                 if search.isEmpty || entry.title.localizedCaseInsensitiveContains(search) || entry.description.localizedCaseInsensitiveContains(search) {
                     VStack(alignment:.leading,spacing:0) {
@@ -266,7 +269,6 @@ struct JournalPanel: View {
     }
 }
 
-
 struct CreaturesPanel: View {
     @Binding var hero: Hero
     @ObservedObject var store: Store
@@ -307,7 +309,7 @@ struct CreaturesPanel: View {
             }
         }.sheet(item:$editing) { creature in CreatureEditor(creature:creature) { updated in var all = hero.creatures ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.creatures = all } }
     }
-    func creatureEmptyState(_ title:String,_ message:String) -> some View { GeometryReader { area in ContentUnavailableView(title,systemImage:"pawprint",description:Text(message)).frame(width:area.size.width,height:area.size.height,alignment:.center) }.frame(height:300) }
+    func creatureEmptyState(_ title:String,_ message:String) -> some View { CenteredEmptyState(title,systemImage:"pawprint",description:Text(message),height:300) }
     func matches(_ creature:Creature) -> Bool { search.isEmpty || [creature.name,creature.kind,creature.type].contains { $0.localizedCaseInsensitiveContains(search) } }
 }
 

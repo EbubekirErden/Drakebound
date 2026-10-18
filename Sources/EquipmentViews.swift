@@ -45,7 +45,7 @@ struct EquipmentPanel:View {
                 if items.contains(where:{ $0.containerID == nil }) || !filtering { inventoryGroup(nil) }
                 ForEach(hero.inventoryContainers) { storage in if !filtering || items.contains(where:{ $0.containerID == storage.id }) { inventoryGroup(storage) } }
             }
-            if items.isEmpty && filtering { Text("No items match these filters.").font(.caption).foregroundStyle(.secondary).padding() }
+            if items.isEmpty && filtering { CenteredEmptyState("No matching equipment",systemImage:"backpack",description:Text("Try another search, type, or turn off Equipped."),height:220) }
         }
         .sheet(item:$containerEditor) { storage in ContainerEditor(storage:storage,existing:hero.inventoryContainers) { updated in var all = hero.inventoryContainers; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.equipmentContainers = all } }
         .onReceive(store.$commandRequest) { request in if let request,request.action == .search && request.heroID == hero.id && store.activeTab == "Equipment" && !store.showCompendium && store.consume(request) { searchFocused = true } }
@@ -69,7 +69,7 @@ struct EquipmentPanel:View {
     }
     func itemRow(_ item:Item) -> some View {
         HStack(spacing:12) {
-            Button { if let i = hero.items.firstIndex(where:{ $0.id == item.id }) { hero.items[i].equipped.toggle() } } label: { Image(systemName:item.equipped ? "checkmark.square.fill":"square").font(.system(size:15)).foregroundStyle(item.equipped ? accent:Color.secondary) }.buttonStyle(.plain).help("Equip \(item.name)")
+            Button { hero.setItemEquipped(item.id,!item.equipped,compendium:store.compendium) } label: { Image(systemName:item.equipped ? "checkmark.square.fill":"square").font(.system(size:15)).foregroundStyle(item.equipped ? accent:Color.secondary) }.buttonStyle(.plain).help("Equip \(item.name)")
             Button { store.itemDetail = ItemPresentation(heroID:hero.id,itemID:item.id,ids:items.map(\.id)) } label: {
                 HStack(spacing:12) { VStack(alignment:.leading,spacing:4) { Text(item.name).font(.system(size:13,weight:.medium)); Text(item.equipmentKind.rawValue).font(.system(size:10)).foregroundStyle(.secondary) }; Spacer(minLength:0); if !(item.rolls ?? []).isEmpty { Image(systemName:"dice").foregroundStyle(sky) }; if !(item.bonuses ?? []).isEmpty || item.armorBase != nil { Text("Effects").font(.caption2).foregroundStyle(gold) }; if item.requiresAttunement == true { Text(item.attuned == true ? "Attuned":"Unattuned").font(.caption2).foregroundStyle(item.attuned == true ? sky:coral) }; Text(String(format:"%.1f lb",Double(item.quantity)*item.weight)).font(.system(size:11)).foregroundStyle(.secondary).frame(width:70,alignment:.trailing) }.contentShape(Rectangle())
             }.buttonStyle(.plain).help("Open \(item.name) details")

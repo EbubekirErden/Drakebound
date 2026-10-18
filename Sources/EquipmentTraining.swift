@@ -26,8 +26,9 @@ extension Hero {
     var equipmentTrainingGrants:[TrainingGrant] { allTraining.filter { $0.target.hasPrefix("weapon.") || $0.target.hasPrefix("armor.") } }
     func weaponTraining(for item:Item) -> Bool? {
         guard equipmentTrainingGrants.contains(where:{ $0.target.hasPrefix("weapon.") }) else { return nil } // Preserve legacy/manual attack proficiency when no roster exists.
-        let name=item.name.replacingOccurrences(of:" [2024]",with:"")
+        let name=(item.weaponProfile?.trainingName.isEmpty == false ? item.weaponProfile!.trainingName:item.name).replacingOccurrences(of:" [2024]",with:"")
         if equipmentTrainingGrants.contains(where:{ $0.target.caseInsensitiveCompare("weapon."+name) == .orderedSame }) { return true }
+        if let group=item.weaponProfile?.trainingGroup,["simple","martial"].contains(group) { return equipmentTrainingGrants.contains { $0.target == "weapon."+group } }
         let simple=Array(specificWeaponOptions.prefix(14))
         guard specificWeaponOptions.contains(where:{ $0.caseInsensitiveCompare(name) == .orderedSame }) else { return nil }
         let key=simple.contains(where:{ $0.caseInsensitiveCompare(name) == .orderedSame }) ? "weapon.simple":"weapon.martial"

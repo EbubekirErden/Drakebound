@@ -34,7 +34,7 @@ struct GuideReferencePicker:View {
                     ForEach(matches.prefix(80)) { entry in
                         HStack(spacing:6) { Button { selection = entry.id; browsing = false } label: { VStack(alignment:.leading,spacing:4) { Text(entry.name).font(.system(size:12,weight:.medium)); Text(summary(entry)).font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,9).frame(height:56).background(selection == entry.id ? accent.opacity(0.12):surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain); Button { browsing = false; onPreview(entry) } label: { Image(systemName:"eye").frame(width:36,height:56).background(surface).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain).accessibilityLabel("Preview "+entry.name).help("Preview \(entry.name)") }
                     }
-                    if matches.isEmpty { ContentUnavailableView("No matching entries",systemImage:"magnifyingglass",description:Text("Try another search or filter.")).frame(width:geometry.size.width,height:geometry.size.height) }
+                    if matches.isEmpty { CenteredEmptyState("No matching entries",systemImage:"magnifyingglass",description:Text("Try another search or filter.")).frame(width:geometry.size.width,height:geometry.size.height) }
                     if matches.count > 80 { Text("\(matches.count) matches · narrow your search").font(.caption).foregroundStyle(.secondary) }
                 } } }
             }.padding(16).frame(width:400,height:410).background(paper).foregroundStyle(ink).tint(accent)
@@ -103,7 +103,7 @@ struct GuideSpellBrowser:View {
                                 HStack { Text(tier == 0 ? "CANTRIPS":"LEVEL \(tier)"); Spacer(); Text("\(spells.count)") }.font(.system(size:10,weight:.semibold)).foregroundStyle(sky).padding(.vertical,9).background(surface).id(tier)
                             } }
                         }
-                        if matches.isEmpty { ContentUnavailableView("No matching spells",systemImage:"sparkles",description:Text("Try another level, search, or turn off the class filter.")).frame(width:geometry.size.width,height:geometry.size.height) }
+                        if matches.isEmpty { CenteredEmptyState("No matching spells",systemImage:"sparkles",description:Text("Try another level, search, or turn off the class filter.")).frame(width:geometry.size.width,height:geometry.size.height) }
                     }
                 } } }
             }
