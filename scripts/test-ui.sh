@@ -8,3 +8,7 @@ build/EditorInteractionTests
 
 xcrun swiftc -module-cache-path build/ui-module-cache Sources/InspectorResizeHandle.swift Tests/InspectorResizeTests.swift -o build/InspectorResizeTests -framework SwiftUI -framework AppKit
 build/InspectorResizeTests
+
+# Toolbar/filter geometry checks use no Store or live data location.
+xcrun swiftc -module-cache-path build/ui-module-cache Sources/PageToolbar.swift Tests/PageLayoutTests.swift -o build/PageLayoutTests -framework SwiftUI -framework AppKit
+build/PageLayoutTests

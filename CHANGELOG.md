@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Compendium filters wrap into visible rows and expose removable active-filter chips, result totals, and shown-reference counts. Preview controls distinguish viewing beside results from a larger detail view.
+- Shared page toolbars move search and actions onto separate rows when needed, retaining stable popover anchors. Actions, Equipment, and spell filters wrap, with direct reset controls and filtered-result counts.
+- Sheet statistics use compact equal-height tiles; feature cards adapt their column count to available width, preserving rolls, feature controls, and existing character rules.
+
 - Creation and level-up use a labeled Preview toggle with a split-panel icon and a visible active state for the preview beside the form.
 - Feature eye previews keep presentation state local instead of rebuilding the draft screen. Progress and footer validation avoid repeated evaluations during a refresh.
 - Feature, spell, equipment, and reference previews share consistent headings, readable details, and Done controls; source credits appear below reference content. Draft spell and equipment rows and Review lists offer read-only eye previews alongside editing.

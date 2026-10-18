@@ -21,10 +21,9 @@ struct EquipmentPanel:View {
             PageToolbar(title:"Equipment",subtitle:String(format:"%d items · %.1f / %d lb",hero.items.count,hero.items.reduce(0) { $0+Double($1.quantity)*$1.weight },hero.effectiveScore(0)*15),color:gold,searchTitle:"Search equipment",query:$search,focus:$searchFocused) {
                 Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:gold,prominent:true)).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
             }
-            HStack(spacing:12) {
+            ControlFlowLayout(spacing:10) {
                 PagePicker(title:"Type",selectionTitle:kind,selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.frame(width:150)
                 Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox).padding(.horizontal,10).frame(height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8))
-                Spacer(minLength:8)
                 CurrencyButton(hero:$hero).buttonStyle(PageButtonStyle())
                 Menu {
                     Button("New container…",systemImage:"shippingbox") { containerEditor = EquipmentContainer(name:"") }
@@ -41,6 +40,15 @@ struct EquipmentPanel:View {
                         }.padding(20) }.frame(width:460,height:440)
                     }
             }.font(.system(size:12)).controlSize(.regular)
+            if filtering {
+                ControlFlowLayout(spacing:6) {
+                    if !search.isEmpty { ActiveFilterChip(title:"Search: "+search) { search="" } }
+                    if kind != "All types" { ActiveFilterChip(title:kind) { kind="All types" } }
+                    if equippedOnly { ActiveFilterChip(title:"Equipped") { equippedOnly=false } }
+                    Button("Clear all") { search="";kind="All types";equippedOnly=false }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(accent)
+                    Text("\(items.count) of \(hero.items.count) entries").font(.system(size:11)).foregroundStyle(.secondary)
+                }
+            }
             LazyVStack(spacing:10) {
                 if items.contains(where:{ $0.containerID == nil }) || !filtering { inventoryGroup(nil) }
                 ForEach(hero.inventoryContainers) { storage in if !filtering || items.contains(where:{ $0.containerID == storage.id }) { inventoryGroup(storage) } }

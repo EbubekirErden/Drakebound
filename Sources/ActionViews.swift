@@ -65,16 +65,16 @@ struct FeaturePanel: View {
     @State private var expanded:Set<UUID> = []
     var body: some View {
         Card(title:"Features & traits") {
-            HStack(spacing:6) {
-                Button("All") { filter = nil }.tint(filter == nil ? accent:Color.gray)
-                ForEach(FeatureCategory.allCases,id:\.self) { category in Button(category.rawValue) { filter = category }.tint(filter == category ? accent:Color.gray) }
-                Spacer();Button { browseFeats=true } label: { Label("Browse feats",systemImage:"books.vertical") }.popover(isPresented:$browseFeats) { FeatQuickAdd(hero:$hero,entries:store.compendium.filter { $0.category == .feat }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) }; Button { editing = CharacterFeature(category:filter ?? .other) } label: { Label("Feature",systemImage:"plus") }.buttonStyle(.plain).foregroundStyle(accent)
-            }.font(.system(size:10))
+            ControlFlowLayout(spacing:8) {
+                Button("All") { filter = nil }.buttonStyle(PageButtonStyle(prominent:filter == nil))
+                ForEach(FeatureCategory.allCases,id:\.self) { category in Button(category.rawValue) { filter = category }.buttonStyle(PageButtonStyle(prominent:filter == category)) }
+                Button { browseFeats=true } label: { Label("Browse feats",systemImage:"books.vertical") }.popover(isPresented:$browseFeats) { FeatQuickAdd(hero:$hero,entries:store.compendium.filter { $0.category == .feat }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) }; Button { editing = CharacterFeature(category:filter ?? .other) } label: { Label("Feature",systemImage:"plus") }.buttonStyle(.plain).foregroundStyle(accent)
+            }.buttonStyle(PageButtonStyle()).font(.system(size:11))
             ForEach(FeatureCategory.allCases,id:\.self) { category in
                 let entries = (hero.featureEntries ?? []).filter { ($0.category ?? .other) == category }
                 if !entries.isEmpty && (filter == nil || filter == category) {
                     Text("\(category.rawValue) · \(entries.count)").font(.system(size:11,weight:.semibold)).foregroundStyle(gold).padding(.top,8)
-                    LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:10),count:min(2,max(1,entries.count))),alignment:.leading,spacing:10) {
+                    LazyVGrid(columns:[GridItem(.adaptive(minimum:280),spacing:10)],alignment:.leading,spacing:10) {
                         ForEach(SelectionRules.outline(entries)) { row in
                             let feature=row.feature
                             VStack(alignment:.leading,spacing:10) {

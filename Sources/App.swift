@@ -372,12 +372,12 @@ struct HeroView: View {
     }
     var character: some View {
         VStack(spacing:14) {
-            HStack(spacing:8) {
-                stat("AC","\(hero.armorClass)","shield").help(hero.armorClassExplanation)
-                RollChoiceButton(explanation:hero.initiativeExplanation) { mode in store.rollTyped(hero.expression("1d20",bonus:hero.initiative,targets:["initiative","checks","check.1"]),"Initiative",hero:hero,kind:.initiative,ability:1,mode:mode) } label: { stat("INIT",signed(hero.initiative+hero.testPenalty),"bolt") }
-                stat("SPEED","\(hero.movement)","figure.walk")
-                stat("PROF",signed(hero.proficiency),"star")
-                stat("PASSIVE","\(hero.passivePerception)","eye")
+            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:8),count:5),spacing:8) {
+                sheetStat("AC","\(hero.armorClass)","shield").help(hero.armorClassExplanation)
+                RollChoiceButton(explanation:hero.initiativeExplanation) { mode in store.rollTyped(hero.expression("1d20",bonus:hero.initiative,targets:["initiative","checks","check.1"]),"Initiative",hero:hero,kind:.initiative,ability:1,mode:mode) } label: { sheetStat("INIT",signed(hero.initiative+hero.testPenalty),"bolt") }
+                sheetStat("SPEED","\(hero.movement)","figure.walk")
+                sheetStat("PROF",signed(hero.proficiency),"star")
+                sheetStat("PASSIVE","\(hero.passivePerception)","eye")
             }
             HealthPanel(hero:$hero,store:store,rest:{ rest = true })
             AbilityTable(hero:$hero,store:store)
@@ -388,6 +388,12 @@ struct HeroView: View {
             FeaturePanel(hero:$hero,store:store)
             BonusPanel(hero:$hero)
         }
+    }
+    func sheetStat(_ label:String,_ value:String,_ icon:String)->some View {
+        VStack(spacing:5) {
+            Label(label,systemImage:icon).font(.system(size:9,weight:.medium)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.75)
+            Text(value).font(.system(size:20,weight:.medium,design:.rounded)).lineLimit(1).minimumScaleFactor(0.75)
+        }.frame(maxWidth:.infinity).frame(height:60).background(surface,in:RoundedRectangle(cornerRadius:7))
     }
     func stat(_ label: String,_ value: String,_ icon:String) -> some View {
         HStack(spacing:6) { Image(systemName:icon).foregroundStyle(.secondary).font(.system(size:10)); Text(label).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8); Spacer(minLength:2); Text(value).font(.system(size:20,weight:.medium,design:.rounded)).lineLimit(1).minimumScaleFactor(0.75) }.padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:PageControl.statisticHeight).background(surface).clipShape(RoundedRectangle(cornerRadius:6))
@@ -413,7 +419,7 @@ struct HeroView: View {
                 Text("Filled circles are expended. Set slot totals and casting ability in Edit character.").font(.caption2).foregroundStyle(.secondary)
             }
             VStack(spacing:10) {
-                HStack(spacing:12) {
+                ControlFlowLayout(spacing:10) {
                     HStack(spacing:2) {
                         ForEach(PreparationFilter.allCases,id:\.self) { filter in
                             Button { preparation = filter } label: {
@@ -424,7 +430,15 @@ struct HeroView: View {
                         }
                     }.padding(3).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
                     PagePicker(title:"Spell level",selectionTitle:spellLevel < 0 ? "All levels":spellLevel == 0 ? "Cantrips":"Level \(spellLevel)",selection:$spellLevel) { Text("All levels").tag(-1); Text("Cantrips").tag(0); ForEach(1...9,id:\.self) { Text("Level \($0)").tag($0) } }.frame(width:125)
-                    Spacer(minLength:0)
+                }
+                if !search.isEmpty || preparation != .all || spellLevel >= 0 {
+                    ControlFlowLayout(spacing:6) {
+                        if !search.isEmpty { ActiveFilterChip(title:"Search: "+search) { search="" } }
+                        if preparation != .all { ActiveFilterChip(title:preparation.rawValue) { preparation = .all } }
+                        if spellLevel >= 0 { ActiveFilterChip(title:spellLevel == 0 ? "Cantrips":"Level \(spellLevel)") { spellLevel = -1 } }
+                        Button("Clear all") { search="";preparation = .all;spellLevel = -1 }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(accent)
+                        Text("\(spellNavigationIDs.count) of \(hero.spells.count) spells").font(.system(size:11)).foregroundStyle(.secondary)
+                    }
                 }
             }
             ForEach(0...9,id:\.self) { level in

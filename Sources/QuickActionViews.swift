@@ -105,14 +105,14 @@ struct QuickActionsPanel:View {
         }.frame(height:26)
     }
     private var fullFilters:some View {
-        ViewThatFits(in:.horizontal) {
-            HStack(spacing:12) { filterSegments; categoryPicker; timingPicker; Spacer(minLength:0) }
-            VStack(alignment:.leading,spacing:10) {
-                filterSegments
-                HStack(spacing:12) { categoryPicker; timingPicker; Spacer(minLength:0) }
+        ControlFlowLayout(spacing:10) {
+            filterSegments;categoryPicker;timingPicker
+            if !query.isEmpty || category != .all || timing != nil {
+                Button("Clear filters") { query="";category = .all;timing=nil;expanded=false }.buttonStyle(PageButtonStyle())
             }
         }
     }
+
     private var filterSegments:some View {
         HStack(spacing:2) {
             ForEach(QuickActionFilter.allCases,id:\.self) { choice in

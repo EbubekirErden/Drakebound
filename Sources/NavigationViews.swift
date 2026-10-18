@@ -82,10 +82,10 @@ struct CompendiumView:View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Compendium",subtitle:"\(store.compendium.count.formatted()) reference entries",searchTitle:"Search compendium…",query:$query,focus:$searchFocused) {
                 Button { creation = CompendiumCreation(category:category) } label: { Label("New \(category.singular.lowercased())",systemImage:"plus") }.buttonStyle(PageButtonStyle(prominent:true))
-                Button { if inspectorEnabled { selected = nil; message = "" }; inspectorEnabled.toggle(); expandedDetail = false } label: { Image(systemName:"sidebar.right") }
-                    .buttonStyle(PageButtonStyle()).disabled(browserWidth < 950)
-                    .help(browserWidth < 950 ? "Widen the window to use the detail inspector":"Show or hide the detail inspector")
-                    .accessibilityLabel("Detail inspector").accessibilityValue(inspectorEnabled ? "On":"Off")
+                Button { if inspectorEnabled { selected = nil; message = "" }; inspectorEnabled.toggle(); expandedDetail = false } label: { Label("Preview",systemImage:"rectangle.split.2x1") }
+                    .buttonStyle(PageButtonStyle(prominent:canInspect)).disabled(browserWidth < 950)
+                    .help(browserWidth < 950 ? "Widen the window to preview beside results":"Show or hide preview beside results")
+                    .accessibilityLabel("Preview beside results").accessibilityValue(inspectorEnabled ? "On":"Off")
                 Menu {
                     Button(selectionMode ? "Cancel selection":"Select multiple") { selectionMode.toggle(); if !selectionMode { picks = [] } }
                     Button("Import XML…") { store.importBackup() }.disabled(store.importingCompendium)
@@ -96,11 +96,11 @@ struct CompendiumView:View {
                 } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden)
                     .frame(width:34,height:34).background(surface,in:RoundedRectangle(cornerRadius:8)).help("Compendium options").accessibilityLabel("Compendium options")
             }
-            HStack(spacing:6) {
+            ScrollView(.horizontal,showsIndicators:false) { HStack(spacing:6) {
                 ForEach(CompendiumCategory.allCases,id:\.self) { type in
-                    Button { category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity).padding(.vertical,10).background((type == category ? accent:ink).opacity(type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain)
+                    Button { category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8).background((type == category ? accent:ink).opacity(type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).accessibilityAddTraits(type == category ? .isSelected:[])
                 }
-            }
+            } }
             categoryFilters
             if selectionMode {
                 HStack(spacing:10) {
@@ -113,7 +113,7 @@ struct CompendiumView:View {
             }
             if store.compendium.isEmpty && category == .spell {
                 ScrollView { customSpells }
-            } else if matches.isEmpty && (category != .spell || extraSpells.isEmpty) { CenteredEmptyState("No matching entries",systemImage:"books.vertical",description:Text(store.compendium.isEmpty ? "Import a Fight Club compendium to browse this category.":"Try a different name or category.")) }
+            } else if matches.isEmpty && (category != .spell || extraSpells.isEmpty) { CenteredEmptyState("No matching entries",systemImage:"books.vertical",description:Text(store.compendium.isEmpty ? "Import a Fight Club compendium to browse this category.":"Try a different search or remove a filter above.")) }
             else {
                 ScrollView {
                     if category == .spell && !extraSpells.isEmpty { Text("Custom & starter spells").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading); customSpells.padding(.bottom,16); if !matches.isEmpty { Text("Imported references").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading) } }
@@ -135,8 +135,7 @@ struct CompendiumView:View {
     private func clearCategoryFilters() { query = ""; subgroup = "All"; school = "All schools"; spellClass = "All classes" }
     var categoryFilters:some View {
         VStack(alignment:.leading,spacing:8) {
-            ScrollView(.horizontal,showsIndicators:false) {
-                HStack(spacing:8) {
+            ControlFlowLayout {
                     PagePicker(title:"Sources",selectionTitle:sourceScope.rawValue,selection:$sourceScope) {
                         ForEach(CompendiumScope.allCases,id:\.self) { Text($0.rawValue).tag($0) }
                     }.frame(width:160)
@@ -150,14 +149,23 @@ struct CompendiumView:View {
                         PagePicker(title:"Class list",selectionTitle:spellClass,selection:$spellClass) { Text("All classes").tag("All classes"); ForEach(classChoices,id:\.self) { Text($0).tag($0) } }.frame(width:140)
                     }
 
-                }.padding(.vertical,1)
             }
-            HStack(spacing:10) {
+            ControlFlowLayout {
+                if sourceScope == .curated { Toggle("Include UA",isOn:$includeUA).toggleStyle(.checkbox); Toggle("Include homebrew",isOn:$includeHomebrew).toggleStyle(.checkbox) }
+                Text("\((matches.count+(category == .spell ? extraSpells.count:0)).formatted()) results"+(matches.count > limit ? " · \(limit) imported shown":"")+(searchDescriptions ? " · includes descriptions":"")).foregroundStyle(.secondary)
                 Button("Clear all filters") { clearAllFilters() }.buttonStyle(.plain).foregroundStyle(accent).disabled(!hasActiveFilters)
-                if sourceScope == .curated { Toggle("Include UA",isOn:$includeUA); Toggle("Include homebrew",isOn:$includeHomebrew) }
-                Spacer(minLength:0)
-                Text("\((matches.count+(category == .spell ? extraSpells.count:0)).formatted()) results"+(searchDescriptions ? " · includes descriptions":"")).font(.caption2).foregroundStyle(.secondary)
             }.font(.system(size:11))
+            if hasActiveFilters {
+                ControlFlowLayout(spacing:6) {
+                    if !query.isEmpty { ActiveFilterChip(title:"Search: "+query) { query="" } }
+                    if sourceScope != .all { ActiveFilterChip(title:sourceScope.rawValue) { sourceScope = .all } }
+                    if subgroup != "All" { ActiveFilterChip(title:subgroup) { subgroup="All" } }
+                    if school != "All schools" { ActiveFilterChip(title:school) { school="All schools" } }
+                    if spellClass != "All classes" { ActiveFilterChip(title:spellClass) { spellClass="All classes" } }
+                    if sourceScope == .curated && includeUA { ActiveFilterChip(title:"Include UA") { includeUA=false } }
+                    if sourceScope == .curated && includeHomebrew { ActiveFilterChip(title:"Include homebrew") { includeHomebrew=false } }
+                }
+            }
         }
     }
     var customSpells:some View {
@@ -189,9 +197,9 @@ struct CompendiumView:View {
                 Button(entry.custom == true ? "Edit":"Edit copy") { creation = CompendiumCreation(category:entry.category,original:entry) }.buttonStyle(PageButtonStyle())
                 Spacer(minLength:0)
                 if canInspect && !expandedDetail {
-                    Button { openExpanded(entry) } label: { Image(systemName:"arrow.up.left.and.arrow.down.right") }.buttonStyle(PageButtonStyle()).help("Open larger details").accessibilityLabel("Open larger details")
+                    Button { openExpanded(entry) } label: { Label("Larger view",systemImage:"arrow.up.left.and.arrow.down.right") }.buttonStyle(PageButtonStyle()).help("Open larger details").accessibilityLabel("Open larger details")
                 } else {
-                    Button { inspectorEnabled = true; expandedDetail = false } label: { Image(systemName:"sidebar.right") }.buttonStyle(PageButtonStyle()).disabled(browserWidth < 950).help("Open in the right inspector").accessibilityLabel("Open in right inspector")
+                    Button { inspectorEnabled = true; expandedDetail = false } label: { Label("Beside results",systemImage:"rectangle.split.2x1") }.buttonStyle(PageButtonStyle()).disabled(browserWidth < 950).help(browserWidth < 950 ? "Widen the window to preview beside results":"Dock this preview beside the compendium results").accessibilityLabel("Preview beside results")
                 }
             }
             ScrollView {

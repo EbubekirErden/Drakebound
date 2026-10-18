@@ -99,27 +99,61 @@ struct PageToolbar<Actions: View>: View {
     }
 }
 
-// Keep one copy of the actions so popovers have one stable presentation anchor.
+// Keep a single presentation anchor for each action as the toolbar changes rows.
 private struct PageToolbarLayout: Layout {
-    private func sizes(_ subviews:Subviews) -> (CGSize,CGSize) {
-        (subviews[0].sizeThatFits(.unspecified),subviews[2].sizeThatFits(.unspecified))
-    }
     func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) -> CGSize {
-        let (heading,actions) = sizes(subviews)
-        let width = proposal.width ?? heading.width+200+actions.width+32
-        let inline = width >= heading.width+200+actions.width+32
-        let rowHeight = max(PageControl.height,actions.height)
-        return CGSize(width:width,height:inline ? max(heading.height,rowHeight):heading.height+10+rowHeight)
+        let heading=subviews[0].sizeThatFits(.unspecified),actions=subviews[2].sizeThatFits(.unspecified)
+        let width=proposal.width ?? heading.width+200+actions.width+32
+        let rowHeight=max(PageControl.height,actions.height)
+        if width >= heading.width+200+actions.width+32 { return CGSize(width:width,height:max(heading.height,rowHeight)) }
+        if width >= 140+actions.width+12 { return CGSize(width:width,height:heading.height+10+rowHeight) }
+        return CGSize(width:width,height:heading.height+10+PageControl.height+10+actions.height)
     }
     func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
-        let (heading,actions) = sizes(subviews)
-        let inline = bounds.width >= heading.width+200+actions.width+32
-        let rowHeight = max(PageControl.height,actions.height)
-        let rowY = inline ? bounds.minY+(bounds.height-rowHeight)/2:bounds.minY+heading.height+10
+        let heading=subviews[0].sizeThatFits(.unspecified),actions=subviews[2].sizeThatFits(.unspecified)
+        let inline=bounds.width >= heading.width+200+actions.width+32
+        let separateActions=bounds.width < 140+actions.width+12
+        let rowHeight=max(PageControl.height,actions.height)
+        let rowY=inline ? bounds.minY+(bounds.height-rowHeight)/2:bounds.minY+heading.height+10
         subviews[0].place(at:CGPoint(x:bounds.minX,y:inline ? bounds.minY+(bounds.height-heading.height)/2:bounds.minY),anchor:.topLeading,proposal:ProposedViewSize(heading))
-        let searchWidth = inline ? 200:max(140,bounds.width-actions.width-12)
-        let searchX = inline ? bounds.maxX-actions.width-12-searchWidth:bounds.minX
-        subviews[1].place(at:CGPoint(x:searchX,y:rowY+(rowHeight-PageControl.height)/2),anchor:.topLeading,proposal:ProposedViewSize(width:searchWidth,height:PageControl.height))
-        subviews[2].place(at:CGPoint(x:bounds.maxX-actions.width,y:rowY+(rowHeight-actions.height)/2),anchor:.topLeading,proposal:ProposedViewSize(actions))
+        let searchWidth=separateActions ? bounds.width:inline ? 200:bounds.width-actions.width-12
+        let searchX=inline ? bounds.maxX-actions.width-12-searchWidth:bounds.minX
+        subviews[1].place(at:CGPoint(x:searchX,y:separateActions ? rowY:rowY+(rowHeight-PageControl.height)/2),anchor:.topLeading,proposal:ProposedViewSize(width:searchWidth,height:PageControl.height))
+        subviews[2].place(at:CGPoint(x:separateActions ? bounds.minX:bounds.maxX-actions.width,y:separateActions ? rowY+PageControl.height+10:rowY+(rowHeight-actions.height)/2),anchor:.topLeading,proposal:ProposedViewSize(actions))
+    }
+}
+
+// Filters retain their own controls and popover anchors while wrapping onto additional rows.
+struct ControlFlowLayout:Layout {
+    var spacing:CGFloat = 8
+    private func arrange(width:CGFloat,subviews:Subviews)->(CGSize,[CGPoint],[CGSize]) {
+        var points:[CGPoint]=[],sizes:[CGSize]=[]
+        var x:CGFloat=0,y:CGFloat=0,rowHeight:CGFloat=0
+        var rowStart=0
+        func centerRow() { for index in rowStart..<points.count { points[index].y += (rowHeight-sizes[index].height)/2 } }
+        for view in subviews {
+            let ideal=view.sizeThatFits(.unspecified)
+            let size=view.sizeThatFits(ProposedViewSize(width:min(ideal.width,width),height:nil))
+            if x > 0 && x+size.width > width { centerRow();rowStart=points.count;x=0;y += rowHeight+spacing;rowHeight=0 }
+            points.append(CGPoint(x:x,y:y));sizes.append(size)
+            x += size.width+spacing;rowHeight=max(rowHeight,size.height)
+        }
+        centerRow()
+        return (CGSize(width:width,height:y+rowHeight),points,sizes)
+    }
+    func sizeThatFits(proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) -> CGSize {
+        arrange(width:max(1,proposal.width ?? subviews.reduce(CGFloat(0)) { $0+$1.sizeThatFits(.unspecified).width+spacing }),subviews:subviews).0
+    }
+    func placeSubviews(in bounds:CGRect,proposal:ProposedViewSize,subviews:Subviews,cache:inout ()) {
+        let (_,points,sizes)=arrange(width:max(1,bounds.width),subviews:subviews)
+        for index in subviews.indices { subviews[index].place(at:CGPoint(x:bounds.minX+points[index].x,y:bounds.minY+points[index].y),anchor:.topLeading,proposal:ProposedViewSize(sizes[index])) }
+    }
+}
+struct ActiveFilterChip:View {
+    var title:String
+    var clear:()->Void
+    var body:some View {
+        Button(action:clear) { HStack(spacing:6) { Text(title).lineLimit(1);Image(systemName:"xmark").font(.system(size:8,weight:.semibold)) }.font(.system(size:11)).padding(.horizontal,9).frame(height:28).background(accent.opacity(0.09),in:Capsule()) }
+            .buttonStyle(.plain).foregroundStyle(accent).help("Remove filter: "+title).accessibilityLabel("Remove filter: "+title)
     }
 }
