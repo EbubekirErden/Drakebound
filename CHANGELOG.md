@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 1.0.0 — 2026-10-18
+
+- Included offline SRD compendium: 339 spells, 12 core classes with SRD subclasses and progression tables, 9 species, 4 backgrounds, 17 feats, 963 equipment/magic-item references and variants, and 331 creature references. New users can create and browse without importing a library.
+- Bundled rules load separately from user records. Stable reference IDs prevent duplicate records on relaunch; imports, custom edits, and existing characters are preserved. 2024 references are labeled by edition and never silently selected for a 2014 class.
+- Help includes rules attribution, the CC BY 4.0 license, and the unmodified official SRD 5.2.1 PDF. Sources and adaptation details are included in the app and repository; only the SRD content has this license.
+- Creation and level-up discover supported spells directly from compendium references as well as the saved library.
+
+
 - First launch opens Welcome with guided creation, character import instructions, an optional demo preview, and compendium browsing. Existing character archives open directly into the workspace. Cancelling creation returns to Welcome without creating a character.
 - Empty character rosters now save and reload correctly, including after removing the last character. Unreadable archives enter a protected recovery screen and cannot be overwritten by normal saves, creation, or imports.
 

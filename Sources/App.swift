@@ -50,6 +50,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
     @Published var itemDetail:ItemPresentation?
     @Published var characterGuide:CharacterGuideSession?
     private var saveTask: Task<Void,Never>?
+    var bundledSRD=BundledSRD.empty
     let file: URL
     init() {
         file = FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("Fellowship5e/characters.json")
@@ -63,6 +64,8 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
             do { compendium = try JSONDecoder().decode([CompendiumEntry].self,from:Data(contentsOf:compendiumFile)) }
             catch { self.error = "The compendium could not be read. Its file was left untouched.\n\(error.localizedDescription)" }
         }
+        do { bundledSRD=try BundledSRD.load();compendium=bundledSRD.merging(entries:compendium);library=bundledSRD.merging(spells:library) }
+        catch { self.error="The included SRD library could not be loaded. Your characters and imported references are unchanged. Reinstall the complete app bundle to restore the included library." }
         let lists = Dictionary(compendium.filter { $0.category == .spell }.map { ($0.id,$0.value("classes")) },uniquingKeysWith:{ first,_ in first })
         for i in library.indices where library[i].classes == nil { library[i].classes = lists[library[i].id] }
         for i in heroes.indices { heroes[i].synchronizeWeaponAttacks(compendium:compendium) }
@@ -82,7 +85,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
         do {
             for i in heroes.indices { heroes[i].synchronizeWeaponAttacks(compendium:compendium);heroes[i].reconcileConcentration() }
             captureActivity()
-            let archive = Archive(heroes:heroes,library:library); try validate(archive)
+            let archive = Archive(heroes:heroes,library:bundledSRD.userSpells(library)); try validate(archive)
             try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
             let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted,.sortedKeys]
             try encoder.encode(archive).write(to:file,options:.atomic)
@@ -118,7 +121,7 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
     }
     func saveCompendium() throws {
         let directory = file.deletingLastPathComponent(); try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
-        try JSONEncoder().encode(compendium).write(to:directory.appendingPathComponent("compendium.json"),options:.atomic)
+        try JSONEncoder().encode(bundledSRD.userEntries(compendium)).write(to:directory.appendingPathComponent("compendium.json"),options:.atomic)
     }
     func exportBackup() {
         let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "Drakebound-backup.json"

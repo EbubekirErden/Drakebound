@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 PREVIEW_ROOT=$(mktemp -d /private/tmp/drakebound-welcome-check.XXXXXX)
 python3 - "$PREVIEW_ROOT" <<'PYTHON'
 from pathlib import Path
-import sys,plistlib,json,hashlib
+import sys,plistlib,json,hashlib,shutil
 root=Path(sys.argv[1]);(root/'data').mkdir()
 live=Path.home()/'Library/Application Support/Fellowship5e'
 names=['characters.json','compendium.json','activity.json']
@@ -25,6 +25,7 @@ assert needle in w
 w=w.replace(needle,needle+'.background(WelcomeProbe(name:"welcome-back"))')
 (root/'ProbedWelcomeView.swift').write_text(w)
 app=root/'WelcomeCheck.app/Contents';(app/'MacOS').mkdir(parents=True)
+shutil.copytree('Resources/SRD',app/'Resources/SRD')
 (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'local.drakebound.welcome-check','CFBundleName':'WelcomeCheck','CFBundleExecutable':'check','CFBundlePackageType':'APPL','NSHighResolutionCapable':True}))
 PYTHON
 SOURCES=()

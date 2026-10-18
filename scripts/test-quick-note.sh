@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 PREVIEW_ROOT=$(mktemp -d /private/tmp/drakebound-quick-note-check.XXXXXX)
 python3 - "$PREVIEW_ROOT" <<'PYTHON'
 from pathlib import Path
-import sys,plistlib,json,hashlib
+import sys,plistlib,json,hashlib,shutil
 root=Path(sys.argv[1]);(root/'data').mkdir()
 live=Path.home()/'Library/Application Support/Fellowship5e'
 names=['characters.json','compendium.json','activity.json']
@@ -17,6 +17,7 @@ s=s.replace(old,'file = URL(fileURLWithPath:"'+str(root/'data/characters.json')+
 s=s.replace('@main struct DrakeboundApp','struct DrakeboundApp')
 (root/'IsolatedApp.swift').write_text(s)
 app=root/'QuickNoteCheck.app/Contents';(app/'MacOS').mkdir(parents=True)
+shutil.copytree('Resources/SRD',app/'Resources/SRD')
 (app/'Info.plist').write_bytes(plistlib.dumps({'CFBundleIdentifier':'local.drakebound.quick-note-check','CFBundleName':'QuickNoteCheck','CFBundleExecutable':'check','CFBundlePackageType':'APPL','NSHighResolutionCapable':True}))
 PYTHON
 SOURCES=()

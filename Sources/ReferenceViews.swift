@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ReferenceBody:View {
     var entry:CompendiumEntry
-    var scalar:[ReferenceField] { entry.fields.filter { $0.children.isEmpty && $0.name != "name" && !$0.text.isEmpty } }
+    var scalar:[ReferenceField] { entry.fields.filter { $0.children.isEmpty && !["name","source","attribution"].contains($0.name) && !$0.text.isEmpty } }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
             if entry.category == .monster { CreatureReferenceStats(entry:entry) }
@@ -11,7 +11,12 @@ struct ReferenceBody:View {
                 DescriptionText(text:field.text).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
             }
             ForEach(Array(entry.fields.filter { !$0.children.isEmpty && !(entry.category == .race && GuideRules.isOriginMetadata($0.children.first { $0.name == "name" }?.text ?? "")) }.enumerated()),id:\.offset) { _,field in ReferenceDisclosure(field:field) }
-            if entry.category == .race { ReferenceMetadataTable(fields:GuideRules.originFacts(entry)) }
+            if entry.category == .race { ReferenceMetadataTable(fields:GuideRules.originFacts(entry).filter { !["source","attribution"].contains($0.name) }) }
+            if !entry.value("attribution").isEmpty {
+                DisclosureGroup("License & attribution") {
+                    Text(entry.value("attribution")).font(.system(size:11)).foregroundStyle(.secondary).textSelection(.enabled).fixedSize(horizontal:false,vertical:true).padding(.top,6)
+                }.font(.caption).foregroundStyle(.secondary)
+            }
         }.frame(maxWidth:.infinity,alignment:.leading)
     }
 }
@@ -39,7 +44,7 @@ struct CreatureReferenceStats:View {
     private let identity = ["size","alignment"]
     private let combat = ["ac","hp","speed"]
     private let scores = ["str","dex","con","int","wis","cha"]
-    var remaining:[ReferenceField] { entry.fields.filter { $0.children.isEmpty && !["name","text","description"].contains($0.name) && !(identity+combat+scores).contains($0.name) && !$0.text.isEmpty } }
+    var remaining:[ReferenceField] { entry.fields.filter { $0.children.isEmpty && !["name","text","description","source","attribution"].contains($0.name) && !(identity+combat+scores).contains($0.name) && !$0.text.isEmpty } }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
             statRow(identity)

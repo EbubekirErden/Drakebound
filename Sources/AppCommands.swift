@@ -48,7 +48,11 @@ struct DrakeboundCommands:Commands {
             Button("Undo") { store.undoFromMenu() }.keyboardShortcut("z").disabled(!store.editingText && !store.canUndoActivity)
             Button("Redo") { store.redoTextFromMenu() }.keyboardShortcut("z",modifiers:[.command,.shift]).disabled(!store.editingText)
         }
-        CommandGroup(replacing:.help) { Button("Tips & shortcuts…") { store.showHelp = true }.disabled(!store.menusAvailable) }
+        CommandGroup(replacing:.help) {
+            Button("Tips & shortcuts…") { store.showHelp = true }.disabled(!store.menusAvailable)
+            Button("Included rules & attribution…") { AppBrand.showRulesCredits() }
+            Button("SRD 5.2.1 reference PDF") { if let url=Bundle.main.resourceURL?.appendingPathComponent("SRD/SRD-5.2.1.pdf") { NSWorkspace.shared.open(url) } }
+        }
         CommandMenu("Character") {
             Button("Edit Character…") { store.request(.edit) }.keyboardShortcut("e").disabled(!store.characterCommandsAvailable)
             Button("Level Up…") { if store.characterCommandsAvailable && store.canPerformMenuAction,let hero = store.heroes.first(where:{ $0.id == store.selected }) { store.beginLevelUp(hero) } }.keyboardShortcut("l",modifiers:[.command,.shift]).disabled(!store.characterCommandsAvailable || (store.heroes.first(where:{ $0.id == store.selected })?.level ?? 20) >= 20)

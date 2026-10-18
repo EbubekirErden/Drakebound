@@ -28,6 +28,10 @@ Tests are executable Swift harnesses under `Tests/`. Scripts compile explicit so
 
 This is a navigation aid, not a strict module boundary; many views and rules share the central models. Verify call sites before changing persistence or calculations.
 
+## Bundled reference data
+
+`Resources/SRD/` contains generated CC BY 4.0 references, notices, provenance, and the official PDF. The build copies this directory into the signed app. `BundledSRD.swift` validates and loads resources, merges by stable IDs with user records, and removes unchanged bundled copies when persisting the local library. Modified records and custom copies remain persisted. Character data is not a content source. See the resource README for conversion inputs and licensing.
+
 ## Persistence boundaries
 
 The application retains the historical `Fellowship5e` save-directory name. Character archives, compendium data, and local activity history have separate files. Images are embedded in character data. JSON character exports are editable backups; PDFs are static snapshots. Activity history is separate from character backup exports.

@@ -11,7 +11,7 @@ Built with SwiftUI for **Apple silicon Macs running macOS 14 or later**. No serv
 1. Open the [Releases page](https://github.com/EbubekirErden/Drakebound/releases) and choose a release with a downloadable app attached. GitHub's automatic source archives do not contain a built app.
 2. Download and extract the app archive, then drag `Drakebound.app` into Applications.
 3. Open Drakebound and create a character or import a Drakebound JSON backup or compatible Fight Club character XML.
-4. Import your own compendium XML for additional spells, equipment, creatures, and character options.
+4. Use the included offline SRD library, or import your own compendium XML for additional character options.
 
 If no app download is attached yet, see [Build from source](#build-from-source). Local builds are ad-hoc signed and are not Developer ID signed or notarized; macOS may require explicit approval to open a downloaded build. See [Apple's guidance](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac).
 
@@ -25,7 +25,7 @@ If no app download is attached yet, see [Build from source](#build-from-source).
 | Equipment | Containers, quantities, currencies, attunement, armor effects, and linked weapon attacks. |
 | Creation and advancement | Guided character creation and level-up with explicit choices and a review before applying. |
 | Journal and companions | Notes, images, tags, quick capture, and creature records with independent HP and attacks. |
-| References | Searchable compendium, custom entries, and Fight Club XML imports. |
+| References | Included offline SRD library, searchable compendium, custom entries, and Fight Club XML imports. |
 | Portability | Additive JSON backup import, backup export, and printable character PDFs. |
 
 See the [user guide](docs/USER_GUIDE.md) for detailed controls and compatibility notes. Documentation describes the current working tree; check the selected release's notes for what its download includes.
@@ -47,7 +47,7 @@ JSON imports add characters with new IDs rather than replacing existing ones. Ch
 Drakebound is a personal character tracker. Imported reference descriptions do not automatically implement every rule, prerequisite, or class choice; manual overrides remain part of the workflow.
 
 - Fight Club character XML import supports tested export shapes; edited-character XML export and full two-way compatibility are not implemented.
-- The starter library is small. Import references you have permission to use; this repository does not provide a complete rules database.
+- The included SRD library provides the 12 core classes and their SRD subclasses, 9 species, 4 backgrounds, 17 feats, 339 spells, equipment/magic-item variants, and creatures. It covers the SRD subset; other books require your own permitted imports. See [included content and licensing](Resources/SRD/README.md).
 - Cloud sync, encounter initiative ordering, and automatic familiar/summon rules are not implemented.
 - Multiclass Spellcasting and Pact Magic do not have separate automatic slot pools; mixed Pact Magic needs a manual counter.
 
@@ -68,7 +68,8 @@ The app is written to `build/Drakebound.app`. The build script targets `arm64-ap
 ```text
 Sources/       Swift application, views, importers, and character rules
 Tests/         Regression and interaction test harnesses
-scripts/       Build, test, and generated-icon scripts
+scripts/       Build, test, data-conversion, and generated-icon scripts
+Resources/SRD/ Bundled CC BY 4.0 rules, official PDF, notices, and provenance
 docs/          User guide, architecture notes, and release checklist
 .github/       Issue and pull request templates
 build/         Generated apps, binaries, and caches (ignored)
@@ -81,4 +82,4 @@ Read [the architecture notes](docs/ARCHITECTURE.md) to navigate the source and [
 
 [Report a bug or suggest an improvement](https://github.com/EbubekirErden/Drakebound/issues). Include the app version, macOS version, reproduction steps, and a redacted screenshot when useful. See [CONTRIBUTING.md](CONTRIBUTING.md) for development and validation guidance.
 
-Drakebound is independently built and is not affiliated with Lion’s Den or Wizards of the Coast. Product names belong to their respective owners. No open-source license has been declared in this repository; public availability alone does not grant reuse rights.
+Drakebound is independently built and is not affiliated with Lion’s Den or Wizards of the Coast. Product names belong to their respective owners. No open-source license has been declared for the application code; public availability alone does not grant reuse rights. Included SRD content is separately available under [CC BY 4.0](Resources/SRD/CC-BY-4.0.txt), with [required attribution](Resources/SRD/ATTRIBUTION.txt).

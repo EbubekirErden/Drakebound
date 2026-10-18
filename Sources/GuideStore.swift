@@ -28,7 +28,7 @@ extension Store {
             guard let i = next.firstIndex(where:{ $0.id == original.id }),next[i] == original else { throw GuideError.changed }
             next[i] = hero
         } else { next.append(hero) }
-        let archive = Archive(heroes:next,library:library); try validate(archive)
+        let archive = Archive(heroes:next,library:bundledSRD.userSpells(library)); try validate(archive)
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted,.sortedKeys]
         let encoded = try encoder.encode(archive)
         try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)

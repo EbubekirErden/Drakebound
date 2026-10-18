@@ -22,6 +22,8 @@ struct WelcomeTestRoot:View {
         let store=Store()
         precondition(CommandLine.arguments.count == 2 && store.file.path == CommandLine.arguments[1],"Fixture Store must use the compiled isolated path")
         precondition(store.heroes.isEmpty && store.selected == nil && !FileManager.default.fileExists(atPath:store.file.path),"Fresh install must not seed a demo")
+        precondition(store.compendium.count == 1675 && store.library.count >= 339,"Fresh installs must include the offline SRD")
+        precondition(store.error == nil,"Bundled rules should load without an import")
         UserDefaults.standard.set("dark",forKey:"appAppearance")
         let host=NSHostingView(rootView:WelcomeTestRoot(store:store))
         let window=NSWindow(contentRect:NSRect(x:0,y:0,width:1000,height:760),styleMask:[.titled,.closable],backing:.buffered,defer:false)

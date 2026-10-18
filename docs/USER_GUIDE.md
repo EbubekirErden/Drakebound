@@ -62,7 +62,7 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 - Fight Club compendium and character XML import, tested against a `pc version="5"` export, with a character import review note and preservation of the original character XML.
 - Named custom rolls on spells, items, and features, with visible formulas, ranges, and character-stat tokens.
 
-The starter library contains ten spells with short, original reference summaries. Import your own Fight Club compendium XML to populate the library. Imported descriptions and templates are references; they do not apply arbitrary rules automatically.
+The app includes an offline SRD library covering all seven compendium categories, with 339 spells and the 12 core classes plus their SRD subclasses. The ten original starter summaries remain compatible with earlier archives. Import additional Fight Club XML if needed. References and templates do not apply arbitrary rules automatically. **Help → Included rules & attribution** explains the sources and license; **Help → SRD 5.2.1 reference PDF** opens the included official document.
 
 ## Current limits
 
@@ -153,7 +153,7 @@ Imported repeated spell rolls are retained as separate choices. Unambiguous comp
 
 ## Shared compendium
 
-Open **Compendium** in the sidebar, then import a compendium XML (up to 100 MB). It supports spells, equipment, creatures, feats, races, classes, and backgrounds. Search matches names and summary metadata in the selected category. Subcategory filters include spell level and school, equipment type, and creature type. Equipment type codes are translated into readable labels. Results load in pages of 100. Original nested fields and XML attributes, including class autolevel levels and traits/actions, are retained in a separate local `compendium.json`; JSON backup exports include the compendium too.
+Open **Compendium** in the sidebar to browse the included SRD library immediately. You can also import a compendium XML (up to 100 MB). It supports spells, equipment, creatures, feats, races, classes, and backgrounds. Search matches names and summary metadata in the selected category. Subcategory filters include spell level and school, equipment type, and creature type. Equipment type codes are translated into readable labels. Results load in pages of 100. Original nested fields and XML attributes, including class autolevel levels and traits/actions, are retained in a separate local `compendium.json`; JSON backup exports include the compendium too. Bundled SRD records load from app resources and are not duplicated into this file; custom copies and modifications remain saved with user data.
 
 Every category has a **New** action with a structured editor. Character item, spell, feature, and creature editors offer **Also save a reusable copy to Compendium**. The copy retains rolls, effects, training grants, images, and counters; worn/equipped state, spent charges, current creature damage, and character-specific spell casting sources are reset for reuse. Custom references can be edited; imported references can be edited as a new custom copy. Custom ancestry/background/class editors require titled feature descriptions and the relevant structured data.
 

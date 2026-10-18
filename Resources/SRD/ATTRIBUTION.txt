@@ -1,0 +1,13 @@
+Included rules and attribution
+
+This work includes material from the System Reference Document 5.2.1 (“SRD 5.2.1”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2.1 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+This work includes material from the System Reference Document 5.2 (“SRD 5.2”) by Wizards of the Coast LLC, available at https://www.dndbeyond.com/srd. The SRD 5.2 is licensed under the Creative Commons Attribution 4.0 International License, available at https://creativecommons.org/licenses/by/4.0/legalcode.
+
+Changes: SRD text is converted into searchable references and reformatted for Drakebound. Spell, class, feat and origin descriptions use the SRD 5.2.1 Markdown transcription; equipment, creature statistics and structured progression metadata are adapted from Open5e's SRD 5.2 dataset. Magic-item variants are expanded in that dataset. Descriptions are references; importing a feature does not automatically implement every rule it describes. The official, unmodified SRD 5.2.1 PDF is included for reference.
+
+Structured data: Open5e, https://github.com/open5e/open5e-api
+Markdown transcription: downfallx/dnd-5e-srd-markdown, vendored by https://github.com/azemoning/omni-5e
+Pinned revisions and checksums: provenance.json
+
+The included SRD content is CC BY 4.0. This grant applies to that content separately from the Drakebound application code. No endorsement is implied. Section 5 of CC BY 4.0 contains the disclaimer of warranties and limitation of liability. The full license is included in CC-BY-4.0.txt.

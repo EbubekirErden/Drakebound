@@ -7,6 +7,8 @@ xcrun swiftc -swift-version 5 -O -module-cache-path build/module-cache -target a
 xcrun swift -module-cache-path build/module-cache scripts/icon.swift build/AppIcon.iconset
 xcrun swift -module-cache-path build/module-cache scripts/icon.swift build/SidebarMark.iconset --sidebar-mark
 cp build/SidebarMark.iconset/icon_128x128@2x.png "$APP/Contents/Resources/DrakeboundSidebarMark.png"
+mkdir -p "$APP/Contents/Resources/SRD"
+cp Resources/SRD/* "$APP/Contents/Resources/SRD/"
 iconutil -c icns build/AppIcon.iconset -o "$APP/Contents/Resources/DrakeboundD20.icns"
 cp build/AppIcon.iconset/icon_512x512@2x.png "$APP/Contents/Resources/DrakeboundD20.png"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -19,8 +21,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>Drakebound</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleIconFile</key><string>DrakeboundD20.icns</string>
-<key>CFBundleVersion</key><string>40</string>
-<key>CFBundleShortVersionString</key><string>0.33.0</string>
+<key>CFBundleVersion</key><string>41</string>
+<key>CFBundleShortVersionString</key><string>1.0.0</string>
 <key>UTExportedTypeDeclarations</key><array><dict>
 <key>UTTypeIdentifier</key><string>local.fellowship.five.list-reorder</string>
 <key>UTTypeDescription</key><string>Drakebound list order</string>

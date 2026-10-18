@@ -14,7 +14,10 @@ struct GuideCatalog {
         let groupedNames = Dictionary(grouping:compendium.filter { $0.category == .spell && !$0.value("classes").isEmpty },by:{ $0.name.lowercased() })
         let listsByName = groupedNames.mapValues { entries in Array(Set(entries.map { $0.value("classes") })).sorted().joined(separator:", ") }
         let recovered=compendium.filter(GuideRules.recognizedCantrip).compactMap { entry -> Spell? in try? GuideRules.reviewedSpell(entry,level:0,hero:Hero()) }
-        let pool=library+recovered.filter { entry in !library.contains { $0.id == entry.id } }
+        let libraryIDs=Set(library.map(\.id))
+        let references=compendium.filter { !libraryIDs.contains($0.id) }.compactMap { $0.spell() }+recovered
+        var seen=Set(library.map(\.id))
+        let pool=library+references.filter { seen.insert($0.id).inserted }
         let enriched:[Spell] = pool.map { input -> Spell in
             var spell = input
             if (spell.classes ?? "").isEmpty { let exact = lists[spell.id] ?? ""; spell.classes = exact.isEmpty ? listsByName[spell.name.lowercased()]:exact }
@@ -25,6 +28,6 @@ struct GuideCatalog {
         spellClasses = Dictionary(compendium.filter { $0.category == .spell }.map { ($0.id,$0.value("classes")) },uniquingKeysWith:{ first,_ in first })
     }
     func classReference(_ name:String,edition:String) -> CompendiumEntry? {
-        classes.first { $0.name.caseInsensitiveCompare(name) == .orderedSame } ?? classes.first { $0.name == name+(edition == "2024" ? " [2024]":"") }
+        classes.first { $0.name == name+(edition == "2024" ? " [2024]":"") } ?? classes.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 }

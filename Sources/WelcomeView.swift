@@ -37,8 +37,8 @@ struct WelcomeView:View {
                 WelcomeChoice(title:"Explore a demo",detail:"Try a sample wizard with spells, equipment, and a journal. Entirely optional.",actionTitle:"Preview demo",icon:"sparkles",color:gold) { path = .demo }
             }
             VStack(alignment:.leading,spacing:10) {
-                Text("References are optional").font(.system(size:13,weight:.semibold))
-                Text("You can create custom choices without a compendium, or import reference XML before or after creating your character.").font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                Text("Ready to play offline").font(.system(size:13,weight:.semibold))
+                Text("Included SRD rules provide 12 core classes, their SRD subclasses, species, backgrounds, feats, spells, equipment, and creatures. No import is needed. Add your own references whenever you like.").font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
                 Button { store.showCompendium=true } label: { Label("Browse compendium",systemImage:"books.vertical") }.buttonStyle(PageButtonStyle())
             }.padding(18).frame(maxWidth:.infinity,alignment:.leading).background(surface.opacity(0.55),in:RoundedRectangle(cornerRadius:10))
         }
