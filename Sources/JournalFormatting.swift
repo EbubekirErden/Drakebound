@@ -101,6 +101,13 @@ final class JournalEditorController:ObservableObject {
     func redo() { view?.undoManager?.redo(); refresh() }
 }
 class JournalTextView:NSTextView {
+    override func didChangeText() {
+        if let storage = textStorage { JournalText.ensureReadableColors(storage) }
+        var attributes = typingAttributes
+        attributes[.foregroundColor] = JournalText.readableColor(attributes[.foregroundColor] as? NSColor)
+        typingAttributes = attributes
+        super.didChangeText()
+    }
     var shortcut:((String)->Void)?
     private var keyMonitor:Any?
     deinit { if let keyMonitor { NSEvent.removeMonitor(keyMonitor) } }

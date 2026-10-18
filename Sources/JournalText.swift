@@ -8,10 +8,36 @@ enum JournalText {
         let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 3
         return [.font:font,.foregroundColor:color,.paragraphStyle:paragraph]
     }
+    // Pasted RTF can carry fixed black ink even though the editor uses a dark surface.
+    static func readableColor(_ input:NSColor?) -> NSColor {
+        guard let input else { return color }
+        var rgb:NSColor?
+        NSAppearance(named:.darkAqua)!.performAsCurrentDrawingAppearance { rgb = input.usingColorSpace(.sRGB) }
+        guard let rgb else { return color }
+        let background:[CGFloat] = [0.105,0.125,0.14]
+        func luminance(_ values:[CGFloat]) -> CGFloat {
+            let linear = values.map { $0 <= 0.04045 ? $0/12.92:pow(($0+0.055)/1.055,2.4) }
+            return linear[0]*0.2126+linear[1]*0.7152+linear[2]*0.0722
+        }
+        let visible = zip([rgb.redComponent,rgb.greenComponent,rgb.blueComponent],background).map { $0*rgb.alphaComponent+$1*(1-rgb.alphaComponent) }
+        let foreground = luminance(visible), surface = luminance(background)
+        let contrast = (max(foreground,surface)+0.05)/(min(foreground,surface)+0.05)
+        return contrast >= 4.5 ? input:color
+    }
+    static func ensureReadableColors(_ text:NSMutableAttributedString) {
+        var changes:[(NSRange,NSColor)] = []
+        text.enumerateAttribute(.foregroundColor,in:NSRange(location:0,length:text.length)) { value,range,_ in
+            let original = value as? NSColor
+            let readable = readableColor(original)
+            if original == nil || !readable.isEqual(original) { changes.append((range,readable)) }
+        }
+        for (range,color) in changes { text.addAttribute(.foregroundColor,value:color,range:range) }
+    }
     static func read(_ data:Data?,plain:String) -> NSAttributedString {
         if let data,data.count <= 5_000_000,let text = try? NSAttributedString(data:data,options:[.documentType:NSAttributedString.DocumentType.rtf],documentAttributes:nil),text.string == plain {
             let result = NSMutableAttributedString(attributedString:text)
             result.removeAttribute(.attachment,range:NSRange(location:0,length:result.length))
+            ensureReadableColors(result)
             return result
         }
         return NSAttributedString(string:plain,attributes:attributes)
@@ -19,6 +45,7 @@ enum JournalText {
     static func write(_ text:NSAttributedString) -> Data? {
         let clean = NSMutableAttributedString(attributedString:text)
         clean.removeAttribute(.attachment,range:NSRange(location:0,length:clean.length))
+        ensureReadableColors(clean)
         return try? clean.data(from:NSRange(location:0,length:clean.length),documentAttributes:[.documentType:NSAttributedString.DocumentType.rtf])
     }
     static func link(_ value:String) -> URL? {
