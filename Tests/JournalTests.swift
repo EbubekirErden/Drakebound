@@ -69,7 +69,8 @@ final class TestJournalView:JournalTextView {
         view.textStorage!.setAttributedString(decoded)
         let smallSerif = NSFont(name:"TimesNewRomanPS-ItalicMT",size:12)!
         let readingFont = JournalText.readableFont(smallSerif)
-        assert(readingFont.pointSize == 15)
+        assert(readingFont.pointSize == 13)
+        assert(JournalText.readableFont(NSFont.systemFont(ofSize:15)).pointSize == 13)
         assert(NSFontManager.shared.traits(of:readingFont).contains(.italicFontMask))
         assert(readingFont.familyName == JournalText.font.familyName)
         let oldNote = NSMutableAttributedString(string:"Older pasted note",attributes:[.font:smallSerif])

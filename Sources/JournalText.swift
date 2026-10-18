@@ -2,7 +2,7 @@ import AppKit
 
 // RTF is optional; the plain description remains the searchable, portable fallback.
 enum JournalText {
-    static var font:NSFont { .systemFont(ofSize:15) }
+    static var font:NSFont { .systemFont(ofSize:13) }
     static var color:NSColor { NSColor(calibratedRed:0.89,green:0.90,blue:0.89,alpha:1) }
     static var attributes:[NSAttributedString.Key:Any] {
         let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 4; paragraph.paragraphSpacing = 6
@@ -11,7 +11,7 @@ enum JournalText {
     static func readableFont(_ original:NSFont?) -> NSFont {
         guard let original else { return font }
         let traits = NSFontManager.shared.traits(of:original)
-        let size = max(font.pointSize,original.pointSize)
+        let size = original.pointSize < 18 ? font.pointSize:original.pointSize
         let base = traits.contains(.fixedPitchFontMask) ? NSFont.monospacedSystemFont(ofSize:size,weight:.regular):NSFont.systemFont(ofSize:size)
         return NSFontManager.shared.convert(base,toHaveTrait:traits.intersection([.boldFontMask,.italicFontMask]))
     }
