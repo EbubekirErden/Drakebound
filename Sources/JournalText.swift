@@ -40,7 +40,7 @@ enum JournalText {
         var rgb:NSColor?
         appearance.performAsCurrentDrawingAppearance { rgb = input.usingColorSpace(.sRGB) }
         guard let rgb else { return color }
-        let background:[CGFloat] = isDark ? [0.105,0.125,0.14] : [0.995,0.995,0.985]
+        let background:[CGFloat] = isDark ? [0.105,0.125,0.14] : [0.93,0.94,0.92]
         func luminance(_ values:[CGFloat]) -> CGFloat {
             let linear = values.map { $0 <= 0.04045 ? $0/12.92:pow(($0+0.055)/1.055,2.4) }
             return linear[0]*0.2126+linear[1]*0.7152+linear[2]*0.0722
