@@ -1,19 +1,12 @@
 # Changelog
 
-## 0.33.0
-
-- Edit material requirements below V/S/M; retain embedded component details and import separate XML material fields.
-- Damage rolls have an optional damage-type selector and an explicit automatic upcasting rule, with per-slot previews. Casting and separate damage rolls use the chosen slot while preserving existing manual roll options.
-- Shared centered empty states and compact V/S/M controls with explicit selected indicators.
-
-## 0.32.0
-
-- Equipping a recognized weapon creates a linked attack, using stored/compendium damage, finesse or ranged ability, and source-aware proficiency.
-- Existing equipped weapons are reconciled when loading/saving; manual attacks are preserved and unambiguous existing attacks are linked instead of duplicated.
-- Unequipped attacks remain stowed. Removing an attack disables automatic creation for its item; custom weapon stats and automatic creation can be configured in the item editor.
-- Structured magic weapon bonuses apply only to the linked attack while item effects are active, and reusable templates exclude generated attack links.
-
 ## Unreleased
+
+- Creation and level-up use a labeled Preview toggle with a split-panel icon and a visible active state for the preview beside the form.
+- Feature eye previews keep presentation state local instead of rebuilding the draft screen. Progress and footer validation avoid repeated evaluations during a refresh.
+- Feature, spell, equipment, and reference previews share consistent headings, readable details, and Done controls; source credits appear below reference content. Draft spell and equipment rows and Review lists offer read-only eye previews alongside editing.
+- Spellbook and Review expose per-class spell counts and allowances, extra/always-prepared exclusions, and unmatched casting assignments. These summaries preserve existing selection and validation rules.
+- Equipment review shows entry, quantity, equipped, attunement, and recorded-weight totals. Starting-pack descriptions and Add equipment controls align left, with source credits below.
 
 - Creation and level-up use shared expandable rows for class settings, origins, training, HP and slot controls; ability scores use an aligned alternating-row table with modifiers.
 - Features have searchable Available, Selected, and Needs choice views with inline descriptions and retained configuration controls.
@@ -44,6 +37,21 @@
 - Shorter character banners with an expand control, matching crop previews, and controls grouped at the top right.
 - The dice dock keeps its Roll label on one line and lets die shortcuts scroll when space is tight.
 - Journal and creature search share their section headers; spell-slot management sits beside the spell summary. Existing top tabs, character data, rules, and action handlers are preserved.
+
+
+## 0.33.0
+
+- Edit material requirements below V/S/M; retain embedded component details and import separate XML material fields.
+- Damage rolls have an optional damage-type selector and an explicit automatic upcasting rule, with per-slot previews. Casting and separate damage rolls use the chosen slot while preserving existing manual roll options.
+- Shared centered empty states and compact V/S/M controls with explicit selected indicators.
+
+## 0.32.0
+
+- Equipping a recognized weapon creates a linked attack, using stored/compendium damage, finesse or ranged ability, and source-aware proficiency.
+- Existing equipped weapons are reconciled when loading/saving; manual attacks are preserved and unambiguous existing attacks are linked instead of duplicated.
+- Unequipped attacks remain stowed. Removing an attack disables automatic creation for its item; custom weapon stats and automatic creation can be configured in the item editor.
+- Structured magic weapon bonuses apply only to the linked attack while item effects are active, and reusable templates exclude generated attack links.
+
 
 ## 0.31.2
 
