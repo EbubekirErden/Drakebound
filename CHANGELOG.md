@@ -15,6 +15,10 @@
 
 ## Unreleased
 
+- Custom editors keep identity and descriptions full-width, with wider adaptive settings columns, consistent Save/Cancel controls, and alternating repeated rows.
+- Compendium filters sit together with a spell class-list filter. Multi-term, accent-insensitive search includes classes and sources, with optional description search and closer name matches first.
+- Optional right detail inspector keeps browsing visible; expanded details remain available. Detail resize handles have reserved space below action buttons.
+
 - Actions uses the shared page toolbar and matching search/filter controls while retaining its card grid; Manage slots matches the adjacent spell statistics in height.
 
 - Import and Export share an aligned sidebar row; character banners keep Edit/Expand visible and group other actions in the character menu.

@@ -27,6 +27,7 @@ struct PageMenuStyle: ViewModifier {
     func body(content: Content) -> some View {
         content.font(.system(size:13,weight:.medium))
             .menuStyle(.borderlessButton).menuIndicator(.visible)
+            .frame(maxWidth:.infinity,alignment:.leading)
             .padding(.horizontal,12).frame(height:PageControl.height)
             .background(surface,in:RoundedRectangle(cornerRadius:8))
             .overlay(RoundedRectangle(cornerRadius:8).stroke(ink.opacity(0.09)))
