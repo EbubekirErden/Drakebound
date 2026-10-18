@@ -212,7 +212,7 @@ struct JournalPanel: View {
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images",color:journalTint,searchTitle:"Search notes",query:$search) {
-                Button { let note = JournalEntry(); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.journalEntries = [note] + (hero.journalEntries ?? []); expanded.insert(note.id) } } label: { Label("New note",systemImage:"plus") }.buttonStyle(.borderedProminent)
+                Button { let note = JournalEntry(); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.journalEntries = [note] + (hero.journalEntries ?? []); expanded.insert(note.id) } } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
             }
             if entries.wrappedValue.isEmpty { ContentUnavailableView("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea.")) }
             ForEach(entries) { $entry in
@@ -247,7 +247,7 @@ struct CreaturesPanel: View {
     var body: some View {
         VStack(alignment:.leading,spacing:16) {
             PageToolbar(title:"Creatures",subtitle:"Companions, summons, and encounters",color:leaf,searchTitle:"Search creatures",query:$search) {
-                Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) }
+                Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:leaf,prominent:true)).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) }
             }
             if creatures.wrappedValue.isEmpty { creatureEmptyState("Make room for a companion","Browse the compendium or create a custom creature with portraits, stats, HP, and attacks.") }
             let matching = creatures.wrappedValue.filter { matches($0) }

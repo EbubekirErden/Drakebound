@@ -128,7 +128,7 @@ struct CompendiumView:View {
             guard !Task.isCancelled else { return }; matches = found; limit = 100
         }
         .overlay { if let selected { DismissibleDetail(dismiss:{ self.selected = nil; message = "" }) { referenceDetails(selected) } } }
-        .sheet(item:$creation) { session in CompendiumCreator(session:session,hero:store.heroes.first(where:{ $0.id == store.selected }) ?? Hero(),save:{ store.upsertTemplate($0); selected = nil }) }
+        .sheet(item:$creation) { session in CompendiumCreator(session:session,classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name),hero:store.heroes.first(where:{ $0.id == store.selected }) ?? Hero(),save:{ store.upsertTemplate($0); selected = nil }) }
     }
     var sourceControls:some View {
         HStack(spacing:12) {
@@ -140,9 +140,9 @@ struct CompendiumView:View {
     }
     var categoryFilters:some View {
         HStack(spacing:12) {
-            HStack(spacing:8) { Image(systemName:"magnifyingglass").foregroundStyle(.secondary); TextField("Search \(category.rawValue.lowercased())",text:$query).focused($searchFocused).textFieldStyle(.plain); Text("\(matches.count.formatted()) results").font(.caption2).foregroundStyle(.secondary).fixedSize() }.padding(10).frame(minWidth:160,maxWidth:.infinity).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
-            if subgroups.count > 1 { Picker(category == .spell ? "Level":category == .item ? "Type":"Category",selection:$subgroup) { Text("All").tag("All"); ForEach(subgroups,id:\.self) { Text($0).tag($0) } }.frame(width:150) }
-            if category == .spell { Picker("School",selection:$school) { Text("All schools").tag("All schools"); ForEach(schools,id:\.self) { Text($0).tag($0) } }.frame(width:190) }
+            HStack(spacing:8) { Image(systemName:"magnifyingglass").foregroundStyle(.secondary); TextField("Search \(category.rawValue.lowercased())",text:$query).focused($searchFocused).textFieldStyle(.plain); Text("\(matches.count.formatted()) results").font(.caption2).foregroundStyle(.secondary).fixedSize() }.padding(.horizontal,10).frame(minWidth:160,maxWidth:.infinity).frame(height:PageControl.height).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
+            if subgroups.count > 1 { PagePicker(title:category == .spell ? "Level":category == .item ? "Type":"Category",selectionTitle:subgroup,selection:$subgroup) { Text("All").tag("All"); ForEach(subgroups,id:\.self) { Text($0).tag($0) } }.frame(width:150) }
+            if category == .spell { PagePicker(title:"School",selectionTitle:school,selection:$school) { Text("All schools").tag("All schools"); ForEach(schools,id:\.self) { Text($0).tag($0) } }.frame(width:190) }
             if !query.isEmpty || subgroup != "All" || school != "All schools" { Button { query = ""; subgroup = "All"; school = "All schools" } label: { Image(systemName:"xmark.circle") }.buttonStyle(.plain).help("Clear category search and filters") }
         }.font(.system(size:11))
     }

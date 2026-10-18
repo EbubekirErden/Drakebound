@@ -19,19 +19,19 @@ struct EquipmentPanel:View {
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
             PageToolbar(title:"Equipment",subtitle:String(format:"%d items · %.1f / %d lb",hero.items.count,hero.items.reduce(0) { $0+Double($1.quantity)*$1.weight },hero.effectiveScore(0)*15),color:gold,searchTitle:"Search equipment",query:$search,focus:$searchFocused) {
-                Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
+                Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:gold,prominent:true)).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
             }
             HStack(spacing:12) {
-                Picker("Type",selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.labelsHidden().frame(width:150)
-                Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox)
+                PagePicker(title:"Type",selectionTitle:kind,selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.frame(width:150)
+                Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox).padding(.horizontal,10).frame(height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8))
                 Spacer(minLength:8)
-                CurrencyButton(hero:$hero)
+                CurrencyButton(hero:$hero).buttonStyle(PageButtonStyle())
                 Menu {
                     Button("New container…",systemImage:"shippingbox") { containerEditor = EquipmentContainer(name:"") }
                     Button("Browse compendium",systemImage:"books.vertical") { store.showCompendium = true }
                     Divider()
                     Button("Weapon & armor proficiency…",systemImage:"shield") { trainingOpen = true }
-                } label: { Image(systemName:"ellipsis").frame(width:26,height:26) }
+                } label: { Image(systemName:"ellipsis").frame(width:PageControl.height,height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8)) }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Equipment options").accessibilityLabel("Equipment options")
                     .popover(isPresented:$trainingOpen) {
                         ScrollView { VStack(alignment:.leading,spacing:16) {

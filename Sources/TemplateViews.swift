@@ -52,12 +52,13 @@ struct ReferenceTemplateEditor:View {
 struct CompendiumCreation:Identifiable { var id = UUID(); var category:CompendiumCategory; var original:CompendiumEntry? }
 struct CompendiumCreator:View {
     var session:CompendiumCreation
+    var classOptions:[String] = []
     var hero:Hero
     var save:(CompendiumEntry)->Void
     var body:some View {
         Group {
             switch session.category {
-            case .spell: SpellEditor(spell:session.original?.spell() ?? Spell(name:"",level:0),hero:hero) { complete(TemplateFactory.spell($0)) }
+            case .spell: SpellEditor(spell:session.original?.spell() ?? Spell(name:"",level:0),hero:hero,isCompendium:true,classOptions:classOptions) { complete(TemplateFactory.spell($0)) }
             case .item: ItemEditor(item:session.original?.item() ?? Item(name:""),hero:hero) { complete(TemplateFactory.item($0)) }
             case .monster: CreatureEditor(creature:session.original?.creature() ?? Creature(name:"")) { complete(TemplateFactory.creature($0)) }
             case .feat: FeatureEditor(feature:session.original?.featureCopies().first ?? CharacterFeature(name:"",category:.feat),hero:hero,onSave:{ complete(TemplateFactory.feature($0)) },onDelete:{})

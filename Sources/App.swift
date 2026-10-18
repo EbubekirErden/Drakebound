@@ -331,7 +331,7 @@ struct HeroView: View {
         .sheet(isPresented:$edit) { HeroEditor(hero:$hero) }
         .sheet(item:$attackEditor) { a in AttackEditor(attack:a) { edited in if let i = hero.attacks.firstIndex(where:{ $0.id == edited.id }) { hero.attacks[i] = edited } else { hero.attacks.append(edited) } } }
         .sheet(item:$itemEditor) { item in ItemEditor(item:item,hero:hero) { edited in if let i = hero.items.firstIndex(where:{ $0.id == edited.id }) { hero.items[i] = edited } else { hero.items.append(edited) } } }
-        .sheet(item:Binding(get:{ adding.map { AddKind(name:$0) } },set:{ adding = $0?.name })) { kind in SpellEditor(spell:Spell(name:"",level:1),hero:hero) { spell in if kind.name == "Library spell" { store.library.append(spell); store.save() } else { hero.spells.append(spell) } } }
+        .sheet(item:Binding(get:{ adding.map { AddKind(name:$0) } },set:{ adding = $0?.name })) { kind in SpellEditor(spell:Spell(name:"",level:1),hero:hero,isCompendium:kind.name == "Library spell",classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name)) { spell in if kind.name == "Library spell" { store.library.append(spell); store.save() } else { hero.spells.append(spell) } } }
         .sheet(isPresented:$managingSlots) { SlotManager(hero:$hero) }
         .sheet(isPresented:$rest) { RestEditor(hero:$hero,store:store) }
         .sheet(isPresented:$hitDice) { HitDicePopup(hero:$hero,store:store) }
@@ -396,8 +396,8 @@ struct HeroView: View {
     var spellbook: some View {
         VStack(spacing:16) {
             PageToolbar(title:"Spells",subtitle:"\(hero.spells.count) spells in your spellbook",color:sky,searchTitle:"Search spells",query:$search,focus:$searchFocused) {
-                Menu("Preparation") { Button("Prepare all") { for i in hero.spells.indices { hero.spells[i].prepared=true } };Button("Unprepare all level 1+") { for i in hero.spells.indices where hero.spells[i].level > 0 { hero.spells[i].prepared=false } } }.help("Changes your whole spellbook, including spells hidden by filters.")
-                Button { adding = "Spell" } label: { Label("Add spell",systemImage:"plus") }.buttonStyle(.borderedProminent)
+                Menu { Button("Prepare all") { for i in hero.spells.indices { hero.spells[i].prepared=true } };Button("Unprepare all level 1+") { for i in hero.spells.indices where hero.spells[i].level > 0 { hero.spells[i].prepared=false } } } label: { Text("Preparation") }.modifier(PageMenuStyle()).fixedSize().help("Changes your whole spellbook, including spells hidden by filters.")
+                Button { adding = "Spell" } label: { Label("Add spell",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:sky,prominent:true))
             }
             HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); Button("Manage slots") { managingSlots = true } }
             Card(title:"Spell slots") {
@@ -409,13 +409,13 @@ struct HeroView: View {
                     HStack(spacing:2) {
                         ForEach(PreparationFilter.allCases,id:\.self) { filter in
                             Button { preparation = filter } label: {
-                                Text(filter.rawValue).font(.system(size:11,weight:.medium)).frame(width:94,height:27)
+                                Text(filter.rawValue).font(.system(size:11,weight:.medium)).frame(width:94,height:PageControl.height-6)
                                     .foregroundStyle(preparation == filter ? paper:ink.opacity(0.7))
                                     .background(preparation == filter ? accent:Color.clear).clipShape(RoundedRectangle(cornerRadius:6))
                             }.buttonStyle(.plain).accessibilityLabel("\(filter.rawValue) spells").accessibilityAddTraits(preparation == filter ? .isSelected:[])
                         }
                     }.padding(3).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
-                    Picker("Spell level",selection:$spellLevel) { Text("All levels").tag(-1); Text("Cantrips").tag(0); ForEach(1...9,id:\.self) { Text("Level \($0)").tag($0) } }.labelsHidden().frame(width:125)
+                    PagePicker(title:"Spell level",selectionTitle:spellLevel < 0 ? "All levels":spellLevel == 0 ? "Cantrips":"Level \(spellLevel)",selection:$spellLevel) { Text("All levels").tag(-1); Text("Cantrips").tag(0); ForEach(1...9,id:\.self) { Text("Level \($0)").tag($0) } }.frame(width:125)
                     Spacer(minLength:0)
                 }
             }

@@ -4,6 +4,7 @@ struct RollListEditor: View {
     @Binding var rolls: [NamedRoll]?
     var hero: Hero
     var spell: Spell? = nil
+    var allowsResourceCosts = true
     var list: Binding<[NamedRoll]> { Binding(get:{ rolls ?? [] },set:{ rolls = $0 }) }
     var body: some View {
         VStack(alignment:.leading,spacing:12) {
@@ -17,12 +18,22 @@ struct RollListEditor: View {
                     }
                     Picker("Condition effects",selection:$roll.kind) { Text("Generic · no automatic conditions").tag(Optional<D20Kind>.none); ForEach(D20Kind.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) } }
                     if roll.kind == .save || roll.kind == .check { Picker("Ability",selection:$roll.ability) { Text("Unspecified").tag(Optional<Int>.none); ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag(Optional($0)) } } }
-                    ResourceCostPicker(cost:$roll.resourceCost,hero:hero)
+                    if allowsResourceCosts { ResourceCostPicker(cost:$roll.resourceCost,hero:hero) }
                     if let resolved = try? hero.resolveRoll(roll.expression,spell:spell,slot:spell?.level ?? 0) { Text("Preview: \(resolved)").font(.caption2).foregroundStyle(.secondary) }
                     else { Text("Invalid formula or unknown token").font(.caption2).foregroundStyle(coral) }
                 }
             }
-            Button("Add custom roll") { rolls = (rolls ?? []) + [NamedRoll()] }.help("Build a formula with dice and character values. Custom rolls do not apply HP or other effects automatically.")
+            HStack {
+                Button("Add custom roll") { rolls = (rolls ?? []) + [NamedRoll()] }.help("Build a formula with dice and character values. Custom rolls do not apply HP or other effects automatically.")
+                if let spell, spell.level > 0 && spell.level < 9 {
+                    Button("Add upcast roll") {
+                        let used = Set((rolls ?? []).compactMap(\.slotLevel))
+                        guard let level = ((spell.level+1)...9).first(where:{ !used.contains($0) }) else { return }
+                        let base = (rolls ?? []).first { $0.id == spell.automaticRollID } ?? rolls?.first
+                        rolls = (rolls ?? []) + [NamedRoll(name:"Level \(level)",expression:base?.expression ?? "1d6",slotLevel:level)]
+                    }.disabled(((spell.level+1)...9).allSatisfy { level in (rolls ?? []).contains { $0.slotLevel == level } })
+                }
+            }
 
         }.textFieldStyle(.roundedBorder)
     }
@@ -136,6 +147,8 @@ struct FeatureEditor:View {
 struct SpellEditor:View {
     @State var spell:Spell
     var hero:Hero
+    var isCompendium = false
+    var classOptions:[String] = []
     var onSave:(Spell)->Void
     @State private var saveToCompendium = false
     @Environment(\.templateSaveAction) private var saveTemplate
@@ -153,25 +166,31 @@ struct SpellEditor:View {
                 }
                 EditorGroup(title:"Description") { BorderedTextEditor(text:$spell.text,height:110) }
                 EditorGroup(title:"Casting") {
-                    TextField("Available class lists · e.g. Wizard, Sorcerer",text:Binding(get:{ spell.classes ?? "" },set:{ spell.classes = $0 }))
-                    Picker("Cast as class",selection:Binding(get:{ spell.sourceClassID },set:{ id in spell.sourceClassID = id; if let record = hero.progressionClasses.first(where:{ $0.id == id }) { spell.sourceClassName = record.name; spell.castingAbility = ClassProfile.named(record.name)?.casting ?? hero.castingAbility } else { spell.sourceClassName = nil } })) {
-                        Text("Custom / default ability").tag(Optional<UUID>.none)
-                        ForEach(hero.progressionClasses) { record in Text("\(record.name) · \(record.level)").tag(Optional(record.id)) }
+                    SpellClassSelector(classes:Binding(get:{ spell.classes ?? "" },set:{ spell.classes = $0 }),options:classOptions + hero.progressionClasses.map(\.name))
+                    HStack { Toggle("Ritual",isOn:Binding(get:{ spell.ritual ?? false },set:{ spell.ritual = $0 })); Toggle("Requires concentration",isOn:Binding(get:{ spell.requiresConcentration },set:{ spell.concentration = $0 })) }
+                    if !isCompendium {
+                        Picker("Cast as class",selection:Binding(get:{ spell.sourceClassID },set:{ id in spell.sourceClassID = id; if let record = hero.progressionClasses.first(where:{ $0.id == id }) { spell.sourceClassName = record.name; spell.castingAbility = ClassProfile.named(record.name)?.casting ?? hero.castingAbility } else { spell.sourceClassName = nil } })) {
+                            Text("Custom / default ability").tag(Optional<UUID>.none)
+                            ForEach(hero.progressionClasses) { record in Text("\(record.name) · \(record.level)").tag(Optional(record.id)) }
+                        }
+                        if let source = spell.sourceClassName { Text("Casting source: \(source)").font(.caption2).foregroundStyle(sky) }
+                        HStack { Toggle("Prepared",isOn:$spell.prepared); if spell.level > 0 { Toggle("Uses slot",isOn:Binding(get:{ spell.usesSlot ?? true },set:{ spell.usesSlot = $0 })) } }
+                        Toggle("Extra / always-prepared spell · exclude from class allowance",isOn:Binding(get:{ spell.exemptFromClassLimit ?? false },set:{ spell.exemptFromClassLimit = $0 }))
+                        ResourceCostPicker(cost:$spell.resourceCost,hero:hero)
+                        Text("A linked resource is spent on casting, in addition to any spell slot or free use. Automatic rolls also spend their own configured cost.").font(.caption2).foregroundStyle(.secondary)
+                        Picker("Casting ability",selection:Binding(get:{ spell.castingAbility ?? hero.castingAbility },set:{ spell.castingAbility = $0 })) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } }
+                        Stepper("Free uses per long rest: \(spell.freeUses ?? 0)",value:Binding(get:{ spell.freeUses ?? 0 },set:{ spell.freeUses = $0; spell.freeRemaining = min(spell.freeRemaining ?? $0,$0) }),in:0...999)
+                        if (spell.freeUses ?? 0) > 0 { Stepper("Remaining: \(spell.freeRemaining ?? spell.freeUses ?? 0)",value:Binding(get:{ spell.freeRemaining ?? spell.freeUses ?? 0 },set:{ spell.freeRemaining = $0 }),in:0...(spell.freeUses ?? 0)) }
                     }
-                    if let source = spell.sourceClassName { Text("Casting source: \(source)").font(.caption2).foregroundStyle(sky) }
-                    HStack { Toggle("Prepared",isOn:$spell.prepared); Toggle("Ritual",isOn:Binding(get:{ spell.ritual ?? false },set:{ spell.ritual = $0 })); if spell.level > 0 { Toggle("Uses slot",isOn:Binding(get:{ spell.usesSlot ?? true },set:{ spell.usesSlot = $0 })) } }
-                    Toggle("Extra / always-prepared spell · exclude from class allowance",isOn:Binding(get:{ spell.exemptFromClassLimit ?? false },set:{ spell.exemptFromClassLimit = $0 }))
-                    Toggle("Requires concentration",isOn:Binding(get:{ spell.requiresConcentration },set:{ spell.concentration = $0 }))
-                    ResourceCostPicker(cost:$spell.resourceCost,hero:hero)
-                    Text("A linked resource is spent on casting, in addition to any spell slot or free use. Automatic rolls also spend their own configured cost.").font(.caption2).foregroundStyle(.secondary)
-                    Picker("Casting ability",selection:Binding(get:{ spell.castingAbility ?? hero.castingAbility },set:{ spell.castingAbility = $0 })) { ForEach(0..<6,id:\.self) { Text(abilities[$0]).tag($0) } }
-                    Stepper("Free uses per long rest: \(spell.freeUses ?? 0)",value:Binding(get:{ spell.freeUses ?? 0 },set:{ spell.freeUses = $0; spell.freeRemaining = min(spell.freeRemaining ?? $0,$0) }),in:0...999)
-                    if (spell.freeUses ?? 0) > 0 { Stepper("Remaining: \(spell.freeRemaining ?? spell.freeUses ?? 0)",value:Binding(get:{ spell.freeRemaining ?? spell.freeUses ?? 0 },set:{ spell.freeRemaining = $0 }),in:0...(spell.freeUses ?? 0)) }
                 }
-                EditorGroup(title:"Custom rolls & scaling") {
-                    RollListEditor(rolls:$spell.rolls,hero:hero,spell:spell)
+                EditorGroup(title:spell.level == 0 ? "Cantrip scaling & custom rolls":"Upcasting & custom rolls") {
+                    if spell.level > 0 {
+                        Text("Higher-level slots are available when casting. For a stronger effect, add an upcast roll for each slot level and set its full dice formula.").font(.caption).foregroundStyle(.secondary)
+                        Text("Example: base level 3 → 8d6; slot level 4 → 9d6. A spell without a stronger effect needs no extra roll.").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    RollListEditor(rolls:$spell.rolls,hero:hero,spell:spell,allowsResourceCosts:!isCompendium)
                     Picker("Roll when cast",selection:$spell.automaticRollID) { Text("None · log casting").tag(Optional<UUID>.none); ForEach(spell.rolls ?? []) { Text($0.name).tag(Optional($0.id)) } }
-                    Text("Cantrip tiers use character levels; spell upcasts use slot levels. Set each roll’s level requirement below its formula.").font(.caption2).foregroundStyle(.secondary)
+                    Text(spell.level == 0 ? "Cantrip tiers use character levels. Set each roll’s level requirement below its formula.":"Upcast rolls are manual roll options. Roll when cast uses the selected formula; choosing a higher slot does not switch it automatically.").font(.caption2).foregroundStyle(.secondary)
                 }
             } }
         }.padding(20).frame(width:610,height:700).textFieldStyle(.roundedBorder).tint(sky)
@@ -290,7 +309,7 @@ struct SpellDetails: View {
             }
         }.padding(22).frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading).modifier(ConcentrationOutline(active:!library && hero.concentrationSpellID == spell.id)).tint(sky)
         .onAppear { castLevel = hero.availableSlot(for:spell) ?? max(1,spell.level); cantripLevel = hero.cantripRoll(spell,at:hero.level)?.minimumCharacterLevel ?? 1 }
-        .sheet(isPresented:$editing) { SpellEditor(spell:spell,hero:hero) { updated in if library { if let entry = store.compendium.first(where:{ $0.id == updated.id && $0.custom == true }) { var copy = TemplateFactory.spell(updated); copy.id = entry.id; store.upsertTemplate(copy) } else if let i = store.library.firstIndex(where:{ $0.id == updated.id }) { store.library[i] = updated; store.save() } } else if let i = hero.spells.firstIndex(where:{ $0.id == updated.id }) { hero.spells[i] = updated } } }
+        .sheet(isPresented:$editing) { SpellEditor(spell:spell,hero:hero,isCompendium:library,classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name)) { updated in if library { if let entry = store.compendium.first(where:{ $0.id == updated.id && $0.custom == true }) { var copy = TemplateFactory.spell(updated); copy.id = entry.id; store.upsertTemplate(copy) } else if let i = store.library.firstIndex(where:{ $0.id == updated.id }) { store.library[i] = updated; store.save() } } else if let i = hero.spells.firstIndex(where:{ $0.id == updated.id }) { hero.spells[i] = updated } } }
         .sheet(isPresented:$slots) { SlotManager(hero:$hero) }
     }
     func navigate(_ direction:Int) { let next = position+direction; guard browseIDs.indices.contains(next) else { return }; browsingID = browseIDs[next]; castLevel = hero.availableSlot(for:spell) ?? max(1,spell.level); message = ""; cantripLevel = hero.cantripRoll(spell,at:hero.level)?.minimumCharacterLevel ?? 1 }
