@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Journal notes support pinning and drag-to-reorder within pinned/unpinned groups. Pins and manual order persist in saves and JSON backups; older notes load unpinned.
+- Equipment drag handles reorder items within their current container or Carried group. Cross-container and cross-character drops are rejected; hidden filtered entries retain their positions.
+- Note and equipment menus include Move up/Move down alternatives. Reordering commits on drop and preserves entry contents, quantities, equipment state, and container membership.
+
 - Action cards use natural content height, distinct type icons and accents, stronger attack/damage values, and spell range/duration with short description previews. Existing cast, roll, cost, favorite, and critical controls remain available.
 - Weapon & armor proficiency fits its content and scrolls when the training list is long, replacing the oversized fixed-height popover.
 - Note editor text fills the remaining sheet height instead of staying at 210 points inside an outer scroll view. Image controls remain below the editor, with a compact clickable image preview.

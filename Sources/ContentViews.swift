@@ -211,16 +211,19 @@ struct JournalPanel: View {
     @State private var editing:JournalEntry?
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     var entries: Binding<[JournalEntry]> { Binding(get:{ hero.journalEntries ?? [] },set:{ hero.journalEntries = $0 }) }
+    var visibleNotes:[JournalEntry] { hero.orderedJournalEntries.filter { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.description.localizedCaseInsensitiveContains(search) } }
     var body: some View {
         VStack(alignment:.leading,spacing:14) {
-            PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images",color:journalTint,searchTitle:"Search notes",query:$search) {
+            PageToolbar(title:"Adventure journal",subtitle:"\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · \(entries.wrappedValue.filter { $0.pinned == true }.count) pinned",color:journalTint,searchTitle:"Search notes",query:$search) {
                 Button { editing = JournalEntry() } label: { Label("New note",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:journalTint,prominent:true))
             }
             if entries.wrappedValue.isEmpty { CenteredEmptyState("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea."),height:300) }
             if !entries.wrappedValue.isEmpty && !entries.wrappedValue.contains(where: { search.isEmpty || $0.title.localizedCaseInsensitiveContains(search) || $0.description.localizedCaseInsensitiveContains(search) }) {
                 CenteredEmptyState("No matching notes",systemImage:"book.closed",description:Text("Try another title or text from your notes."),height:300)
             }
-            ForEach(entries) { $entry in
+            ForEach(visibleNotes) { entry in
+                let siblings=visibleNotes.filter { ($0.pinned == true) == (entry.pinned == true) }.map(\.id)
+                let position=siblings.firstIndex(of:entry.id) ?? 0
                 if search.isEmpty || entry.title.localizedCaseInsensitiveContains(search) || entry.description.localizedCaseInsensitiveContains(search) {
                     VStack(alignment:.leading,spacing:0) {
                         DisclosureGroup(isExpanded:Binding(get:{ expanded.contains(entry.id) },set:{ isOpen in withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if isOpen { expanded.insert(entry.id) } else { expanded.remove(entry.id) } } })) {
@@ -239,14 +242,22 @@ struct JournalPanel: View {
                             }.padding(.top,14)
                         } label: {
                             HStack(spacing:8) {
+                            ListReorderGrip(token:ListReorderToken(kind:.journal,heroID:hero.id,entryID:entry.id),name:entry.title,enabled:siblings.count > 1)
                             Button { withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } } label: {
                                 HStack(spacing:10) { Image(systemName:entry.image == nil ? "text.alignleft":"photo.on.rectangle").foregroundStyle(gold); VStack(alignment:.leading,spacing:4) { Text(entry.title.isEmpty ? "Untitled note":entry.title).font(.system(size:13,weight:.medium)); if !expanded.contains(entry.id) { Text(entry.description.isEmpty ? "Add a description…":entry.description.replacingOccurrences(of:"\n",with:" ")).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) } }; Spacer() }.contentShape(Rectangle())
                             }.buttonStyle(.plain)
+                            Button { hero.toggleJournalPin(entry.id) } label: {
+                                Image(systemName:entry.pinned == true ? "pin.fill":"pin").font(.system(size:12)).frame(width:28,height:28).foregroundStyle(entry.pinned == true ? journalTint:Color.secondary)
+                            }.buttonStyle(.plain).help(entry.pinned == true ? "Unpin note":"Pin note to top").accessibilityLabel(entry.pinned == true ? "Unpin note":"Pin note")
                             Button { editing = entry } label: {
                                 Image(systemName:"pencil").font(.system(size:12,weight:.medium)).frame(width:28,height:28)
                                     .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:6)).contentShape(Rectangle())
                             }.buttonStyle(.plain).help("Edit note").accessibilityLabel("Edit note")
                             Menu {
+                                Button(entry.pinned == true ? "Unpin note":"Pin note") { hero.toggleJournalPin(entry.id) }
+                                Button("Move up") { if position > 0 { hero.reorderJournal(ListReorderToken(kind:.journal,heroID:hero.id,entryID:entry.id),onto:siblings[position-1],visibleIDs:siblings) } }.disabled(position == 0)
+                                Button("Move down") { if position+1 < siblings.count { hero.reorderJournal(ListReorderToken(kind:.journal,heroID:hero.id,entryID:entry.id),onto:siblings[position+1],visibleIDs:siblings) } }.disabled(position+1 >= siblings.count)
+                                Divider()
                                 Button("Duplicate note") { var copy = entry; copy.id = UUID(); copy.title += " copy"; hero.journalEntries?.append(copy) }
                                 Button("Delete note",role:.destructive) { let id = entry.id; hero.journalEntries?.removeAll { $0.id == id } }
                             } label: { Image(systemName:"ellipsis") }
@@ -256,6 +267,7 @@ struct JournalPanel: View {
                             }
                         }
                     }.padding(16).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.06)))
+                    .modifier(ListReorderDropTarget { token in hero.reorderJournal(token,onto:entry.id,visibleIDs:visibleNotes.map(\.id)) })
                 }
             }
         }.onAppear { hero.migrateContent() }

@@ -72,7 +72,10 @@ struct EquipmentPanel:View {
         }.padding(10).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.07)))
     }
     func itemRow(_ item:Item) -> some View {
-        HStack(spacing:12) {
+        let siblings=items.filter { $0.containerID == item.containerID }.map(\.id)
+        let position=siblings.firstIndex(of:item.id) ?? 0
+        return HStack(spacing:10) {
+            ListReorderGrip(token:ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),name:item.name,enabled:siblings.count > 1)
             Button { hero.setItemEquipped(item.id,!item.equipped,compendium:store.compendium) } label: { Image(systemName:item.equipped ? "checkmark.square.fill":"square").font(.system(size:15)).foregroundStyle(item.equipped ? accent:Color.secondary) }.buttonStyle(.plain).help("Equip \(item.name)")
             Button { store.itemDetail = ItemPresentation(heroID:hero.id,itemID:item.id,ids:items.map(\.id)) } label: {
                 HStack(spacing:12) { VStack(alignment:.leading,spacing:4) { Text(item.name).font(.system(size:13,weight:.medium)); Text(item.equipmentKind.rawValue).font(.system(size:10)).foregroundStyle(.secondary) }; Spacer(minLength:0); if !(item.rolls ?? []).isEmpty { Image(systemName:"dice").foregroundStyle(sky) }; if !(item.bonuses ?? []).isEmpty || item.armorBase != nil { Text("Effects").font(.caption2).foregroundStyle(gold) }; if item.requiresAttunement == true { Text(item.attuned == true ? "Attuned":"Unattuned").font(.caption2).foregroundStyle(item.attuned == true ? sky:coral) }; Text(String(format:"%.1f lb",Double(item.quantity)*item.weight)).font(.system(size:11)).foregroundStyle(.secondary).frame(width:70,alignment:.trailing) }.contentShape(Rectangle())
@@ -80,6 +83,9 @@ struct EquipmentPanel:View {
             Text("×\(item.quantity)").font(.system(size:12,weight:.medium,design:.monospaced)).frame(width:40,alignment:.trailing)
             Menu {
                 Button("Edit item") { edit(item) }
+                Button("Move up in container") { if position > 0 { hero.reorderEquipment(ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),onto:siblings[position-1],visibleIDs:siblings) } }.disabled(position == 0)
+                Button("Move down in container") { if position+1 < siblings.count { hero.reorderEquipment(ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),onto:siblings[position+1],visibleIDs:siblings) } }.disabled(position+1 >= siblings.count)
+                Divider()
                 Menu("Move to") {
                     Button("Carried") { hero.placeItem(item.id,in:nil) }
                     ForEach(hero.inventoryContainers) { storage in Button(storage.name) { hero.placeItem(item.id,in:storage.id) }.disabled(item.containerID == storage.id) }
@@ -87,6 +93,7 @@ struct EquipmentPanel:View {
                 Button("Remove equipment",role:.destructive) { hero.items.removeAll { $0.id == item.id } }
             } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20).accessibilityLabel("Options for \(item.name)")
         }.padding(.horizontal,10).padding(.vertical,10).background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:8))
+            .modifier(ListReorderDropTarget { token in hero.reorderEquipment(token,onto:item.id,visibleIDs:siblings) })
     }
 }
 struct ContainerEditor:View {

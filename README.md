@@ -49,7 +49,8 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 - Attunement requirements, toggled feat/temporary bonuses, targeted attack bonuses, and extra roll dice.
 - Custom resource and feature-use counters with independent short-, long-, and full-rest reset choices, or manual refill.
 - Features grouped by race/ancestry, class, feat, background, or other, with editable sources and compact cards.
-- An autosaved journal with title-click expansion, editable descriptions, and images.
+- Journal notes have title-click expansion, rich text, images, and explicit Save/Cancel. Pin notes to the top and drag their handles to reorder within pinned/unpinned groups.
+- Drag equipment handles to reorder within a container or Carried. Note and equipment menus also offer Move up/down; filtered-out entries keep their positions.
 - Character image banners with position/zoom controls, plus images for notes and creature entries.
 - Custom companion, familiar, summon, encounter, and reference creature records with stats, HP, and rollable attacks.
 - JSON backup export and additive import (imported characters receive new IDs).

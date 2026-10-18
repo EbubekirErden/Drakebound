@@ -6,6 +6,7 @@ struct JournalEntry: Codable, Identifiable, Equatable {
     var description = ""
     var image: Data?
     var richText: Data?
+    var pinned: Bool?
 }
 struct CreatureAttack: Codable, Identifiable, Equatable {
     var id = UUID()
