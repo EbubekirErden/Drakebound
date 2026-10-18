@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Sidebar branding uses a transparent dragon mark; click it to toggle compact mode without a second compact-mode row. Added a local character name/class filter.
+
+- Presentation-only refresh: resizable character sidebar with a compact portrait mode, larger readable character rows, and a consolidated PDF/JSON export menu.
+- Shorter character banners with an expand control, matching crop previews, and controls grouped at the top right.
+- The dice dock keeps its Roll label on one line and lets die shortcuts scroll when space is tight.
+- Journal and creature search share their section headers; spell-slot management sits beside the spell summary. Existing top tabs, character data, rules, and action handlers are preserved.
+
 ## 0.31.2
 
 - Creatures → Add creature opens compact compendium search with type, CR, and source filters, previews, a role choice, and direct addition to the current character. Custom creature creation stays available in the same popover.

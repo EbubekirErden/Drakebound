@@ -17,10 +17,13 @@ struct CroppedImage: View {
 }
 struct CharacterBanner: View {
     @Binding var hero: Hero
+    @Binding var expanded: Bool
+    var previewAspectRatio: CGFloat
     var edit: ()->Void
     var more: AnyView
     var levelUp:(()->Void)? = nil
     @State var cropping = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         ZStack(alignment:.bottomLeading) {
             Rectangle().fill(surface.gradient)
@@ -29,29 +32,37 @@ struct CharacterBanner: View {
             LinearGradient(colors:[.clear,.black.opacity(0.6)],startPoint:.top,endPoint:.bottom)
             HStack(alignment:.bottom) {
                 VStack(alignment:.leading,spacing:8) {
-                    Text(hero.name).font(.system(size:27,weight:.semibold)).foregroundStyle(.white)
+                    Text(hero.name).font(.system(size:27,weight:.semibold)).foregroundStyle(.white).lineLimit(1).minimumScaleFactor(0.65)
                     Text("\(hero.ancestry) · \(hero.characterClass) · Level \(hero.level)").font(.system(size:12)).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
                     if !hero.canAct { Label("Actions unavailable · active condition",systemImage:"exclamationmark.circle").font(.caption).foregroundStyle(gold) }
                 }
                 Spacer()
+            }.padding(20)
+        }.overlay(alignment:.topTrailing) {
+            HStack(spacing:10) {
                 if let levelUp { Button("Level up",action:levelUp).disabled(hero.level >= 20) }
-                Button { cropping = true } label: { Image(systemName:"crop") }.help("Choose the visible part of the banner")
+                Button { cropping = true } label: { Image(systemName:"crop").frame(width:20,height:20) }.help("Choose the visible part of the banner").accessibilityLabel("Frame character banner")
+                Button {
+                    withAnimation(reduceMotion ? nil:.easeInOut(duration:0.2)) { expanded.toggle() }
+                } label: { Image(systemName:expanded ? "arrow.down.right.and.arrow.up.left":"arrow.up.left.and.arrow.down.right").frame(width:20,height:20) }
+                    .help(expanded ? "Compact banner":"Expand banner").accessibilityLabel(expanded ? "Compact banner":"Expand banner")
                 Button("Edit",action:edit)
                 more
-            }.padding(20)
+            }.padding(8).background(paper.opacity(0.85),in:RoundedRectangle(cornerRadius:10)).padding(12)
         }.clipShape(RoundedRectangle(cornerRadius:12)).overlay(RoundedRectangle(cornerRadius:12).stroke(.white.opacity(0.08)))
-        .sheet(isPresented:$cropping) { BannerEditor(hero:$hero) }
+        .sheet(isPresented:$cropping) { BannerEditor(hero:$hero,previewAspectRatio:previewAspectRatio) }
     }
 }
 struct BannerEditor: View {
     @Binding var hero: Hero
     @State var crop: BannerCrop
+    var previewAspectRatio: CGFloat
     @Environment(\.dismiss) var dismiss
-    init(hero:Binding<Hero>) { _hero = hero; _crop = State(initialValue:hero.wrappedValue.bannerCrop ?? BannerCrop()) }
+    init(hero:Binding<Hero>,previewAspectRatio:CGFloat = 3.5) { _hero = hero; _crop = State(initialValue:hero.wrappedValue.bannerCrop ?? BannerCrop()); self.previewAspectRatio = previewAspectRatio }
     var body: some View {
         VStack(alignment:.leading,spacing:18) {
             Text("Banner framing").font(.headline)
-            CroppedImage(data:hero.portrait,crop:crop).aspectRatio(3.5,contentMode:.fit).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
+            CroppedImage(data:hero.portrait,crop:crop).aspectRatio(previewAspectRatio,contentMode:.fit).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
             if hero.portrait == nil { Text("Add a character image in Edit → Portrait to create a banner.").font(.caption).foregroundStyle(.secondary) }
             HStack { Text("Left / right").frame(width:90,alignment:.leading); Slider(value:$crop.x,in:0...1) }
             HStack { Text("Top / bottom").frame(width:90,alignment:.leading); Slider(value:$crop.y,in:0...1) }

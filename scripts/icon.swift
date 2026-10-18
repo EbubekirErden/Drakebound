@@ -2,6 +2,7 @@ import AppKit
 
 // Draw the identity as resolution-independent paths so every Dock size stays crisp.
 let folder = CommandLine.arguments[1]
+let sidebarMark = CommandLine.arguments.dropFirst(2).contains("--sidebar-mark")
 try FileManager.default.createDirectory(atPath: folder, withIntermediateDirectories: true)
 for size in [16, 32, 128, 256, 512] {
     for scale in [1, 2] {
@@ -29,6 +30,7 @@ for size in [16, 32, 128, 256, 512] {
             path.lineCapStyle = .round; path.lineJoinStyle = .round
             color.setStroke(); path.stroke()
         }
+        if !sidebarMark {
         let tile = NSBezierPath(roundedRect: NSRect(x: p * 0.07, y: p * 0.07, width: p * 0.86, height: p * 0.86),
             xRadius: p * 0.19, yRadius: p * 0.19)
         let shadow = NSShadow()
@@ -42,10 +44,11 @@ for size in [16, 32, 128, 256, 512] {
         NSColor.white.withAlphaComponent(0.13).setStroke()
         tile.lineWidth = max(0.5, p * 0.002); tile.stroke()
 
+        }
         let gold = NSColor(red: 0.91, green: 0.76, blue: 0.47, alpha: 1)
         let cage = polygon([(0.5, 0.835), (0.79, 0.665), (0.79, 0.335),
                             (0.5, 0.165), (0.21, 0.335), (0.21, 0.665)])
-        NSColor(red: 0.025, green: 0.075, blue: 0.095, alpha: 0.45).setFill(); cage.fill()
+        if !sidebarMark { NSColor(red: 0.025, green: 0.075, blue: 0.095, alpha: 0.45).setFill(); cage.fill() }
         cage.lineWidth = p * 0.019; cage.lineJoinStyle = .round
         gold.setStroke(); cage.stroke()
 

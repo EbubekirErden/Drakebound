@@ -171,6 +171,10 @@ func healthColor(_ hp: Int,_ maximum: Int) -> Color { let ratio = Double(hp)/Dou
 }
 
 enum AppBrand {
+    static var sidebarMark:NSImage? {
+        guard let url = Bundle.main.url(forResource:"DrakeboundSidebarMark",withExtension:"png") else { return nil }
+        return NSImage(contentsOf:url)
+    }
     static var icon:NSImage? {
         guard let url = Bundle.main.url(forResource:"DrakeboundD20",withExtension:"png"),let data = try? Data(contentsOf:url) else { return nil }
         return NSImage(data:data)
@@ -205,33 +209,54 @@ struct RootView: View {
     @ObservedObject var store: Store
     var tab:String { store.activeTab }
     @Namespace var tabs
+    @AppStorage("sidebarCompact") private var sidebarCompact = false
+    @AppStorage("sidebarWidth") private var sidebarWidth = 248.0
+    @State private var resizeStart: Double?
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     let sections = [("Sheet","person.text.rectangle"),("Actions","bolt.fill"),("Equipment","backpack"),("Spells","sparkles"),("Journal","book.closed"),("Creatures","pawprint")]
     var body: some View {
-        HStack(spacing:0) {
-            PartySidebar(store:store)
-            VStack(spacing:0) {
-                if !store.showCompendium { ScrollView(.horizontal) { HStack(spacing:4) {
-                    ForEach(sections,id:\.0) { title,icon in
-                        Button { store.navigate(to:title) } label: {
-                            HStack(spacing:7) { Image(systemName:icon).font(.system(size:11)).foregroundStyle(tabColor(title).opacity(tab == title ? 1:0.6)); Text(title).font(.system(size:12,weight:tab == title ? .semibold:.regular)) }.foregroundStyle(tab == title ? ink:ink.opacity(0.52)).padding(.horizontal,15).padding(.vertical,13)
-                                .background { if tab == title { RoundedRectangle(cornerRadius:7).fill(paper).matchedGeometryEffect(id:"tab",in:tabs) } }
-                                .overlay(alignment:.bottom) { if tab == title { Capsule().fill(tabColor(title)).frame(height:2).padding(.horizontal,14) } }
-                        }.buttonStyle(.plain)
+        GeometryReader { viewport in
+            let maximumWidth = min(320.0,max(220.0,Double(viewport.size.width)-660.0))
+            let width = min(maximumWidth,max(220.0,sidebarWidth))
+            HStack(spacing:0) {
+                PartySidebar(store:store,compact:$sidebarCompact).frame(width:sidebarCompact ? 76:width)
+                Rectangle().fill(ink.opacity(0.07)).frame(width:5).contentShape(Rectangle())
+                    .overlay { Capsule().fill(ink.opacity(0.2)).frame(width:2,height:28) }
+                    .onHover { over in if !sidebarCompact { if over { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() } } }
+                    .gesture(DragGesture(minimumDistance:1,coordinateSpace:.global).onChanged { value in
+                        guard !sidebarCompact else { return }
+                        if resizeStart == nil { resizeStart = width }
+                        sidebarWidth = min(maximumWidth,max(220,(resizeStart ?? width)+Double(value.translation.width)))
+                    }.onEnded { _ in resizeStart = nil })
+                    .accessibilityLabel("Sidebar width")
+                    .accessibilityValue(sidebarCompact ? "Compact":"\(Int(width)) points")
+                    .accessibilityAdjustableAction { direction in
+                        guard !sidebarCompact else { return }
+                        sidebarWidth = min(maximumWidth,max(220,width+(direction == .increment ? 20:-20)))
+                    }.help(sidebarCompact ? "Expand the sidebar to resize":"Drag to resize sidebar")
+                VStack(spacing:0) {
+                    if !store.showCompendium { ScrollView(.horizontal) { HStack(spacing:4) {
+                        ForEach(sections,id:\.0) { title,icon in
+                            Button { store.navigate(to:title) } label: {
+                                HStack(spacing:7) { Image(systemName:icon).font(.system(size:11)).foregroundStyle(tabColor(title).opacity(tab == title ? 1:0.6)); Text(title).font(.system(size:12,weight:tab == title ? .semibold:.regular)) }.foregroundStyle(tab == title ? ink:ink.opacity(0.52)).padding(.horizontal,15).padding(.vertical,13)
+                                    .background { if tab == title { RoundedRectangle(cornerRadius:7).fill(paper).matchedGeometryEffect(id:"tab",in:tabs) } }
+                                    .overlay(alignment:.bottom) { if tab == title { Capsule().fill(tabColor(title)).frame(height:2).padding(.horizontal,14) } }
+                            }.buttonStyle(.plain)
+                        }
+                        Spacer(minLength:2)
+                        Text("5e").font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).padding(.trailing,14)
+                    } }.frame(height:44).scrollIndicators(.hidden).padding(.top,8).padding(.horizontal,10).background(surface.opacity(0.65)).animation(reduceMotion ? nil:.easeInOut(duration:0.2),value:tab)
+                    Divider().opacity(0.5) }
+                    if store.showCompendium { CompendiumView(store:store) }
+                    else if let i = store.heroes.firstIndex(where:{ $0.id == store.selected }) {
+                        HeroView(hero:$store.heroes[i],store:store,tab:tab).id(store.selected)
+                    } else {
+                        ContentUnavailableView("Your next adventure",systemImage:"shield",description:Text("Create a character or import a backup."))
+                        Button("Create character") { store.addHero() }
                     }
-                    Spacer(minLength:2)
-                    Text("5e").font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).padding(.trailing,14)
-                } }.frame(height:44).scrollIndicators(.hidden).padding(.top,8).padding(.horizontal,10).background(surface.opacity(0.65)).animation(reduceMotion ? nil:.easeInOut(duration:0.2),value:tab)
-                Divider().opacity(0.5) }
-                if store.showCompendium { CompendiumView(store:store) }
-                else if let i = store.heroes.firstIndex(where:{ $0.id == store.selected }) {
-                    HeroView(hero:$store.heroes[i],store:store,tab:tab).id(store.selected)
-                } else {
-                    ContentUnavailableView("Your next adventure",systemImage:"shield",description:Text("Create a character or import a backup."))
-                    Button("Create character") { store.addHero() }
+                    Divider()
+                    DiceDock(store:store)
                 }
-                Divider()
-                DiceDock(store:store)
             }
         }.background(paper).foregroundStyle(ink).tint(accent).accessibilityHidden(store.characterGuide != nil)
         .overlay {
@@ -274,6 +299,7 @@ struct HeroView: View {
     @Binding var hero: Hero
     @ObservedObject var store: Store
     var tab: String
+    @AppStorage("characterBannerExpanded") private var bannerExpanded = false
     @State var edit = false
     @State var adding: String?
     @State var rest = false
@@ -313,12 +339,12 @@ struct HeroView: View {
     }
     @ViewBuilder var page:some View {
         GeometryReader { viewport in
-            let bannerHeight = min(380,max(275,(viewport.size.width-36)/3.5))
+            let bannerHeight = bannerExpanded ? min(380,max(275,(viewport.size.width-36)/3.5)):min(200,max(160,(viewport.size.width-36)/5))
             ScrollView {
                 VStack(alignment:.leading,spacing:-24) {
                     GeometryReader { position in
                         let y = position.frame(in:.named("heroScroll")).minY
-                        CharacterBanner(hero:$hero,edit:{ edit = true },more:AnyView(Menu {
+                        CharacterBanner(hero:$hero,expanded:$bannerExpanded,previewAspectRatio:max(1,(viewport.size.width-36)/bannerHeight),edit:{ edit = true },more:AnyView(Menu {
                             Button("Rest & recovery") { rest = true }
                             Button("Hit dice") { hitDice = true }
                             Button("Duplicate character") { var copy = hero; copy.id = UUID(); copy.name += " copy"; store.heroes.append(copy); store.selected = copy.id; store.save() }
@@ -362,15 +388,14 @@ struct HeroView: View {
         }
     }
     func stat(_ label: String,_ value: String,_ icon:String) -> some View {
-        HStack(spacing:8) { Image(systemName:icon).foregroundStyle(.secondary).font(.system(size:11)); Text(label).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary); Spacer(minLength:2); Text(value).font(.system(size:20,weight:.medium,design:.rounded)) }.padding(.horizontal,12).padding(.vertical,10).frame(maxWidth:.infinity).background(surface).clipShape(RoundedRectangle(cornerRadius:6))
+        HStack(spacing:6) { Image(systemName:icon).foregroundStyle(.secondary).font(.system(size:10)); Text(label).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8); Spacer(minLength:2); Text(value).font(.system(size:20,weight:.medium,design:.rounded)).lineLimit(1).minimumScaleFactor(0.75) }.padding(.horizontal,10).padding(.vertical,10).frame(maxWidth:.infinity).background(surface).clipShape(RoundedRectangle(cornerRadius:6))
     }
     func check(_ i:Int,_ label:String,mode:RollMode? = nil) { let targets = ["checks","check.\(i)"]; store.rollTyped(hero.expression("1d20",bonus:hero.modifier(i)+hero.flat(targets),targets:targets),label,hero:hero,kind:.check,ability:i,mode:mode) }
 
     var spellNavigationIDs:[UUID] { hero.spells.enumerated().filter { (spellLevel == -1 || $0.element.level == spellLevel) && preparation.includes($0.element) }.filter { search.isEmpty || $0.element.name.localizedCaseInsensitiveContains(search) }.sorted { $0.element.level == $1.element.level ? $0.offset < $1.offset:$0.element.level < $1.element.level }.map { $0.element.id } }
     var spellbook: some View {
         VStack(spacing:20) {
-            HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); stat("KNOWN SPELLS","\(hero.spells.count)","book") }
-            HStack { Text("Filled circles are used slots").font(.caption).foregroundStyle(.secondary); Spacer(); Button("Manage slots") { managingSlots = true } }
+            HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); stat("KNOWN SPELLS","\(hero.spells.count)","book"); Button("Manage slots") { managingSlots = true } }
             Card(title:"Spell slots") {
                 ForEach(0..<9,id:\.self) { i in if hero.slots[i] > 0 { HStack { Text("Level \(i+1)").font(.system(size:12,weight:.semibold)).frame(width:70,alignment:.leading); ForEach(0..<hero.slots[i],id:\.self) { slot in Button { hero.usedSlots[i] = slot < hero.usedSlots[i] ? slot : slot+1 } label: { Image(systemName:slot < hero.usedSlots[i] ? "circle.fill":"circle").font(.system(size:19)).foregroundStyle(accent) }.buttonStyle(.plain).help("Toggle expended spell slots") }; Spacer(); Text("\(max(0,hero.slots[i]-hero.usedSlots[i])) remaining").font(.caption).foregroundStyle(.secondary) } } }
                 Text("Filled circles are expended. Set slot totals and casting ability in Edit character.").font(.caption2).foregroundStyle(.secondary)

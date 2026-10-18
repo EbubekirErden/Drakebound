@@ -51,57 +51,155 @@ struct PictureControls: View {
 
 struct PartySidebar: View {
     @ObservedObject var store: Store
+    @Binding var compact: Bool
+    @State private var characterQuery = ""
+    private var matchingCharacters: [Hero] {
+        let query = characterQuery.trimmingCharacters(in:.whitespacesAndNewlines)
+        return compact || query.isEmpty ? store.heroes:store.heroes.filter { $0.name.localizedCaseInsensitiveContains(query) || $0.characterClass.localizedCaseInsensitiveContains(query) }
+    }
     @Environment(\.accessibilityReduceMotion) var reduceMotion
+
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
-            HStack(spacing:8) {
-                if let icon = AppBrand.icon {
-                    Image(nsImage:icon)
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(width:40,height:40)
-                        .accessibilityHidden(true)
-                }
-                VStack(alignment:.leading,spacing:3) {
-                    Text("Drakebound")
-                        .font(.custom("Palatino-Bold",size:18,relativeTo:.headline))
-                        .tracking(0.3)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                    Text("CHARACTER COMPANION")
-                        .font(.system(size:7,weight:.medium))
-                        .tracking(0.8)
-                        .foregroundStyle(.secondary)
-                }
-            }.padding(.horizontal,12).padding(.vertical,19)
-            HStack { Text("CHARACTERS").font(.system(size:9,weight:.semibold)).tracking(1.2).foregroundStyle(.secondary); Spacer(); Text("\(store.heroes.count)").font(.system(size:9)).foregroundStyle(.secondary) }.padding(.horizontal,16).padding(.top,16).padding(.bottom,10)
+            brand
+            if !compact {
+                HStack {
+                    Text("Characters").font(.system(size:12,weight:.semibold))
+                    Spacer()
+                    Text("\(store.heroes.count)").font(.system(size:11)).foregroundStyle(.secondary)
+                }.padding(.horizontal,18).padding(.top,20).padding(.bottom,10)
+                HStack(spacing:7) {
+                    Image(systemName:"magnifyingglass").foregroundStyle(.secondary)
+                    TextField("Search characters",text:$characterQuery).textFieldStyle(.plain).accessibilityLabel("Search characters")
+                    if !characterQuery.isEmpty {
+                        Button { characterQuery = "" } label: { Image(systemName:"xmark.circle.fill").foregroundStyle(.secondary) }
+                            .buttonStyle(.plain).help("Clear character search").accessibilityLabel("Clear character search")
+                    }
+                }.font(.system(size:12)).padding(9).background(paper.opacity(0.7),in:RoundedRectangle(cornerRadius:8)).padding(.horizontal,12).padding(.bottom,10)
+            }
             ScrollView {
                 VStack(spacing:6) {
-                    ForEach(store.heroes) { h in
-                        Button { withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { store.selected = h.id; store.showCompendium = false } } label: {
-                            HStack(alignment:.top,spacing:9) {
-                                Portrait(data:h.portrait,name:h.name,size:31)
-                                VStack(alignment:.leading,spacing:5) {
-                                    Text(h.name).font(.system(size:11,weight:.semibold)).lineLimit(2)
-                                    Text("\(h.characterClass) · \(h.level)").font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1)
-                                    HealthBar(hp:h.hp,maximum:h.maximumHP,height:3)
-                                }.frame(maxWidth:.infinity,alignment:.leading)
-                            }.padding(10).background(store.selected == h.id && !store.showCompendium ? accent.opacity(0.12):Color.clear).clipShape(RoundedRectangle(cornerRadius:8)).overlay(alignment:.leading) { if store.selected == h.id && !store.showCompendium { Capsule().fill(accent).frame(width:2).padding(.vertical,10) } }
-                        }.buttonStyle(.plain)
+                    ForEach(matchingCharacters) { hero in characterRow(hero) }
+                    if matchingCharacters.isEmpty && !characterQuery.isEmpty {
+                        Text("No matching characters").font(.caption).foregroundStyle(.secondary).padding(.vertical,12)
                     }
-                    Button { store.addHero() } label: { Label("New character",systemImage:"plus").font(.system(size:11)).frame(maxWidth:.infinity,alignment:.leading).padding(10) }.buttonStyle(.plain).foregroundStyle(.secondary)
-                }.padding(.horizontal,8)
+                    Button { store.addHero() } label: { sidebarLabel("New character",icon:"plus") }
+                        .buttonStyle(.plain).foregroundStyle(.secondary).help("New character · ⌘N")
+                }.padding(.horizontal,10).padding(.top,compact ? 12:0)
+            }.scrollIndicators(.hidden)
+            VStack(spacing:6) {
+                Button { store.showCompendium = true } label: { sidebarLabel("Compendium",icon:"books.vertical") }
+                    .buttonStyle(.plain).foregroundStyle(store.showCompendium ? accent:ink.opacity(0.75))
+                    .background(store.showCompendium ? accent.opacity(0.12):Color.clear,in:RoundedRectangle(cornerRadius:10))
+                    .accessibilityAddTraits(store.showCompendium ? .isSelected:[]).help("Compendium · ⌘7")
+                Divider().padding(.vertical,6)
+                if compact {
+                    VStack(spacing:6) { importControl; exportControl }
+                } else {
+                    HStack(spacing:8) { importControl; exportControl }
+                }
+                if !compact {
+                    Label("On this Mac",systemImage:"internaldrive").font(.system(size:11)).foregroundStyle(.secondary)
+                        .frame(maxWidth:.infinity,alignment:.leading).padding(.horizontal,10).padding(.top,8)
+                }
+            }.font(.system(size:13)).foregroundStyle(ink.opacity(0.7)).padding(10).padding(.bottom,6)
+        }.frame(maxHeight:.infinity).background(Color(red:0.12,green:0.14,blue:0.155))
+    }
+
+    private var importControl: some View {
+        Button { store.importBackup() } label: { transferLabel("Import",icon:"square.and.arrow.down") }
+            .buttonStyle(.plain).help("Import backup or Fight Club XML")
+            .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:8))
+    }
+
+    private var exportControl: some View {
+        Menu {
+            Button("Character PDF…") { store.showPDFExport = true }.disabled(store.selected == nil)
+            Button("Backup JSON…") { store.exportBackup() }
+        } label: { transferLabel("Export",icon:"square.and.arrow.up") }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).tint(ink.opacity(0.7))
+            .frame(maxWidth:.infinity,minHeight:36)
+            .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:8))
+            .help("Export character PDF or JSON backup").accessibilityLabel("Export")
+    }
+
+    private func transferLabel(_ title:String,icon:String) -> some View {
+        HStack(spacing:6) {
+            Image(systemName:icon).frame(width:15)
+            if !compact { Text(title).lineLimit(1) }
+        }.font(.system(size:12,weight:.medium)).frame(maxWidth:.infinity,minHeight:36)
+            .contentShape(Rectangle()).accessibilityElement(children:.ignore).accessibilityLabel(title)
+    }
+
+    private var brand: some View {
+        HStack(spacing:8) {
+            Button {
+                withAnimation(reduceMotion ? nil:.easeInOut(duration:0.2)) { compact.toggle() }
+            } label: {
+                Group {
+                    if let mark = AppBrand.sidebarMark { Image(nsImage:mark).resizable().scaledToFit() }
+                    else { Image(systemName:"hexagon").resizable().scaledToFit().foregroundStyle(gold) }
+                }.frame(width:36,height:36).contentShape(Rectangle())
+            }.buttonStyle(.plain).help(compact ? "Expand sidebar":"Compact sidebar")
+                .accessibilityLabel(compact ? "Expand sidebar":"Compact sidebar")
+            if !compact {
+                VStack(alignment:.leading,spacing:3) {
+                    Text("Drakebound").font(.custom("Palatino-Bold",size:18,relativeTo:.headline)).lineLimit(1).minimumScaleFactor(0.85)
+                    Text("Character companion").font(.system(size:10)).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer(minLength:0)
+                compactButton
             }
-            Button { store.showCompendium = true } label: { Label("Compendium",systemImage:"books.vertical").font(.system(size:12,weight:.medium)).frame(maxWidth:.infinity,alignment:.leading).padding(12).background(store.showCompendium ? accent.opacity(0.13):Color.clear).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).foregroundStyle(store.showCompendium ? accent:ink.opacity(0.7)).padding(.horizontal,8).padding(.bottom,8)
-            VStack(alignment:.leading,spacing:14) {
-                Button { store.importBackup() } label: { Label("Import",systemImage:"square.and.arrow.down") }
-                Button { store.showPDFExport = true } label: { Label("Export character PDF",systemImage:"doc.richtext") }.disabled(store.selected == nil)
-                Button { store.exportBackup() } label: { Label("Export backup",systemImage:"square.and.arrow.up") }
-                Divider().opacity(0.4)
-                Label("On this Mac",systemImage:"internaldrive").font(.system(size:9)).foregroundStyle(.secondary)
-            }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(ink.opacity(0.6)).padding(18)
-        }.frame(width:184).background(Color(red:0.12,green:0.14,blue:0.155)).overlay(alignment:.trailing) { Rectangle().fill(ink.opacity(0.06)).frame(width:1) }
+        }.frame(maxWidth:.infinity,alignment:compact ? .center:.leading)
+            .padding(.horizontal,compact ? 10:14).padding(.top,20).padding(.bottom,18)
+            .overlay(alignment:.bottom) { Rectangle().fill(ink.opacity(0.06)).frame(height:1).padding(.horizontal,14) }
+    }
+
+    private var compactButton: some View {
+        Button {
+            withAnimation(reduceMotion ? nil:.easeInOut(duration:0.2)) { compact.toggle() }
+        } label: {
+            Image(systemName:"sidebar.left").font(.system(size:14)).frame(width:28,height:28)
+                .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:6)).contentShape(Rectangle())
+        }.buttonStyle(.plain).foregroundStyle(.secondary)
+            .help(compact ? "Expand sidebar":"Compact sidebar")
+            .accessibilityLabel(compact ? "Expand sidebar":"Compact sidebar")
+    }
+
+    private func characterRow(_ hero: Hero) -> some View {
+        let selected = store.selected == hero.id && !store.showCompendium
+        return Button {
+            withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { store.selected = hero.id; store.showCompendium = false }
+        } label: {
+            HStack(spacing:12) {
+                VStack(spacing:5) {
+                    Portrait(data:hero.portrait,name:hero.name,size:compact ? 36:42)
+                        .overlay(RoundedRectangle(cornerRadius:8).stroke(selected ? accent.opacity(0.65):ink.opacity(0.1),lineWidth:1))
+                    if compact { HealthBar(hp:hero.hp,maximum:hero.maximumHP,height:3).frame(width:32) }
+                }
+                if !compact {
+                    VStack(alignment:.leading,spacing:5) {
+                        Text(hero.name).font(.system(size:13,weight:.semibold)).lineLimit(2)
+                        Text("\(hero.characterClass) · Level \(hero.level)").font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1)
+                        HealthBar(hp:hero.hp,maximum:hero.maximumHP,height:3)
+                    }.frame(maxWidth:.infinity,alignment:.leading)
+                }
+            }.frame(maxWidth:.infinity,alignment:compact ? .center:.leading).padding(.horizontal,10).padding(.vertical,11)
+                .background(selected ? accent.opacity(0.12):Color.clear,in:RoundedRectangle(cornerRadius:10))
+                .overlay(alignment:.leading) { if selected { Capsule().fill(accent).frame(width:3).padding(.vertical,14) } }
+                .contentShape(RoundedRectangle(cornerRadius:10))
+        }.buttonStyle(.plain).help("\(hero.name) · \(hero.characterClass) · Level \(hero.level) · \(hero.hp)/\(hero.maximumHP) HP")
+            .accessibilityLabel("\(hero.name), \(hero.characterClass), level \(hero.level)")
+            .accessibilityAddTraits(selected ? .isSelected:[])
+    }
+
+    private func sidebarLabel(_ title: String,icon: String) -> some View {
+        HStack(spacing:10) {
+            Image(systemName:icon).font(.system(size:15)).frame(width:20)
+            if !compact { Text(title).font(.system(size:13,weight:.medium)); Spacer(minLength:0) }
+        }.frame(maxWidth:.infinity,minHeight:38,alignment:compact ? .center:.leading)
+            .padding(.horizontal,10).contentShape(RoundedRectangle(cornerRadius:8))
+            .accessibilityElement(children:.ignore).accessibilityLabel(title)
     }
 }
 
@@ -115,10 +213,10 @@ struct JournalPanel: View {
         VStack(alignment:.leading,spacing:14) {
             HStack {
                 VStack(alignment:.leading,spacing:4) { Text("Adventure journal").font(.system(size:18,weight:.semibold)); Text("\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images").font(.caption).foregroundStyle(.secondary) }
-                Spacer()
+                Spacer(minLength:12)
+                TextField("Search notes",text:$search).textFieldStyle(.roundedBorder).frame(width:180)
                 Button { let note = JournalEntry(); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.journalEntries = [note] + (hero.journalEntries ?? []); expanded.insert(note.id) } } label: { Label("New note",systemImage:"plus") }.buttonStyle(.borderedProminent)
             }
-            TextField("Search notes",text:$search).textFieldStyle(.roundedBorder)
             if entries.wrappedValue.isEmpty { ContentUnavailableView("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea.")) }
             ForEach(entries) { $entry in
                 if search.isEmpty || entry.title.localizedCaseInsensitiveContains(search) || entry.description.localizedCaseInsensitiveContains(search) {
@@ -151,8 +249,7 @@ struct CreaturesPanel: View {
     var creatures: Binding<[Creature]> { Binding(get:{ hero.creatures ?? [] },set:{ hero.creatures = $0 }) }
     var body: some View {
         VStack(alignment:.leading,spacing:16) {
-            HStack { VStack(alignment:.leading,spacing:4) { Text("Creatures").font(.system(size:18,weight:.semibold)); Text("Companions, summons, and encounters").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) } }
-            TextField("Search name, type, or role",text:$search).textFieldStyle(.roundedBorder)
+            HStack { VStack(alignment:.leading,spacing:4) { Text("Creatures").font(.system(size:18,weight:.semibold)); Text("Companions, summons, and encounters").font(.caption).foregroundStyle(.secondary) }; Spacer(minLength:12); TextField("Search name, type, or role",text:$search).textFieldStyle(.roundedBorder).frame(width:190); Button { browsing=true } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent).popover(isPresented:$browsing) { CreatureQuickAdd(entries:store.compendium.filter { $0.category == .monster }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },characterName:hero.name,onAdd:{ hero.creatures=(hero.creatures ?? [])+[$0] },onCustom:{ editing=Creature() }) } }
             if creatures.wrappedValue.isEmpty { creatureEmptyState("Make room for a companion","Browse the compendium or create a custom creature with portraits, stats, HP, and attacks.") }
             let matching = creatures.wrappedValue.filter { matches($0) }
             if !creatures.wrappedValue.isEmpty && matching.isEmpty { creatureEmptyState("No matching creatures","Try another name, type, or role.") }

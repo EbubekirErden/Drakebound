@@ -24,7 +24,7 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 - Duplicate catalog choices are consolidated for browsing; custom compendium entries and saved character spells are retained.
 
 
-- Slate theme, narrow 184-point character sidebar, and browser-style Sheet, Actions, Equipment, Spells, Journal, and Creatures tabs.
+- Slate theme, resizable character sidebar with a compact portrait mode and character search, and browser-style Sheet, Actions, Equipment, Spells, Journal, and Creatures tabs.
 - Consistent tab accents: teal Sheet, coral Actions, gold Equipment, blue Spells, muted rose Journal, and green Creatures. Inactive icons are subdued; the selected tab has a matching underline and stronger icon.
 - Semantic colors, animated health bars and counters, and a larger dice display; macOS Reduce Motion is respected.
 - Multiple editable characters, with a sample level 5 wizard.
@@ -178,7 +178,7 @@ Attack, creature, spell, feature, and equipment editors use compact bordered gro
 
 Use **Edit character → Portrait** to attach an image to a character. Journal entries and creature editors also have **Add image** controls. Select local PNG, JPEG, HEIC, or another macOS-readable image (25 MB input limit). Images are converted to PNG and resized to at most 1200 pixels on the longest edge, with a 5 MB saved-image limit. They are embedded in local saves and JSON backups, so the original file can be moved later. Animated images use their first frame. Click an attached image in its editor to preview it. These controls do not generate images or fetch remote URLs.
 
-Characters and creature/summon cards use image banners with independent position/zoom framing. The character header uses a taller wide banner; the opaque sheet scrolls over its slower-moving background and reveals it again when scrolling up. Click its **crop** icon to preview horizontal/vertical positioning and zoom, then **Apply banner**. Framing is stored separately and preserves the full saved image.
+Characters and creature/summon cards use image banners with independent position/zoom framing. The character header uses a compact 160–200-point banner with an expand control for the full artwork. Click the transparent dragon mark to expand or compact the sidebar. Character search filters names and classes in expanded mode. The sidebar width, compact mode, and banner size are remembered on this Mac. Banner controls sit at the top right; the opaque sheet scrolls over its slower-moving background and reveals it again when scrolling up. Click its **crop** icon to preview horizontal/vertical positioning and zoom, then **Apply banner**. Framing is stored separately and preserves the full saved image.
 
 Drakebound keeps the original Fellowship save folder for compatibility with existing characters and backups. Data is saved atomically at `~/Library/Application Support/Fellowship5e/characters.json`. Use **Export backup** regularly; the roll log lasts for the current session. JSON imports add characters rather than overwrite existing ones.
 
@@ -229,7 +229,7 @@ In Compendium, **Select multiple** enables a selection basket across categories 
 
 ## Printable character PDF
 
-Choose **File → Export Character PDF…** (⇧⌘P), or **Export character PDF** in the sidebar. The default is a compact two-page sheet in A4 or US Letter: character essentials on page one and spells on page two. Open PDF launches the saved document in the Mac’s default viewer for previewing, sharing, or printing. No external service or internet connection is used.
+Choose **File → Export Character PDF…** (⇧⌘P), or **Export → Character PDF…** in the sidebar. **Export → Backup JSON…** preserves the editable archive. The default is a compact two-page sheet in A4 or US Letter: character essentials on page one and spells on page two. Open PDF launches the saved document in the Mac’s default viewer for previewing, sharing, or printing. No external service or internet connection is used.
 
 The character page combines ability scores, saves, skills, combat, health, ready attacks, counters, a short feature index, and carried inventory in three columns. Applied bonuses are included in the statistics instead of repeated as a configuration dump. Setup/reference headings are omitted from the feature index. Equipment state and quantity remain visible. The spell page balances two columns with prepared/concentration/ritual markers, abbreviated casting times, ranges, default casting statistics, and remaining slots.
 

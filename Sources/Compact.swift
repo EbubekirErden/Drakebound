@@ -235,15 +235,20 @@ struct DiceDock: View {
     @State var expression = "1d20"
     @State private var diceCalculator = false
     var body: some View {
-        HStack(spacing:12) {
+        HStack(spacing:10) {
             Image(systemName:"dice").foregroundStyle(accent)
             Button { diceCalculator=true } label: { HStack(spacing:6) { Text(expression).font(.system(size:11,design:.monospaced)).lineLimit(1); Image(systemName:"plus.forwardslash.minus").foregroundStyle(accent) }.frame(width:120,height:28).background(ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain).accessibilityLabel("Open dice calculator").onReceive(store.$commandRequest) { request in if let request,request.action == .diceInput && store.consume(request) { diceCalculator=true } }.popover(isPresented:$diceCalculator) { DiceCalculator(initial:expression,hero:selectedHero,spell:nil,slot:0,allowTokens:selectedHero != nil,allowEmpty:false,onApply:{ expression=$0;diceCalculator=false },onCancel:{ diceCalculator=false },onRoll:{ store.roll($0,"Custom roll") }) }
 
-            RollChoiceButton(enabled:resolvedExpression.lowercased().hasPrefix("1d20")) { mode in store.roll(resolvedExpression,"Custom roll",mode:mode) } label: { Text("Roll").padding(.horizontal,12).padding(.vertical,7).background(accent.opacity(0.18)).clipShape(RoundedRectangle(cornerRadius:7)) }
-            ForEach([4,6,8,10,12,20,100],id:\.self) { sides in RollChoiceButton(enabled:sides == 20) { mode in store.roll("1d\(sides)","d\(sides)",mode:mode) } label: { Text("d\(sides)").font(.system(size:11)).foregroundStyle(.secondary).padding(.vertical,5) } }
+            RollChoiceButton(enabled:resolvedExpression.lowercased().hasPrefix("1d20")) { mode in store.roll(resolvedExpression,"Custom roll",mode:mode) } label: { Text("Roll").fixedSize().padding(.horizontal,12).padding(.vertical,7).background(accent.opacity(0.18)).clipShape(RoundedRectangle(cornerRadius:7)) }
+            ScrollView(.horizontal) {
+                HStack(spacing:10) {
+                    ForEach([4,6,8,10,12,20,100],id:\.self) { sides in RollChoiceButton(enabled:sides == 20) { mode in store.roll("1d\(sides)","d\(sides)",mode:mode) } label: { Text("d\(sides)").font(.system(size:11)).foregroundStyle(.secondary).padding(.vertical,5) } }
+                }.fixedSize(horizontal:true,vertical:false)
+            }.scrollIndicators(.visible).frame(minWidth:60,maxWidth:210).frame(height:30)
+
             Picker("D20 mode",selection:$store.rollMode) { ForEach(RollMode.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.labelsHidden().pickerStyle(.menu).frame(width:88).help("Combines with condition advantage/disadvantage for typed rolls")
-            Spacer()
-            if let r = store.rolls.first { VStack(alignment:.trailing,spacing:3) { Text(r.label).font(.system(size:11)).lineLimit(1); if r.event { Text(r.expression).font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1) } }; if !r.event { Text("\(r.total)").font(.system(size:21,weight:.semibold,design:.rounded)).foregroundStyle(accent) } }
+            Spacer(minLength:0)
+            if let r = store.rolls.first { VStack(alignment:.trailing,spacing:3) { Text(r.label).font(.system(size:11)).lineLimit(1).frame(maxWidth:120); if r.event { Text(r.expression).font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1) } }; if !r.event { Text("\(r.total)").font(.system(size:21,weight:.semibold,design:.rounded)).foregroundStyle(accent).fixedSize() } }
             ActivityButton(store:store)
             RollHistory(rolls:store.rolls)
         }.padding(.horizontal,18).padding(.vertical,12).background(surface)

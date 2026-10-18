@@ -5,6 +5,8 @@ APP="build/Drakebound.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/module-cache
 xcrun swiftc -swift-version 5 -O -module-cache-path build/module-cache -target arm64-apple-macosx14.0 Sources/*.swift -o "$APP/Contents/MacOS/Drakebound" -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers
 xcrun swift -module-cache-path build/module-cache scripts/icon.swift build/AppIcon.iconset
+xcrun swift -module-cache-path build/module-cache scripts/icon.swift build/SidebarMark.iconset --sidebar-mark
+cp build/SidebarMark.iconset/icon_128x128@2x.png "$APP/Contents/Resources/DrakeboundSidebarMark.png"
 iconutil -c icns build/AppIcon.iconset -o "$APP/Contents/Resources/DrakeboundD20.icns"
 cp build/AppIcon.iconset/icon_512x512@2x.png "$APP/Contents/Resources/DrakeboundD20.png"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
