@@ -8,6 +8,11 @@ Double-click `build/Drakebound.app` in Finder. You can drag it to Applications i
 
 ## Included
 
+- Equipment → Add item opens a searchable compendium popover with type/source filters and a Custom item option.
+- Click the currency balance to manage standard coins and custom currencies with Add, Spend, or Set. Amounts accept a dot or comma and at most two decimal places. Balances are independent and included in JSON backups; currencies are not automatically converted.
+- Creature menu → Image layout offers Banner, Left portrait, or Right portrait. Crop framing preserves the original image.
+
+
 - Creator spell selection includes the caster table; equipment selection filters by type and source.
 - Spell preparation menus affect the whole spellbook (including hidden rows). Prepare all records your choice without enforcing class limits.
 - Features can be grouped under another feature in their editor. Links organize the list; they do not share counters or apply extra effects. Removing a parent leaves its children available.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.30.0
+
+- Add item opens a compact compendium search with type/source filters, preview, Add, and Custom item options.
+- Currency popup supports cp/sp/ep/gp/pp and named custom currencies, with exact two-decimal Add/Spend/Set operations. Existing integer GP balances remain compatible.
+- Independent currency balances persist in character saves and JSON backups; no automatic conversion.
+- Creature cards offer banner, left portrait, and right portrait layouts with image framing.
+- Spell/equipment browser empty states fill and center in the results area.
+- Decimal parsing, atomic overspend rejection, legacy balances, backup round trips, and creature layout persistence covered by regressions.
+- Verified the equipment search empty state, currency popup, and left portrait in the installed native app.
+
 ## 0.29.0
 
 - Caster table available directly in the creator’s spell browser.
