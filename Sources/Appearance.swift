@@ -25,3 +25,7 @@ let sky = appearanceColor("sky",dark:(0.50,0.71,0.88),light:(0.16,0.39,0.60))
 let coral = appearanceColor("coral",dark:(0.89,0.54,0.47),light:(0.65,0.26,0.20))
 let leaf = appearanceColor("leaf",dark:(0.49,0.76,0.52),light:(0.22,0.43,0.24))
 let journalTint = appearanceColor("journal",dark:(0.76,0.61,0.70),light:(0.49,0.31,0.43))
+
+// Text over banner images follows the banner's theme-specific scrim.
+let bannerInk = appearanceColor("bannerInk",dark:(1,1,1),light:(0.14,0.18,0.20))
+let bannerControls = appearanceColor("bannerControls",dark:(0,0,0),light:(0.93,0.94,0.92))

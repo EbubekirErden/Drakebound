@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Light-mode character, creature, and creation-preview banners blend into the page with soft sage overlays, dark text, and light control backgrounds. Dark-mode image overlays remain unchanged.
+
 - Quick note opens from Journal, the dock, or ⇧⌘J without leaving the current page. Capture text and optional tags, then Add note or ⌘Return; the first nonempty line becomes the title. Capture shows its character and saves into the existing journal. Closing keeps a separate in-memory draft for each character until the app quits.
 
 - Light mode uses softer sage-gray backgrounds and muted off-white cards to reduce glare while preserving text contrast.
