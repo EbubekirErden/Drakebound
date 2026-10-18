@@ -60,7 +60,7 @@ final class JournalEditorController:ObservableObject {
     func setHeading(_ name:String) {
         guard let view else { return };view.window?.makeFirstResponder(view)
         let range = JournalText.paragraphs(view.string,selection:view.selectedRange())
-        let size:CGFloat = name == "Heading 1" ? 22:name == "Heading 2" ? 18:13
+        let size:CGFloat = name == "Heading 1" ? 22:name == "Heading 2" ? 18:JournalText.font.pointSize
         let font = NSFont.systemFont(ofSize:size,weight:name == "Body" ? .regular:.semibold)
         if range.length == 0 { view.typingAttributes = JournalText.attributes.merging([.font:font],uniquingKeysWith:{ _,new in new }); refresh(); return }
         let text = NSMutableAttributedString(attributedString:view.attributedString()); text.addAttribute(.font,value:font,range:range)
@@ -102,8 +102,9 @@ final class JournalEditorController:ObservableObject {
 }
 class JournalTextView:NSTextView {
     override func didChangeText() {
-        if let storage = textStorage { JournalText.ensureReadableColors(storage) }
+        if let storage = textStorage { JournalText.ensureReadableColors(storage); JournalText.ensureReadableTypography(storage) }
         var attributes = typingAttributes
+        attributes[.font] = JournalText.readableFont(attributes[.font] as? NSFont)
         attributes[.foregroundColor] = JournalText.readableColor(attributes[.foregroundColor] as? NSColor)
         typingAttributes = attributes
         super.didChangeText()

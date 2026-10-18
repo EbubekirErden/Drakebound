@@ -67,6 +67,18 @@ final class TestJournalView:JournalTextView {
         assert((view.textStorage!.attribute(.foregroundColor,at:0,effectiveRange:nil) as! NSColor).isEqual(JournalText.color))
         assert((view.typingAttributes[.foregroundColor] as! NSColor).isEqual(JournalText.color))
         view.textStorage!.setAttributedString(decoded)
+        let smallSerif = NSFont(name:"TimesNewRomanPS-ItalicMT",size:12)!
+        let readingFont = JournalText.readableFont(smallSerif)
+        assert(readingFont.pointSize == 15)
+        assert(NSFontManager.shared.traits(of:readingFont).contains(.italicFontMask))
+        assert(readingFont.familyName == JournalText.font.familyName)
+        let oldNote = NSMutableAttributedString(string:"Older pasted note",attributes:[.font:smallSerif])
+        JournalText.ensureReadableTypography(oldNote)
+        let spacing = oldNote.attribute(.paragraphStyle,at:0,effectiveRange:nil) as! NSParagraphStyle
+        assert(spacing.lineSpacing >= 4 && spacing.paragraphSpacing >= 6)
+        let firstFont = oldNote.attribute(.font,at:0,effectiveRange:nil) as! NSFont
+        JournalText.ensureReadableTypography(oldNote)
+        assert((oldNote.attribute(.font,at:0,effectiveRange:nil) as! NSFont).isEqual(firstFont))
         let end = (source as NSString).range(of:"Find the keeper\nBring the silver key\n")
         let bullets = JournalText.list(decoded,selection:end,kind:"bullet")
         assert(bullets.0.string == "🌙 Moon gate\n• Find the keeper\n• Bring the silver key\n")
@@ -101,7 +113,7 @@ final class TestJournalView:JournalTextView {
         view.history.undo()
         assert(view.string == source && (view.textStorage!.attribute(.font,at:title.location,effectiveRange:nil) as! NSFont).pointSize == 22)
         view.history.undo()
-        assert(view.string == source && (view.textStorage!.attribute(.font,at:title.location,effectiveRange:nil) as! NSFont).pointSize == 13)
+        assert(view.string == source && (view.textStorage!.attribute(.font,at:title.location,effectiveRange:nil) as! NSFont).pointSize == JournalText.font.pointSize)
         var hero = Hero.sample
         let note = JournalEntry(title:"Gate",description:source,richText:rtf)
         hero.journalEntries = [note]

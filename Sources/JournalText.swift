@@ -2,11 +2,32 @@ import AppKit
 
 // RTF is optional; the plain description remains the searchable, portable fallback.
 enum JournalText {
-    static var font:NSFont { .systemFont(ofSize:13) }
+    static var font:NSFont { .systemFont(ofSize:15) }
     static var color:NSColor { NSColor(calibratedRed:0.89,green:0.90,blue:0.89,alpha:1) }
     static var attributes:[NSAttributedString.Key:Any] {
-        let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 3
+        let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 4; paragraph.paragraphSpacing = 6
         return [.font:font,.foregroundColor:color,.paragraphStyle:paragraph]
+    }
+    static func readableFont(_ original:NSFont?) -> NSFont {
+        guard let original else { return font }
+        let traits = NSFontManager.shared.traits(of:original)
+        let size = max(font.pointSize,original.pointSize)
+        let base = traits.contains(.fixedPitchFontMask) ? NSFont.monospacedSystemFont(ofSize:size,weight:.regular):NSFont.systemFont(ofSize:size)
+        return NSFontManager.shared.convert(base,toHaveTrait:traits.intersection([.boldFontMask,.italicFontMask]))
+    }
+    static func ensureReadableTypography(_ text:NSMutableAttributedString) {
+        let range = NSRange(location:0,length:text.length)
+        var fonts:[(NSRange,NSFont)] = []
+        text.enumerateAttribute(.font,in:range) { value,part,_ in fonts.append((part,readableFont(value as? NSFont))) }
+        for (part,font) in fonts { text.addAttribute(.font,value:font,range:part) }
+        var paragraphs:[(NSRange,NSParagraphStyle)] = []
+        text.enumerateAttribute(.paragraphStyle,in:range) { value,part,_ in
+            let style = (value as? NSParagraphStyle)?.mutableCopy() as? NSMutableParagraphStyle ?? NSMutableParagraphStyle()
+            style.lineSpacing = max(4,style.lineSpacing)
+            style.paragraphSpacing = max(6,style.paragraphSpacing)
+            paragraphs.append((part,style))
+        }
+        for (part,style) in paragraphs { text.addAttribute(.paragraphStyle,value:style,range:part) }
     }
     // Pasted RTF can carry fixed black ink even though the editor uses a dark surface.
     static func readableColor(_ input:NSColor?) -> NSColor {
@@ -38,6 +59,7 @@ enum JournalText {
             let result = NSMutableAttributedString(attributedString:text)
             result.removeAttribute(.attachment,range:NSRange(location:0,length:result.length))
             ensureReadableColors(result)
+            ensureReadableTypography(result)
             return result
         }
         return NSAttributedString(string:plain,attributes:attributes)
@@ -46,6 +68,7 @@ enum JournalText {
         let clean = NSMutableAttributedString(attributedString:text)
         clean.removeAttribute(.attachment,range:NSRange(location:0,length:clean.length))
         ensureReadableColors(clean)
+        ensureReadableTypography(clean)
         return try? clean.data(from:NSRange(location:0,length:clean.length),documentAttributes:[.documentType:NSAttributedString.DocumentType.rtf])
     }
     static func link(_ value:String) -> URL? {
