@@ -6,3 +6,19 @@ output/
 
 # macOS Finder metadata
 .DS_Store
+
+# macOS resource forks and local editor state
+._*
+.idea/
+.vscode/
+*.xcuserstate
+xcuserdata/
+
+# Local credentials (keep documented examples shareable)
+.env
+.env.*
+!.env.example
+
+# Packaged application artifacts
+*.app/
+*.dSYM/
