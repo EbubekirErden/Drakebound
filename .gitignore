@@ -1,2 +1,8 @@
+# Generated app bundles, binaries, caches, and test artifacts
 build/
+
+# Generated character PDFs and other personal exports
+output/
+
+# macOS Finder metadata
 .DS_Store
