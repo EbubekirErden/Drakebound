@@ -1,0 +1,67 @@
+import AppKit
+
+// RTF is optional; the plain description remains the searchable, portable fallback.
+enum JournalText {
+    static var font:NSFont { .systemFont(ofSize:13) }
+    static var color:NSColor { NSColor(calibratedRed:0.89,green:0.90,blue:0.89,alpha:1) }
+    static var attributes:[NSAttributedString.Key:Any] {
+        let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = 3
+        return [.font:font,.foregroundColor:color,.paragraphStyle:paragraph]
+    }
+    static func read(_ data:Data?,plain:String) -> NSAttributedString {
+        if let data,data.count <= 5_000_000,let text = try? NSAttributedString(data:data,options:[.documentType:NSAttributedString.DocumentType.rtf],documentAttributes:nil),text.string == plain {
+            let result = NSMutableAttributedString(attributedString:text)
+            result.removeAttribute(.attachment,range:NSRange(location:0,length:result.length))
+            return result
+        }
+        return NSAttributedString(string:plain,attributes:attributes)
+    }
+    static func write(_ text:NSAttributedString) -> Data? {
+        let clean = NSMutableAttributedString(attributedString:text)
+        clean.removeAttribute(.attachment,range:NSRange(location:0,length:clean.length))
+        return try? clean.data(from:NSRange(location:0,length:clean.length),documentAttributes:[.documentType:NSAttributedString.DocumentType.rtf])
+    }
+    static func link(_ value:String) -> URL? {
+        guard let url = URL(string:value.trimmingCharacters(in:.whitespacesAndNewlines)),["https","http","mailto"].contains(url.scheme?.lowercased() ?? ""),url.scheme == "mailto" || !(url.host ?? "").isEmpty else { return nil }
+        return url
+    }
+    static func paragraphs(_ text:String,selection:NSRange) -> NSRange {
+        let ns = text as NSString
+        let location = min(selection.location,ns.length)
+        // A selection ending at the next paragraph's start excludes that paragraph.
+        let length = min(selection.length,max(0,ns.length-location))
+        return ns.paragraphRange(for:NSRange(location:location,length:length > 0 ? length-1:0))
+    }
+    static func listPrefix(_ line:String) -> (prefix:String,body:String,next:String)? {
+        for marker in ["• ","☐ ","☑ "] where line.hasPrefix(marker) { return (marker,String(line.dropFirst(marker.count)),marker == "☑ " ? "☐ ":marker) }
+        guard let regex = try? NSRegularExpression(pattern:"^([0-9]{1,6})\\. "),let match = regex.firstMatch(in:line,range:NSRange(location:0,length:(line as NSString).length)),let number = Int((line as NSString).substring(with:match.range(at:1))) else { return nil }
+        let prefix = (line as NSString).substring(with:match.range)
+        return (prefix,String(line.dropFirst(prefix.count)),"\(number+1). ")
+    }
+    static func list(_ text:NSAttributedString,selection:NSRange,kind:String) -> (NSAttributedString,NSRange) {
+        let result = NSMutableAttributedString(attributedString:text)
+        let range = paragraphs(text.string,selection:selection)
+        let selected = text.attributedSubstring(from:range)
+        let lines = selected.string.components(separatedBy:"\n")
+        var offset = 0; var number = 1
+        let replacement = NSMutableAttributedString(string:"")
+        let allMarked = lines.contains { !$0.isEmpty } && lines.filter { !$0.isEmpty }.allSatisfy { line in
+            guard let prefix = listPrefix(line)?.prefix else { return false }
+            return kind == "bullet" ? prefix == "• ":kind == "check" ? prefix == "☐ " || prefix == "☑ ":prefix.first?.isNumber == true
+        }
+        for (index,line) in lines.enumerated() {
+            if index == lines.count-1 && line.isEmpty && index > 0 { break }
+            let original = selected.attributedSubstring(from:NSRange(location:offset,length:(line as NSString).length))
+            let old = listPrefix(line)
+            let bodyStart = old.map { ($0.prefix as NSString).length } ?? 0
+            let body = original.attributedSubstring(from:NSRange(location:bodyStart,length:original.length-bodyStart))
+            let marker = allMarked ? "":kind == "bullet" ? "• ":kind == "check" ? "☐ ":"\(number). "
+            replacement.append(NSAttributedString(string:marker,attributes:original.length > 0 ? original.attributes(at:0,effectiveRange:nil):attributes))
+            replacement.append(body)
+            if index < lines.count-1 { replacement.append(NSAttributedString(string:"\n",attributes:attributes)) }
+            offset += original.length+1; number += 1
+        }
+        result.replaceCharacters(in:range,with:replacement)
+        return (result,NSRange(location:range.location,length:replacement.length))
+    }
+}

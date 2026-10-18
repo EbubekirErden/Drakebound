@@ -1,0 +1,253 @@
+import SwiftUI
+
+struct HealthBar: View {
+    var hp: Int
+    var maximum: Int
+    var height: CGFloat = 6
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    var body: some View {
+        GeometryReader { g in
+            ZStack(alignment:.leading) {
+                Capsule().fill(ink.opacity(0.08))
+                Capsule().fill(healthColor(hp,maximum).gradient).frame(width:g.size.width * min(1,max(0,Double(hp)/Double(max(1,maximum)))))
+            }
+        }.frame(height:height).animation(reduceMotion ? nil:.spring(response:0.45,dampingFraction:0.85),value:hp).accessibilityLabel("Health \(hp) of \(maximum)")
+    }
+}
+
+struct Portrait: View {
+    var data: Data?
+    var name: String
+    var size: CGFloat = 36
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius:8).fill(accent.opacity(0.12))
+            if let image = LocalImage.display(data) { Image(nsImage:image).resizable().scaledToFill().frame(width:size,height:size).clipped() }
+            else { Text(String(name.prefix(1)).uppercased()).font(.system(size:size*0.43,weight:.medium,design:.serif)).foregroundStyle(accent) }
+        }.frame(width:size,height:size).clipShape(RoundedRectangle(cornerRadius:8)).accessibilityLabel("\(name) portrait")
+    }
+}
+
+struct PictureControls: View {
+    @Binding var data: Data?
+    var label: String
+    @State var error: String?
+    @State var preview = false
+    var body: some View {
+        VStack(alignment:.leading,spacing:10) {
+            if let image = LocalImage.display(data) {
+                Button { preview = true } label: { Image(nsImage:image).resizable().scaledToFit().frame(maxWidth:420,maxHeight:200).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).help("View image")
+            }
+            HStack {
+                Button { do { if let chosen = try LocalImage.choose() { data = chosen } } catch { self.error = "Choose a readable image under 25 MB. PNG, JPEG, and HEIC are supported.\n\(error.localizedDescription)" } } label: { Label(data == nil ? "Add image":"Replace image",systemImage:"photo") }
+                if data != nil { Button("Remove image",role:.destructive) { data = nil } }
+                Text(label).font(.caption).foregroundStyle(.secondary)
+            }.font(.system(size:11))
+        }
+        .alert("Image could not be loaded",isPresented:Binding(get:{ error != nil },set:{ if !$0 { error = nil } })) { Button("OK") { error = nil } } message: { Text(error ?? "") }
+        .sheet(isPresented:$preview) { VStack { HStack { Text(label).font(.headline); Spacer(); Button("Done") { preview = false } }; if let image = LocalImage.display(data) { Image(nsImage:image).resizable().scaledToFit().frame(maxWidth:.infinity,maxHeight:.infinity) } }.padding(22).frame(width:720,height:600) }
+    }
+}
+
+struct PartySidebar: View {
+    @ObservedObject var store: Store
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    var body: some View {
+        VStack(alignment:.leading,spacing:0) {
+            HStack(spacing:8) { Image(systemName:"shield.lefthalf.filled").foregroundStyle(accent); VStack(alignment:.leading,spacing:3) { Text("FELLOWSHIP").font(.system(size:12,weight:.bold,design:.serif)).tracking(1); Text("CHARACTER COMPANION").font(.system(size:7,weight:.medium)).tracking(0.8).foregroundStyle(.secondary) } }.padding(.horizontal,16).padding(.vertical,22)
+            HStack { Text("CHARACTERS").font(.system(size:9,weight:.semibold)).tracking(1.2).foregroundStyle(.secondary); Spacer(); Text("\(store.heroes.count)").font(.system(size:9)).foregroundStyle(.secondary) }.padding(.horizontal,16).padding(.top,16).padding(.bottom,10)
+            ScrollView {
+                VStack(spacing:6) {
+                    ForEach(store.heroes) { h in
+                        Button { withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { store.selected = h.id; store.showCompendium = false } } label: {
+                            HStack(alignment:.top,spacing:9) {
+                                Portrait(data:h.portrait,name:h.name,size:31)
+                                VStack(alignment:.leading,spacing:5) {
+                                    Text(h.name).font(.system(size:11,weight:.semibold)).lineLimit(2)
+                                    Text("\(h.characterClass) · \(h.level)").font(.system(size:9)).foregroundStyle(.secondary).lineLimit(1)
+                                    HealthBar(hp:h.hp,maximum:h.maximumHP,height:3)
+                                }.frame(maxWidth:.infinity,alignment:.leading)
+                            }.padding(10).background(store.selected == h.id && !store.showCompendium ? accent.opacity(0.12):Color.clear).clipShape(RoundedRectangle(cornerRadius:8)).overlay(alignment:.leading) { if store.selected == h.id && !store.showCompendium { Capsule().fill(accent).frame(width:2).padding(.vertical,10) } }
+                        }.buttonStyle(.plain)
+                    }
+                    Button { store.addHero() } label: { Label("New character",systemImage:"plus").font(.system(size:11)).frame(maxWidth:.infinity,alignment:.leading).padding(10) }.buttonStyle(.plain).foregroundStyle(.secondary)
+                }.padding(.horizontal,8)
+            }
+            Button { store.showCompendium = true } label: { Label("Compendium",systemImage:"books.vertical").font(.system(size:12,weight:.medium)).frame(maxWidth:.infinity,alignment:.leading).padding(12).background(store.showCompendium ? accent.opacity(0.13):Color.clear).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).foregroundStyle(store.showCompendium ? accent:ink.opacity(0.7)).padding(.horizontal,8).padding(.bottom,8)
+            VStack(alignment:.leading,spacing:14) {
+                Button { store.importBackup() } label: { Label("Import",systemImage:"square.and.arrow.down") }
+                Button { store.showPDFExport = true } label: { Label("Export character PDF",systemImage:"doc.richtext") }.disabled(store.selected == nil)
+                Button { store.exportBackup() } label: { Label("Export backup",systemImage:"square.and.arrow.up") }
+                Divider().opacity(0.4)
+                Label("On this Mac",systemImage:"internaldrive").font(.system(size:9)).foregroundStyle(.secondary)
+            }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(ink.opacity(0.6)).padding(18)
+        }.frame(width:184).background(Color(red:0.12,green:0.14,blue:0.155)).overlay(alignment:.trailing) { Rectangle().fill(ink.opacity(0.06)).frame(width:1) }
+    }
+}
+
+struct JournalPanel: View {
+    @Binding var hero: Hero
+    @State var expanded: Set<UUID> = []
+    @State var search = ""
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
+    var entries: Binding<[JournalEntry]> { Binding(get:{ hero.journalEntries ?? [] },set:{ hero.journalEntries = $0 }) }
+    var body: some View {
+        VStack(alignment:.leading,spacing:14) {
+            HStack {
+                VStack(alignment:.leading,spacing:4) { Text("Adventure journal").font(.system(size:18,weight:.semibold)); Text("\(entries.wrappedValue.count) \(entries.wrappedValue.count == 1 ? "note":"notes") · titles, details, and images").font(.caption).foregroundStyle(.secondary) }
+                Spacer()
+                Button { let note = JournalEntry(); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.journalEntries = [note] + (hero.journalEntries ?? []); expanded.insert(note.id) } } label: { Label("New note",systemImage:"plus") }.buttonStyle(.borderedProminent)
+            }
+            TextField("Search notes",text:$search).textFieldStyle(.roundedBorder)
+            if entries.wrappedValue.isEmpty { ContentUnavailableView("A story worth keeping",systemImage:"book.closed",description:Text("Add a note for each session, person, place, or idea.")) }
+            ForEach(entries) { $entry in
+                if search.isEmpty || entry.title.localizedCaseInsensitiveContains(search) || entry.description.localizedCaseInsensitiveContains(search) {
+                    VStack(alignment:.leading,spacing:0) {
+                        DisclosureGroup(isExpanded:Binding(get:{ expanded.contains(entry.id) },set:{ isOpen in withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if isOpen { expanded.insert(entry.id) } else { expanded.remove(entry.id) } } })) {
+                            VStack(alignment:.leading,spacing:12) {
+                                TextField("Title",text:$entry.title).font(.system(size:15,weight:.semibold)).textFieldStyle(.roundedBorder)
+                                JournalRichEditor(entry:$entry)
+                                PictureControls(data:$entry.image,label:"Note image")
+                                HStack { Text("Saved as you type").font(.system(size:9)).foregroundStyle(.secondary); Spacer(); Menu { Button("Duplicate note") { var copy = entry; copy.id = UUID(); copy.title += " copy"; hero.journalEntries?.append(copy) }; Button("Delete note",role:.destructive) { let id = entry.id; hero.journalEntries?.removeAll { $0.id == id } } } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:24) }
+                            }.padding(.top,14)
+                        } label: {
+                            Button { withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { if expanded.contains(entry.id) { expanded.remove(entry.id) } else { expanded.insert(entry.id) } } } label: {
+                                HStack(spacing:10) { Image(systemName:entry.image == nil ? "text.alignleft":"photo.on.rectangle").foregroundStyle(gold); VStack(alignment:.leading,spacing:4) { Text(entry.title.isEmpty ? "Untitled note":entry.title).font(.system(size:13,weight:.medium)); if !expanded.contains(entry.id) { Text(entry.description.isEmpty ? "Add a description…":entry.description.replacingOccurrences(of:"\n",with:" ")).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) } }; Spacer() }.contentShape(Rectangle())
+                            }.buttonStyle(.plain)
+                        }
+                    }.padding(16).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.06)))
+                }
+            }
+        }.onAppear { hero.migrateContent() }
+    }
+}
+
+struct CreaturesPanel: View {
+    @Binding var hero: Hero
+    @ObservedObject var store: Store
+    @State var editing: Creature?
+    @State var search = ""
+    var creatures: Binding<[Creature]> { Binding(get:{ hero.creatures ?? [] },set:{ hero.creatures = $0 }) }
+    var body: some View {
+        VStack(alignment:.leading,spacing:16) {
+            HStack { VStack(alignment:.leading,spacing:4) { Text("Creatures").font(.system(size:18,weight:.semibold)); Text("Companions, summons, and encounters").font(.caption).foregroundStyle(.secondary) }; Spacer(); Button { editing = Creature() } label: { Label("Add creature",systemImage:"plus") }.buttonStyle(.borderedProminent) }
+            TextField("Search name, type, or role",text:$search).textFieldStyle(.roundedBorder)
+            if creatures.wrappedValue.isEmpty { ContentUnavailableView("Make room for a companion",systemImage:"pawprint",description:Text("Create custom creature records with portraits, stats, HP, and rollable attacks.")) }
+            let matching = creatures.wrappedValue.filter { matches($0) }
+            if !matching.isEmpty {
+                HStack { Text("Active · \(matching.filter(\.isActive).count)").font(.caption).foregroundStyle(accent); Spacer(); Text("Inactive creatures keep their HP, attacks, and notes.").font(.caption2).foregroundStyle(.secondary) }
+            }
+            ForEach(creatures) { $creature in
+                if matches(creature) && creature.isActive {
+                    CreatureCard(creature:$creature,store:store,deactivate:{ hero.setCreatureActive(creature.id,false) },edit:{ editing = creature },remove:{ let id = creature.id; hero.creatures?.removeAll { $0.id == id } })
+                }
+            }
+            if matching.contains(where:{ !$0.isActive }) {
+                Card(title:"Inactive · \(matching.filter { !$0.isActive }.count)") {
+                    ForEach(creatures) { $creature in
+                        if matches(creature) && !creature.isActive {
+                            HStack(spacing:12) {
+                                Image(systemName:"moon.zzz").foregroundStyle(.secondary)
+                                VStack(alignment:.leading,spacing:3) { Text(creature.name).font(.system(size:12,weight:.semibold)); Text("\(creature.kind) · \(creature.hp)/\(creature.maximumHP) HP").font(.caption2).foregroundStyle(.secondary) }
+                                Spacer()
+                                Button("Edit") { editing = creature }.buttonStyle(.borderless)
+                                Button(creature.isSummon ? "Summon":"Activate") { hero.setCreatureActive(creature.id,true) }.buttonStyle(.bordered).tint(accent).accessibilityLabel("Activate "+creature.name)
+                            }.padding(8).background(paper.opacity(0.4)).clipShape(RoundedRectangle(cornerRadius:7))
+                        }
+                    }
+                }
+            }
+        }.sheet(item:$editing) { creature in CreatureEditor(creature:creature) { updated in var all = hero.creatures ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.creatures = all } }
+    }
+    func matches(_ creature:Creature) -> Bool { search.isEmpty || [creature.name,creature.kind,creature.type].contains { $0.localizedCaseInsensitiveContains(search) } }
+}
+
+struct CreatureCard: View {
+    @Binding var creature:Creature
+    @ObservedObject var store:Store
+    var deactivate:()->Void
+    var edit:()->Void
+    var remove:()->Void
+    @State private var detail:CreatureAttack?
+    @State private var health:HealthAdjustment?
+    @State private var expanded:Set<UUID> = []
+    var body:some View {
+        Card(title:creature.kind,tip:.creatures) {
+            HStack { Label("Active in play",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(accent); Spacer(); Button(action:deactivate) { Label(creature.isSummon ? "Dismiss":"Deactivate",systemImage:"moon.zzz").padding(.horizontal,6).frame(minHeight:28).contentShape(Rectangle()) }.buttonStyle(.bordered).tint(gold).font(.caption).help("Move to Inactive without changing HP or notes").accessibilityLabel((creature.isSummon ? "Dismiss ":"Deactivate ")+creature.name) }
+            CreatureBanner(creature:$creature,edit:edit,remove:remove)
+            HStack {
+                Text("\(creature.hp)").font(.system(size:27,weight:.semibold,design:.rounded)).foregroundStyle(healthColor(creature.hp,creature.maximumHP)); Text("/ \(creature.maximumHP) HP").font(.caption).foregroundStyle(.secondary); Spacer()
+                Button { health = .damage } label: { Label("Damage",systemImage:"minus") }.tint(coral).popover(isPresented:Binding(get:{ health == .damage },set:{ if !$0 { health = nil } })) { CreatureHealthPopup(creature:$creature,healing:false) }
+                Button { health = .healing } label: { Label("Heal",systemImage:"plus") }.tint(leaf).popover(isPresented:Binding(get:{ health == .healing },set:{ if !$0 { health = nil } })) { CreatureHealthPopup(creature:$creature,healing:true) }
+            }
+            HealthBar(hp:creature.hp,maximum:creature.maximumHP,height:6)
+            HStack(spacing:7) { ForEach(0..<6,id:\.self) { i in RollChoiceButton { mode in store.roll("1d20\(signed(creature.modifier(i)))","\(creature.name) · \(abilities[i])",mode:mode) } label: { VStack(spacing:4) { Text(String(abilities[i].prefix(3)).uppercased()).font(.system(size:9)).foregroundStyle(.secondary); Text(signed(creature.modifier(i))).font(.system(size:17,weight:.semibold,design:.rounded)) }.frame(maxWidth:.infinity).padding(.vertical,9).background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:7)) } } }.padding(.vertical,5)
+            if !creature.attacks.isEmpty {
+                Text("ATTACKS").font(.system(size:9,weight:.bold)).tracking(1).foregroundStyle(coral)
+                LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:10),count:min(2,creature.attacks.count)),alignment:.leading,spacing:10) {
+                    ForEach(creature.attacks) { attack in
+                        VStack(alignment:.leading,spacing:10) {
+                            HStack { Button { detail = attack } label: { Label(attack.name,systemImage:"scope").font(.system(size:13,weight:.semibold)).frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle()) }.buttonStyle(.plain); Image(systemName:"info.circle").font(.caption).foregroundStyle(.secondary) }
+                            HStack(spacing:7) {
+                                if attack.resolution != .damage { RollChoiceButton { mode in store.roll("1d20\(signed(attack.bonus))","\(creature.name) · \(attack.name)",mode:mode) } label: { AttackRollField(title:"TO HIT",value:signed(attack.bonus),subtitle:store.rollMode.rawValue,color:sky) } }
+                                Button { store.roll(attack.damage,"\(creature.name) · \(attack.name) · damage") } label: { AttackRollField(title:"DAMAGE",value:attack.damage,color:coral) }.buttonStyle(.plain)
+                            }
+                            if let text = attack.description, !text.isEmpty { Text(text).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(2) }
+                        }.padding(12).background(paper.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:9))
+                    }
+                }
+            }
+            if let traits = creature.traits, !traits.isEmpty {
+                Text("TRAITS & ACTIONS").font(.system(size:9,weight:.bold)).tracking(1).foregroundStyle(gold).padding(.top,5)
+                ForEach(traits) { trait in
+                    DisclosureGroup(isExpanded:Binding(get:{ expanded.contains(trait.id) },set:{ value in if value { expanded.insert(trait.id) } else { expanded.remove(trait.id) } })) { Text(trait.text).font(.system(size:12)).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading).padding(.vertical,7) } label: { Button { if expanded.contains(trait.id) { expanded.remove(trait.id) } else { expanded.insert(trait.id) } } label: { Text(trait.name).font(.system(size:12,weight:.medium)).frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle()) }.buttonStyle(.plain) }.padding(9).background(paper.opacity(0.4)).clipShape(RoundedRectangle(cornerRadius:7))
+                }
+            }
+            if !creature.description.isEmpty { DisclosureGroup("Notes & source") { DetailText(text:creature.description) }.font(.caption) }
+        }.popover(item:$detail) { attack in AttackDescription(name:attack.name,text:attack.description ?? "",edit:{ detail = nil; edit() }) }
+    }
+}
+struct CreatureHealthPopup:View {
+    @Binding var creature:Creature
+    var healing:Bool
+    @State private var amount = ""
+    @FocusState private var focused:Bool
+    @Environment(\.dismiss) var dismiss
+    var value:Int? { guard let n = Int(amount), (0...99999).contains(n) else { return nil }; return n }
+    var body:some View { VStack(alignment:.leading,spacing:14) { Text(healing ? "Restore HP":"Take damage").font(.headline); TextField("Amount",text:$amount).textFieldStyle(.roundedBorder).font(.system(size:26,weight:.semibold,design:.rounded)).focused($focused).onSubmit(apply); HStack { ForEach([1,5,10,20],id:\.self) { n in Button("+\(n)") { amount = String(min(99999,(value ?? 0)+n)) } } }; HStack { Button("Cancel") { dismiss() }; Spacer(); Button("Apply",action:apply).buttonStyle(.borderedProminent).disabled(value == nil) } }.padding(18).frame(width:280).tint(healing ? leaf:coral).onAppear { focused = true } }
+    func apply() { guard let value else { return }; if healing { creature.heal(value) } else { creature.damage(value) }; dismiss() }
+}
+
+struct CreatureEditor:View {
+    @State var creature:Creature
+    var onSave:(Creature)->Void
+    @State private var saveToCompendium = false
+    @Environment(\.templateSaveAction) private var saveTemplate
+    @Environment(\.dismiss) var dismiss
+    var valid:Bool { !creature.name.trimmingCharacters(in:.whitespaces).isEmpty && (1...99999).contains(creature.maximumHP) && (0...99999).contains(creature.hp) && (0...50).contains(creature.ac) && (0...999).contains(creature.speed) && creature.scores.allSatisfy { (1...30).contains($0) } && creature.attacks.allSatisfy { (-100...100).contains($0.bonus) && (try? Dice.roll($0.damage)) != nil } }
+    var body:some View {
+        VStack(alignment:.leading,spacing:14) {
+            HStack { Text("Creature").font(.system(size:20,weight:.semibold)); Spacer(); Button("Cancel") { dismiss() }; Button("Save creature") { creature.hp = min(creature.hp,creature.maximumHP); if saveToCompendium { saveTemplate?(TemplateFactory.creature(creature)) }; onSave(creature); dismiss() }.buttonStyle(.borderedProminent).disabled(!valid) }
+            SaveTemplateToggle(selected:$saveToCompendium)
+            ScrollView { VStack(spacing:12) {
+                EditorGroup(title:"Identity") { TextField("Creature name",text:$creature.name); HStack { Picker("Role",selection:$creature.kind) { ForEach(["Companion","Familiar","Summon","Encounter","Reference"],id:\.self) { Text($0).tag($0) } }; TextField("Size / type / challenge",text:$creature.type) }; DisclosureGroup("Image") { PictureControls(data:$creature.image,label:"Creature image") } }
+                Toggle("Active in play",isOn:Binding(get:{ creature.isActive },set:{ creature.isActive = $0 })).font(.caption).help("Inactive creatures remain saved and can be activated at any time. Companions stay active until you deactivate them.")
+                EditorGroup(title:"Combat stats") {
+                    HStack { EditorField(title:"HP") { TextField("Current HP",value:$creature.hp,format:.number) }; EditorField(title:"Maximum") { TextField("Maximum HP",value:$creature.maximumHP,format:.number) }; EditorField(title:"AC") { TextField("Armor class",value:$creature.ac,format:.number) }; EditorField(title:"Speed · ft") { TextField("Speed",value:$creature.speed,format:.number) } }
+                    HStack { ForEach(0..<6,id:\.self) { i in EditorField(title:String(abilities[i].prefix(3)).uppercased()) { TextField(abilities[i],value:$creature.scores[i],format:.number) } } }
+                }
+                EditorGroup(title:"Attacks") {
+                    ForEach($creature.attacks) { $attack in
+                        VStack(alignment:.leading,spacing:9) { HStack { TextField("Attack name",text:$attack.name); Button { let id = attack.id; creature.attacks.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain) }; HStack { EditorField(title:"To hit") { TextField("To hit",value:$attack.bonus,format:.number) }; EditorField(title:"Damage dice") { DiceFormulaField(value:$attack.damage) } }; HStack { ActionTimingPicker(timing:$attack.timing,defaultLabel:"Default · Action"); Picker("Resolution",selection:Binding(get:{ attack.resolution ?? .attack },set:{ attack.resolution = $0 })) { ForEach(CreatureResolution.allCases,id:\.self) { option in Text(option.rawValue).tag(option) } } }; BorderedTextEditor(text:Binding(get:{ attack.description ?? "" },set:{ attack.description = $0 }),height:75) }.padding(10).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
+                    }
+                    Button("Add attack") { creature.attacks.append(CreatureAttack()) }
+                }
+                EditorGroup(title:"Traits & other actions") {
+                    ForEach(Binding(get:{ creature.traits ?? [] },set:{ creature.traits = $0 })) { $trait in VStack(spacing:8) { HStack { TextField("Trait name",text:$trait.name); Button { let id = trait.id; creature.traits?.removeAll { $0.id == id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain) }; ActionTimingPicker(timing:$trait.timing,defaultLabel:"Passive · hide from Actions"); BorderedTextEditor(text:$trait.text,height:70) } }
+                    Button("Add trait / action") { creature.traits = (creature.traits ?? [])+[CharacterFeature()] }
+                }
+                EditorGroup(title:"Notes & full source") { BorderedTextEditor(text:$creature.description,height:90) }
+            } }
+        }.padding(20).frame(width:640,height:700).textFieldStyle(.roundedBorder).tint(accent)
+    }
+}
