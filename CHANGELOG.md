@@ -15,6 +15,10 @@
 
 ## Unreleased
 
+- Character creation and level-up review use expandable alternating rows, before/after statistics, a changes-only view, and direct Edit/Fix links; the full change log remains available.
+- Wizard Continue explains missing requirements at the current step. Back and direct step navigation stay available; completion markers follow validation and reviewed steps.
+- Compendium inspector resizing uses a fixed coordinate space and a drag guide, committing width only on release. Clear all filters is visible beside results, and custom/starter spell cards use the inspector too.
+
 - Detail panels retain their dimensions after dragging; the corner control also expands/restores on click. The compendium inspector has a draggable width divider.
 - Source attribution moves into a collapsed Sources section below reference content.
 - Spell identity fits in one row, casting panels match heights, and roll fields group formula, effects, and scaling with manual level options in a disclosure.

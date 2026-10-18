@@ -1,11 +1,5 @@
 import SwiftUI
 
-enum GuideStep:String,CaseIterable {
-    case identity = "Identity", origin = "Class & origin", abilities = "Abilities", vitality = "Hit points", training = "Training", features = "Features", loadout = "Spells & gear", review = "Review"
-    var heading:String { switch self { case .identity:return "Meet your adventurer"; case .origin:return "Choose your path"; case .abilities:return "Shape your abilities"; case .vitality:return "Grow your resilience"; case .training:return "Choose your training"; case .features:return "Make your feature choices"; case .loadout:return "Prepare for adventure"; case .review:return "Review your character" } }
-    var hint:String { switch self { case .identity:return "Start with a name and rules edition. You can add a portrait now or later."; case .origin:return "Use a familiar class, browse your compendium, or enter a custom option."; case .abilities:return "Assign scores and any explicit increases. The preview updates as you choose."; case .vitality:return "Choose fixed HP, roll a hit die, or enter your table’s roll."; case .training:return "Record only the saves, skills, languages, and tools your choices grant."; case .features:return "Read and select the features you gain. Subclass and optional features are individual choices."; case .loadout:return "Set slot totals, choose spells, and add equipment. Preview any choice before adding it."; case .review:return "Check the full preview and changes, then save when everything is ready." } }
-}
-
 struct CharacterGuide:View {
     var session:CharacterGuideSession
     @ObservedObject var store:Store
@@ -15,6 +9,9 @@ struct CharacterGuide:View {
     @State private var previewVisible = true
     @State var fullPreview = false
     @State private var discard = false
+    @State private var visited:Set<GuideStep> = []
+    @State private var showStepIssues = false
+    @State private var validationAttempt = 0
     @State private var error:String?
     @State var referencePreview:CompendiumEntry?
     @State var improvementFeature:CharacterFeature?
@@ -34,7 +31,7 @@ struct CharacterGuide:View {
     @State var equipmentOpen = false
     @State var originHelp = false
     @State var customOrigin:CompendiumCreation?
-    var steps:[GuideStep] { draft.isLevelUp ? [.origin]+(draft.asiAvailable || !draft.abilityOverrideReason.isEmpty ? [.abilities]:[])+[.vitality,.training,.features,.loadout,.review]:[.identity,.origin,.abilities,.training,.features,.loadout,.review] }
+    var steps:[GuideStep] { draft.guideSteps }
     var position:Int { steps.firstIndex(of:step) ?? 0 }
     var classReference:CompendiumEntry? { draft.chosenClass.referenceID.flatMap { catalog.entries[$0] } }
     @MainActor init(session:CharacterGuideSession,store:Store) {
@@ -46,12 +43,18 @@ struct CharacterGuide:View {
             header
             progress
             HStack(alignment:.top,spacing:18) {
-                ScrollView {
-                    VStack(alignment:.leading,spacing:16) {
-                        VStack(alignment:.leading,spacing:6) { Text(step.heading).font(.system(size:23,weight:.semibold)); Text(step.hint).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true) }
-                        stage
-                    }.frame(maxWidth:.infinity,alignment:.leading).padding(2).padding(.bottom,18)
-                }.id(step)
+                ScrollViewReader { scroll in
+                    ScrollView {
+                        VStack(alignment:.leading,spacing:14) {
+                            VStack(alignment:.leading,spacing:6) { Text(step.heading).font(.system(size:23,weight:.semibold)); Text(step.hint).font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true) }
+                            if showStepIssues && !stepIssues.isEmpty && step != .review {
+                                VStack(alignment:.leading,spacing:7) { Text("Complete this step").font(.system(size:12,weight:.semibold)); ForEach(stepIssues) { issue in Label(issue.message,systemImage:"exclamationmark.circle").font(.system(size:12)).fixedSize(horizontal:false,vertical:true) } }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(gold.opacity(0.07),in:RoundedRectangle(cornerRadius:8)).foregroundStyle(gold).id("guideIssues")
+                            }
+                            stage
+                        }.frame(maxWidth:.infinity,alignment:.leading).padding(2).padding(.bottom,18)
+                    }.id(step)
+                    .onChange(of:validationAttempt) { _,_ in withAnimation { scroll.scrollTo("guideIssues",anchor:.top) } }
+                }
                 if previewVisible { ScrollView { VStack(alignment:.leading,spacing:12) { HStack { Text("LIVE PREVIEW").font(.system(size:9,weight:.semibold)).tracking(1).foregroundStyle(.secondary); Spacer(); Button { fullPreview = true } label: { Image(systemName:"arrow.up.left.and.arrow.down.right") }.buttonStyle(.plain).help("Expand character preview") }; GuidePreview(draft:draft) }.padding(14) }.frame(width:250).background(surface.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:10)) }
             }.padding(20).frame(maxWidth:1120,maxHeight:.infinity).frame(maxWidth:.infinity,maxHeight:.infinity)
             footer
@@ -62,7 +65,7 @@ struct CharacterGuide:View {
         .onChange(of:draft.backgroundReference) { _,id in if let id,let entry = catalog.entries[id] { draft.chooseOrigin(entry) } else if id == nil { draft.backgroundTemplate = nil; draft.hero.background = ""; draft.selectedFeatures.removeAll { $0.category == .background } } }
         .onChange(of:draft.chosenClass.subclass) { _,_ in draft.syncClassDefaults() }
         .onChange(of:draft.classLevel) { _,_ in if let selected = subclassOptions.first(where:{ $0.name == draft.chosenClass.subclass }),draft.classLevel < selected.level { draft.chosenClass.subclass = "" }; draft.syncClassDefaults() }
-        .onChange(of:draft.asiAvailable) { _,allowed in if !allowed && step == .abilities { step = .vitality } }
+        .onChange(of:steps) { _,available in if !available.contains(step) { go(to:draft.isLevelUp ? .vitality:.abilities) } }
         .onChange(of:equipmentChoice) { _,id in if let id,let entry = catalog.entries[id] { draft.hero.items.append(equipment(entry)); equipmentChoice = nil } }
         .onChange(of:featChoice) { _,id in if let id,let entry = catalog.entries[id] { if draft.isLevelUp && draft.asiAvailable { draft.featInsteadOfASI = true }; for feature in GuideRules.featureChoices(entry,from:1,through:20) where !draft.selectedFeatures.contains(where:{ $0.id == feature.id }) { draft.selectedFeatures.append(feature) }; featChoice = nil } }
         .confirmationDialog("Discard this draft?",isPresented:$discard,titleVisibility:.visible) { Button("Discard draft",role:.destructive) { store.characterGuide = nil }; Button("Keep editing",role:.cancel) {} } message: { Text("Your saved characters have not been changed.") }
@@ -91,22 +94,31 @@ struct CharacterGuide:View {
     }
     var progress:some View {
         HStack(spacing:6) {
-            ForEach(Array(steps.enumerated()),id:\.element) { i,item in Button { step = item } label: { VStack(spacing:8) { HStack(spacing:5) { Text(i < position ? "✓":"\(i+1)").font(.system(size:9,weight:.bold)).frame(width:17,height:17).background((i <= position ? accent:ink).opacity(0.12)).clipShape(Circle()); Text(item.rawValue).font(.system(size:10,weight:step == item ? .semibold:.regular)).lineLimit(1) }; Capsule().fill(i <= position ? accent:ink.opacity(0.1)).frame(height:2) }.foregroundStyle(step == item ? ink:ink.opacity(0.55)).frame(maxWidth:.infinity).padding(.vertical,10).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Step \(i+1), \(item.rawValue)").accessibilityAddTraits(step == item ? .isSelected:[]) }
+            ForEach(Array(steps.enumerated()),id:\.element) { i,item in Button { go(to:item) } label: { VStack(spacing:8) { HStack(spacing:5) { Text(stepComplete(item) ? "✓":draft.guideIssues.contains { $0.step == item } && visited.contains(item) ? "!":"\(i+1)").font(.system(size:9,weight:.bold)).frame(width:17,height:17).background(((stepComplete(item) || item == step) ? accent:ink).opacity(0.12)).clipShape(Circle()); Text(item.rawValue).font(.system(size:10,weight:step == item ? .semibold:.regular)).lineLimit(1) }; Capsule().fill(stepComplete(item) || item == step ? accent:ink.opacity(0.1)).frame(height:2) }.foregroundStyle(step == item ? ink:ink.opacity(0.55)).frame(maxWidth:.infinity).padding(.vertical,10).contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("Step \(i+1), \(item.rawValue)").accessibilityValue(stepComplete(item) ? "Complete":draft.guideIssues.contains { $0.step == item } ? "Needs attention":"Not reviewed").accessibilityAddTraits(step == item ? .isSelected:[]) }
         }.padding(.horizontal,22).background(surface.opacity(0.35))
     }
     var footer:some View {
-        VStack(alignment:.leading,spacing:8) {
-            if let issue = stepProblems.first { Label(issue,systemImage:"exclamationmark.circle").font(.caption).foregroundStyle(gold) }
-            HStack { Button("Back") { step = steps[max(0,position-1)] }.disabled(position == 0); Text("Step \(position+1) of \(steps.count)").font(.caption).foregroundStyle(.secondary); Spacer(); Text("Character draft · saved when you finish").font(.system(size:10)).foregroundStyle(.secondary)
-                if step == .review { Button(draft.isLevelUp ? "Apply level \(draft.newLevel)":"Create character") { do { try store.commitGuide(draft) } catch { self.error = error.localizedDescription } }.buttonStyle(.borderedProminent).disabled(!draft.problems.isEmpty) }
-                else { Button("Continue") { step = steps[min(steps.count-1,position+1)] }.buttonStyle(.borderedProminent).disabled(!stepProblems.isEmpty) }
+        HStack(spacing:12) {
+            Button("Back") { go(to:steps[max(0,position-1)]) }.buttonStyle(PageButtonStyle()).disabled(position == 0)
+            Text("Step \(position+1) of \(steps.count)").font(.system(size:11)).foregroundStyle(.secondary)
+            Spacer(minLength:8)
+            if !stepIssues.isEmpty {
+                Button { showStepIssues=true;validationAttempt += 1; if step == .review,let issue=draft.guideIssues.first { go(to:issue.step,showProblems:true) } } label: { Label("\(stepIssues.count) \(stepIssues.count == 1 ? "item needs":"items need") attention",systemImage:"exclamationmark.circle") }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(gold)
+            } else { Text("Draft · saved when you finish").font(.system(size:10)).foregroundStyle(.secondary) }
+            if step == .review {
+                if let issue=draft.guideIssues.first {
+                    Button("Fix first issue") { go(to:issue.step,showProblems:true) }.buttonStyle(PageButtonStyle(prominent:true))
+                } else {
+                    Button(draft.isLevelUp ? "Apply level \(draft.newLevel)":"Create character") { do { try store.commitGuide(draft) } catch { self.error=error.localizedDescription } }.buttonStyle(PageButtonStyle(prominent:true))
+                }
+            } else {
+                Button("Continue") { if stepIssues.isEmpty { go(to:steps[min(steps.count-1,position+1)]) } else { showStepIssues=true;validationAttempt += 1 } }.buttonStyle(PageButtonStyle(prominent:true))
             }
         }.padding(.horizontal,22).padding(.vertical,14).background(surface)
     }
-    var stepProblems:[String] {
-        if step == .review { return draft.problems }
-        return draft.problems.filter { text in switch step { case .identity:return text.contains("name."); case .origin:return (text.contains("class") && !text.contains("class skills") && !text.contains("ability")) || text.contains("level 20") || text.contains("ancestry") || text.contains("background"); case .abilities:return text.contains("Point buy") || text.localizedCaseInsensitiveContains("ability") || text.contains("ASI") || text.contains("six"); case .training:return text.contains("class skills"); case .vitality:return text.contains("HP"); case .loadout:return text.contains("Slot"); default:return false } }
-    }
+    var stepIssues:[GuideIssue] { step == .review ? draft.guideIssues:draft.guideIssues.filter { $0.step == step } }
+    func stepComplete(_ item:GuideStep) -> Bool { visited.contains(item) && !draft.guideIssues.contains { $0.step == item } && item != .review }
+    func go(to destination:GuideStep,showProblems:Bool = false) { visited.insert(step);step=destination;showStepIssues=showProblems;validationAttempt += 1 }
     @ViewBuilder var stage:some View {
         switch step { case .identity:identityStep; case .origin:originStep; case .abilities:abilitiesStep; case .vitality:vitalityStep; case .training:trainingStep; case .features:featuresStep; case .loadout:loadoutStep; case .review:reviewStep }
     }

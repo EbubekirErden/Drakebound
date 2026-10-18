@@ -81,21 +81,7 @@ extension CharacterGuide {
 
     }
     var reviewStep:some View {
-        VStack(spacing:14) {
-            EditorGroup(title:"Ready for review") {
-                HStack { Portrait(data:draft.hero.portrait,name:draft.hero.name,size:46); VStack(alignment:.leading,spacing:5) { Text(draft.result.name).font(.system(size:20,weight:.semibold)); Text(draft.result.characterClass).font(.caption).foregroundStyle(sky) }; Spacer(); Button("Preview sheet") { fullPreview = true } }
-                if draft.problems.isEmpty { Label("Required fields are ready",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(leaf) }
-                else { ForEach(draft.problems,id:\.self) { Text($0).font(.caption).foregroundStyle(gold) } }
-                if !draft.isLevelUp && draft.hero.items.isEmpty { Text("No starting equipment selected. You can add it now or from Equipment later.").font(.caption).foregroundStyle(gold) }
-                if draft.selectedFeatures.isEmpty { Text("No new reference features selected. Review Features for your class, ancestry, and background.").font(.caption).foregroundStyle(gold) }
-                Text("Confirm choice limits and prerequisites from your class and origin previews. The guide applies the explicit scores, proficiencies, effects, and resources you selected; it does not interpret rules from descriptions.").font(.caption2).foregroundStyle(.secondary)
-            }
-            EditorGroup(title:draft.isLevelUp ? "Before → after":"Character summary") {
-                ForEach(Array(draft.changeSummary.enumerated()),id:\.offset) { _,line in Text(line).font(.system(size:12)).frame(maxWidth:.infinity,alignment:.leading) }
-                if draft.isLevelUp { Text("Current HP: \(draft.original!.hp) → \(draft.result.hp). Spent slots and hit dice remain spent. A pre-level-up backup and a Journal entry are saved when you apply.").font(.caption).foregroundStyle(.secondary) }
-            }
-            EditorGroup(title:"Your choices") { Text("\(skills.filter { draft.result.effectiveSkillRank($0.0) > 0 }.count) trained skills · \((0..<6).filter { draft.result.isSaveProficient($0) }.count) proficient saves").font(.caption); Text("\(draft.selectedFeatures.count) new features · \((draft.hero.bonuses ?? []).count) explicit bonuses · \((draft.hero.counters ?? []).count) counters").font(.caption); Text("\(draft.hero.spells.count) spells · \(draft.hero.spells.filter(\.prepared).count) prepared · \(draft.hero.items.count) items").font(.caption) }
-        }
+        GuideReview(draft:draft,onEdit:{ go(to:$0,showProblems:true) },onPreview:{ fullPreview=true })
     }
     var classReferenceOptions:[CompendiumEntry] {
         guard draft.isLevelUp,let prior = draft.existingClasses.first(where:{ $0.id == draft.selectedClassID }) else { return catalog.classes }
