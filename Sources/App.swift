@@ -390,7 +390,7 @@ struct HeroView: View {
         }
     }
     func stat(_ label: String,_ value: String,_ icon:String) -> some View {
-        HStack(spacing:6) { Image(systemName:icon).foregroundStyle(.secondary).font(.system(size:10)); Text(label).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8); Spacer(minLength:2); Text(value).font(.system(size:20,weight:.medium,design:.rounded)).lineLimit(1).minimumScaleFactor(0.75) }.padding(.horizontal,10).padding(.vertical,10).frame(maxWidth:.infinity).background(surface).clipShape(RoundedRectangle(cornerRadius:6))
+        HStack(spacing:6) { Image(systemName:icon).foregroundStyle(.secondary).font(.system(size:10)); Text(label).font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8); Spacer(minLength:2); Text(value).font(.system(size:20,weight:.medium,design:.rounded)).lineLimit(1).minimumScaleFactor(0.75) }.padding(.horizontal,10).frame(maxWidth:.infinity).frame(height:PageControl.statisticHeight).background(surface).clipShape(RoundedRectangle(cornerRadius:6))
     }
     func check(_ i:Int,_ label:String,mode:RollMode? = nil) { let targets = ["checks","check.\(i)"]; store.rollTyped(hero.expression("1d20",bonus:hero.modifier(i)+hero.flat(targets),targets:targets),label,hero:hero,kind:.check,ability:i,mode:mode) }
 
@@ -407,7 +407,7 @@ struct HeroView: View {
                         },onCustom:{ browsingSpells = false; adding = "Spell" })
                     }
             }
-            HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); Button("Manage slots") { managingSlots = true } }
+            HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); Button("Manage slots") { managingSlots = true }.buttonStyle(PageButtonStyle(height:PageControl.statisticHeight)) }
             Card(title:"Spell slots") {
                 ForEach(0..<9,id:\.self) { i in if hero.slots[i] > 0 { HStack { Text("Level \(i+1)").font(.system(size:12,weight:.semibold)).frame(width:70,alignment:.leading); ForEach(0..<hero.slots[i],id:\.self) { slot in Button { hero.usedSlots[i] = slot < hero.usedSlots[i] ? slot : slot+1 } label: { Image(systemName:slot < hero.usedSlots[i] ? "circle.fill":"circle").font(.system(size:19)).foregroundStyle(accent) }.buttonStyle(.plain).help("Toggle expended spell slots") }; Spacer(); Text("\(max(0,hero.slots[i]-hero.usedSlots[i])) remaining").font(.caption).foregroundStyle(.secondary) } } }
                 Text("Filled circles are expended. Set slot totals and casting ability in Edit character.").font(.caption2).foregroundStyle(.secondary)

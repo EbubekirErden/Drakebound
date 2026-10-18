@@ -78,30 +78,71 @@ struct QuickActionsPanel:View {
         }
     }
     var body:some View {
-        Card(title:fullPage ? "Quick actions":"Actions",tip:.actions) {
-            HStack(spacing:5) {
-                ForEach(QuickActionFilter.allCases,id:\.self) { f in Button { filter = f; expanded = false } label: { Text(f.rawValue).font(.system(size:10,weight:.medium)).padding(.horizontal,11).frame(height:26).foregroundStyle(filter == f ? paper:ink.opacity(0.7)).background(filter == f ? accent:ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain).accessibilityLabel(f.rawValue+" actions").accessibilityAddTraits(filter == f ? .isSelected:[]) }
-                if fullPage {
-                    Menu { ForEach(ActionCategory.allCases,id:\.self) { choice in Button { category = choice } label: { if category == choice { Label(choice.rawValue,systemImage:"checkmark") } else { Text(choice.rawValue) } } } } label: { HStack(spacing:5) { Text(category.rawValue); Image(systemName:"chevron.down").font(.system(size:8)) }.font(.system(size:10,weight:.medium)).padding(.horizontal,9).frame(height:26).background(ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6)) }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Filter action types")
+        Group {
+            if fullPage {
+                VStack(alignment:.leading,spacing:12) {
+                    PageToolbar(title:"Actions",subtitle:"\(actions.count) \(actions.count == 1 ? "action":"actions") · attacks, spells, and abilities",searchTitle:"Search actions",query:$query,focus:$searchFocused) {
+                        TipButton(topic:.actions).frame(width:PageControl.height,height:PageControl.height)
+                    }
+                    fullFilters
+                    VStack(alignment:.leading,spacing:10) { actionContents }.padding(14).background(surface,in:RoundedRectangle(cornerRadius:9))
                 }
-                if fullPage {
-                    Menu {
-                        Button("All timings") { timing = nil }
-                        ForEach(ActionTiming.allCases,id:\.self) { option in Button { timing = option } label: { if timing == option { Label(option.rawValue,systemImage:"checkmark") } else { Text(option.rawValue) } } }
-                    } label: { HStack(spacing:5) { Text(timing?.rawValue ?? "All timings"); Image(systemName:"chevron.down").font(.system(size:8)) }.font(.system(size:10,weight:.medium)).padding(.horizontal,9).frame(height:26).background(ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6)) }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Filter action timing")
-                }
-                if fullPage { TextField("Search actions",text:$query).focused($searchFocused).textFieldStyle(.plain).font(.system(size:11)).padding(.horizontal,8).frame(minWidth:130,maxWidth:.infinity).frame(height:26).background(ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6)).overlay(RoundedRectangle(cornerRadius:6).stroke(ink.opacity(0.12))) }
-                Spacer(minLength:0); Text("\(actions.count) \(actions.count == 1 ? "action":"actions")").font(.caption2).foregroundStyle(.secondary)
-            }.frame(height:26)
-            if actions.isEmpty {
-                if fullPage { CenteredEmptyState("No matching actions",systemImage:"bolt",description:Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All."),height:240) }
-                else { Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All.").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity).multilineTextAlignment(.center).padding(.vertical,4) }
+            } else {
+                Card(title:"Actions",tip:.actions) { compactFilters; actionContents }
             }
-            LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8)],spacing:8) {
-                ForEach(fullPage || expanded ? actions:Array(actions.prefix(6))) { action in GroupedActionCard(hero:$hero,store:store,action:action) }
-            }
-            if !fullPage && actions.count > 6 { Button(expanded ? "Show fewer":"Show all \(actions.count)") { expanded.toggle() }.font(.caption).buttonStyle(.plain).foregroundStyle(accent) }
         }.onReceive(store.$commandRequest) { request in if let request,request.action == .search && store.activeTab == "Actions" && !store.showCompendium && store.consume(request) { searchFocused = true } }
+    }
+    private var compactFilters:some View {
+        HStack(spacing:5) {
+            ForEach(QuickActionFilter.allCases,id:\.self) { choice in
+                Button { filter = choice; expanded = false } label: {
+                    Text(choice.rawValue).font(.system(size:10,weight:.medium)).padding(.horizontal,11).frame(height:26)
+                        .foregroundStyle(filter == choice ? paper:ink.opacity(0.7)).background(filter == choice ? accent:ink.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:6))
+                }.buttonStyle(.plain).accessibilityLabel(choice.rawValue+" actions").accessibilityAddTraits(filter == choice ? .isSelected:[])
+            }
+            Spacer(minLength:0)
+            Text("\(actions.count) \(actions.count == 1 ? "action":"actions")").font(.caption2).foregroundStyle(.secondary)
+        }.frame(height:26)
+    }
+    private var fullFilters:some View {
+        ViewThatFits(in:.horizontal) {
+            HStack(spacing:12) { filterSegments; categoryPicker; timingPicker; Spacer(minLength:0) }
+            VStack(alignment:.leading,spacing:10) {
+                filterSegments
+                HStack(spacing:12) { categoryPicker; timingPicker; Spacer(minLength:0) }
+            }
+        }
+    }
+    private var filterSegments:some View {
+        HStack(spacing:2) {
+            ForEach(QuickActionFilter.allCases,id:\.self) { choice in
+                Button { filter = choice; expanded = false } label: {
+                    Text(choice.rawValue).font(.system(size:11,weight:.medium)).frame(width:80,height:PageControl.height-6)
+                        .foregroundStyle(filter == choice ? paper:ink.opacity(0.7)).background(filter == choice ? accent:Color.clear).clipShape(RoundedRectangle(cornerRadius:6))
+                }.buttonStyle(.plain).accessibilityLabel(choice.rawValue+" actions").accessibilityAddTraits(filter == choice ? .isSelected:[])
+            }
+        }.padding(3).background(surface).clipShape(RoundedRectangle(cornerRadius:8))
+    }
+    private var categoryPicker:some View {
+        PagePicker(title:"Action type",selectionTitle:category.rawValue,selection:$category) {
+            ForEach(ActionCategory.allCases,id:\.self) { Text($0.rawValue).tag($0) }
+        }.frame(width:140)
+    }
+    private var timingPicker:some View {
+        PagePicker(title:"Action timing",selectionTitle:timing?.rawValue ?? "All timings",selection:$timing) {
+            Text("All timings").tag(Optional<ActionTiming>.none)
+            ForEach(ActionTiming.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) }
+        }.frame(width:150)
+    }
+    @ViewBuilder private var actionContents:some View {
+        if actions.isEmpty {
+            if fullPage { CenteredEmptyState("No matching actions",systemImage:"bolt",description:Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All."),height:240) }
+            else { Text(timing != nil || category != .all || !query.isEmpty ? "No actions match these filters. Try All timings or another type.":filter == .all ? "Prepared spells, ready attacks, custom rolls, and tracked feature uses appear here.":filter == .recent ? "Actions you use appear here.":"Use actions to build this list, or star favorites in All.").font(.caption).foregroundStyle(.secondary).frame(maxWidth:.infinity).multilineTextAlignment(.center).padding(.vertical,4) }
+        }
+        LazyVGrid(columns:[GridItem(.adaptive(minimum:240),spacing:8)],spacing:8) {
+            ForEach(fullPage || expanded ? actions:Array(actions.prefix(6))) { action in GroupedActionCard(hero:$hero,store:store,action:action) }
+        }
+        if !fullPage && actions.count > 6 { Button(expanded ? "Show fewer":"Show all \(actions.count)") { expanded.toggle() }.font(.caption).buttonStyle(.plain).foregroundStyle(accent) }
     }
 }
 

@@ -15,6 +15,8 @@
 
 ## Unreleased
 
+- Actions uses the shared page toolbar and matching search/filter controls while retaining its card grid; Manage slots matches the adjacent spell statistics in height.
+
 - Import and Export share an aligned sidebar row; character banners keep Edit/Expand visible and group other actions in the character menu.
 - Equipment, Spells, Journal and Creatures share responsive search/action toolbars. Equipment utilities are grouped in a menu; training remains editable in a focused popover.
 

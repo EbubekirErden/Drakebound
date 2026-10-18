@@ -2,17 +2,19 @@ import SwiftUI
 
 enum PageControl {
     static let height: CGFloat = 34
+    static let statisticHeight: CGFloat = 44
 }
 
 struct PageButtonStyle: ButtonStyle {
     var color: Color = accent
     var prominent = false
+    var height: CGFloat = PageControl.height
     @Environment(\.isEnabled) private var isEnabled
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size:13,weight:.medium))
-            .padding(.horizontal,12).frame(height:PageControl.height)
+            .padding(.horizontal,12).frame(height:height)
             .foregroundStyle(prominent ? paper:ink)
             .background(prominent ? color:surface,in:RoundedRectangle(cornerRadius:8))
             .overlay(RoundedRectangle(cornerRadius:8).stroke(prominent ? Color.clear:ink.opacity(0.09)))
