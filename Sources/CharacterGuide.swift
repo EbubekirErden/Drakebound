@@ -97,7 +97,7 @@ struct CharacterGuide:View {
         HStack(spacing:12) {
             Image(systemName:draft.isLevelUp ? "arrow.up.circle":"person.crop.circle.badge.plus").font(.system(size:22)).foregroundStyle(accent)
             VStack(alignment:.leading,spacing:3) { Text(draft.isLevelUp ? "Level up · \(draft.original!.level) → \(draft.newLevel)":"Create a character").font(.system(size:17,weight:.semibold)); Text(draft.isLevelUp ? draft.hero.name:"A guided start to your next adventure").font(.system(size:10)).foregroundStyle(.secondary) }
-            Spacer(); Button { previewVisible.toggle() } label: { Image(systemName:"sidebar.right") }.buttonStyle(PageButtonStyle()).help(previewVisible ? "Hide character preview":"Show character preview").accessibilityLabel(previewVisible ? "Hide character preview":"Show character preview"); Button("Preview sheet") { fullPreview = true }.buttonStyle(PageButtonStyle()); Button("Cancel") { discard = true }.buttonStyle(PageButtonStyle())
+            Spacer(); Button { previewVisible.toggle() } label: { Label("Preview",systemImage:"rectangle.split.2x1") }.buttonStyle(PageButtonStyle(prominent:previewVisible)).help(previewVisible ? "Hide the preview beside this form":"Show the preview beside this form").accessibilityLabel("Character preview").accessibilityValue(previewVisible ? "Shown":"Hidden"); Button("Preview sheet") { fullPreview = true }.buttonStyle(PageButtonStyle()); Button("Cancel") { discard = true }.buttonStyle(PageButtonStyle())
         }.padding(.horizontal,22).padding(.vertical,15).background(surface)
     }
     var progress:some View {

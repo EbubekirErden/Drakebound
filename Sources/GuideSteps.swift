@@ -10,7 +10,7 @@ extension CharacterGuide {
     }
     var eligibleFeats:[CompendiumEntry] { catalog.feats.filter { GuideRules.featMinimumLevel($0) <= draft.newLevel } }
     var reviewStep:some View {
-        GuideReview(draft:draft,onEdit:{ go(to:$0,showProblems:true) },onPreview:{ fullPreview=true },onLoadoutEdit:{ loadoutPage=$0;go(to:.loadout) })
+        GuideReview(draft:draft,catalog:catalog,onEdit:{ go(to:$0,showProblems:true) },onPreview:{ fullPreview=true },onLoadoutEdit:{ loadoutPage=$0;go(to:.loadout) })
     }
     var classReferenceOptions:[CompendiumEntry] {
         guard draft.isLevelUp,let prior = draft.existingClasses.first(where:{ $0.id == draft.selectedClassID }) else { return catalog.classes }

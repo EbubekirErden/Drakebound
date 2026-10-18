@@ -43,9 +43,11 @@ struct GuideReferencePicker:View {
 }
 struct GuideReferencePreview:View {
     var entry:CompendiumEntry
-    @Environment(\.dismiss) var dismiss
-    var body:some View { VStack(alignment:.leading,spacing:14) { HStack { Text(entry.name).font(.title2.bold()); Spacer(); Button("Done") { dismiss() } }; Text(entry.summary).font(.caption).foregroundStyle(sky); ScrollView { ReferenceBody(entry:entry) } }.padding(22).frame(width:660,height:580).background(surface).foregroundStyle(ink) }
+    var body:some View {
+        GuideDetailPreview(title:entry.name,subtitle:entry.category.rawValue+" · "+entry.summary,source:entry.sourceDescription) { ReferenceBody(entry:entry) }
+    }
 }
+
 struct GuideSpellBrowser:View {
     var catalog:GuideCatalog
     var className:String
@@ -116,7 +118,7 @@ struct GuideSpellBrowser:View {
         }.padding(20).frame(width:660,height:580).background(surface).foregroundStyle(ink).tint(sky)
         .popover(isPresented:$casterOpen) { if let buildDraft { CasterTableView(draft:buildDraft,catalog:catalog,level:$casterLevel) { slots in onSlots?(slots);casterOpen=false } } }
         .popover(isPresented:$featuresOpen) { LoadoutFeatureReference(features:hero.featureEntries ?? []) }
-        .sheet(item:$preview) { spell in VStack(alignment:.leading,spacing:14) { HStack { Text(spell.name).font(.title2.bold()); Spacer(); Button("Done") { preview = nil } }; Text("\(spell.school) · \(spell.range) · \(spell.duration)").font(.caption).foregroundStyle(sky); ScrollView { Text(DescriptionMarkdown.attributed(spell.text)).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) } }.padding(22).frame(width:600,height:520).background(surface) }
+        .sheet(item:$preview) { GuideSpellPreview(spell:$0) }
         .sheet(item:$levelReview) { entry in GuideSpellLevelReview(entry:entry,hero:hero,onAdd:onAdd) }
     }
     func spellRow(_ spell:Spell) -> some View {

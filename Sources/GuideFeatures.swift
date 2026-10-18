@@ -65,25 +65,3 @@ extension CharacterGuide {
         }
     }
 }
-
-// Keep read-only presentation state local so opening a preview does not rebuild the draft screen.
-struct GuideFeaturePreviewButton:View {
-    let feature:CharacterFeature
-    @State private var presented=false
-    var body:some View {
-        Button { presented=true } label: { Image(systemName:"eye") }
-            .help("Preview "+feature.name).accessibilityLabel("Preview "+feature.name)
-            .sheet(isPresented:$presented) { GuideFeaturePreview(feature:feature) }
-    }
-}
-struct GuideFeaturePreview:View {
-    let feature:CharacterFeature
-    @Environment(\.dismiss) private var dismiss
-    var body:some View {
-        VStack(alignment:.leading,spacing:14) {
-            HStack(alignment:.top) { Text(feature.name).font(.title2.bold());Spacer();Button("Done") { dismiss() } }
-            ScrollView { Text(DescriptionMarkdown.attributed(feature.text)).font(.system(size:13)).lineSpacing(4).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
-            if let source=feature.source,!source.isEmpty { Divider();Text(source).font(.caption).foregroundStyle(.secondary).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
-        }.padding(22).frame(width:640,height:580).background(surface).foregroundStyle(ink)
-    }
-}

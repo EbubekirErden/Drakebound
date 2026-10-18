@@ -1,13 +1,14 @@
 import SwiftUI
 
 struct GuideReview:View {
+    var catalog:GuideCatalog
     var draft:CharacterBuildDraft
     var onEdit:(GuideStep)->Void
     var onPreview:()->Void
     var onLoadoutEdit:((String)->Void)?
     @State private var changesOnly:Bool
-    init(draft:CharacterBuildDraft,onEdit:@escaping(GuideStep)->Void,onPreview:@escaping()->Void,onLoadoutEdit:((String)->Void)? = nil) {
-        self.draft=draft;self.onEdit=onEdit;self.onPreview=onPreview;self.onLoadoutEdit=onLoadoutEdit
+    init(draft:CharacterBuildDraft,catalog:GuideCatalog,onEdit:@escaping(GuideStep)->Void,onPreview:@escaping()->Void,onLoadoutEdit:((String)->Void)? = nil) {
+        self.catalog=catalog;self.draft=draft;self.onEdit=onEdit;self.onPreview=onPreview;self.onLoadoutEdit=onLoadoutEdit
         _changesOnly=State(initialValue:draft.isLevelUp)
     }
     private var hero:Hero { draft.result }
@@ -73,13 +74,17 @@ struct GuideReview:View {
                     ForEach(hero.counters ?? []) { counter in GuideSummaryRow(title:counter.name,value:"\(counter.current)/\(counter.maximum) · \(counter.resetSummary)") }
                 }
                 GuideReviewSection(index:4,title:"Spellbook & slots",summary:"\(hero.spells.count) spells · \(hero.spells.filter(\.prepared).count) prepared",onEdit:{ if let onLoadoutEdit { onLoadoutEdit("Spells") } else { onEdit(.loadout) } }) {
+                    GuideSpellAllowanceRows(draft:draft,catalog:catalog)
                     ForEach(0..<9,id:\.self) { i in if (hero.slots[i] > 0 || (before?.slots[i] ?? 0) > 0) && (!changesOnly || before?.slots[i] != hero.slots[i] || before?.usedSlots[i] != hero.usedSlots[i]) { GuideSummaryRow(title:"Level \(i+1) slots",previous:before.map { String($0.slots[i]) },value:"\(hero.slots[i]) total · \(hero.usedSlots[i]) spent") } }
-                    ForEach(shownSpells) { spell in GuideSummaryRow(title:spell.name,value:(spell.level == 0 ? "Cantrip":"L\(spell.level)")+" · "+(spell.prepared ? "Prepared":"Unprepared")) }
+                    ForEach(shownSpells) { spell in HStack { GuideSummaryRow(title:spell.name,value:(spell.level == 0 ? "Cantrip":"L\(spell.level)")+" · "+(spell.prepared ? "Prepared":"Unprepared"));GuidePreviewButton(name:spell.name) { GuideSpellPreview(spell:spell) } } }
                     ForEach(before?.spells.filter { old in !hero.spells.contains { $0.id == old.id } } ?? []) { spell in GuideSummaryRow(title:spell.name,value:"Removed").foregroundStyle(coral) }
                 }
-                GuideReviewSection(index:5,title:"Equipment",summary:"\(hero.items.count) items",onEdit:{ if let onLoadoutEdit { onLoadoutEdit("Equipment") } else { onEdit(.loadout) } }) {
+                GuideReviewSection(index:5,title:"Equipment",summary:"\(hero.items.count) entries · \(GuideLoadoutSummary.quantity(hero.items)) total quantity · \(hero.items.filter(\.equipped).count) equipped",onEdit:{ if let onLoadoutEdit { onLoadoutEdit("Equipment") } else { onEdit(.loadout) } }) {
+                    GuideSummaryRow(title:"Total weight",value:String(format:"%.1f lb",GuideLoadoutSummary.weight(hero.items)))
+                    GuideSummaryRow(title:"Attunement",value:"\(hero.items.filter { $0.requiresAttunement == true && $0.attuned == true }.count) attuned")
+                    if hero.items.contains(where:{ $0.weight == 0 }) { Text("Weight uses recorded values; items with no weight entered count as zero.").font(.system(size:11)).foregroundStyle(.secondary) }
                     if hero.items.isEmpty { Text("No equipment selected. You can add it from Spells & gear or later.").font(.system(size:12)).foregroundStyle(.secondary) }
-                    ForEach(shownItems) { item in GuideSummaryRow(title:item.name,value:"×\(item.quantity) · "+(item.equipped ? "Equipped":"Carried")) }
+                    ForEach(shownItems) { item in HStack { GuideSummaryRow(title:item.name,value:"×\(item.quantity) · "+(item.equipped ? "Equipped":"Carried"));GuidePreviewButton(name:item.name) { GuideItemPreview(item:item) } } }
                     ForEach(before?.items.filter { old in !hero.items.contains { $0.id == old.id } } ?? []) { item in GuideSummaryRow(title:item.name,value:"Removed").foregroundStyle(coral) }
                 }
             }.clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.09)))

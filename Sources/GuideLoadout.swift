@@ -47,12 +47,14 @@ extension CharacterGuide {
                 Spacer(minLength:0)
                 if !loadoutSpellQuery.isEmpty || loadoutSpellLevel != -1 { Button("Clear") { loadoutSpellQuery="";loadoutSpellLevel = -1 }.buttonStyle(.plain).font(.system(size:11)).foregroundStyle(accent) }
             }
+            GuideSection("Spell allowances",summary:"Per-class counts & reference totals") { GuideSpellAllowanceRows(draft:draft,catalog:catalog) }
             guideSlots
             GuideTable {
                 if guideSpells.isEmpty { Text(draft.hero.spells.isEmpty ? "Browse spells or create a custom spell to begin.":"No spells match these filters.").font(.system(size:12)).foregroundStyle(.secondary).padding(20).frame(maxWidth:.infinity,alignment:.leading) }
                 ForEach(Array(guideSpells.enumerated()),id:\.element.id) { index,spell in
                     GuideExpandableRow(title:spell.name,subtitle:(spell.level == 0 ? "Cantrip":"Level \(spell.level)")+" · "+spell.school+(spell.sourceClassName.map { " · "+$0 } ?? ""),index:index) {
                         Toggle("Prepare \(spell.name)",isOn:Binding(get:{ draft.hero.spells.first { $0.id == spell.id }?.prepared ?? false },set:{ value in if let i=draft.hero.spells.firstIndex(where:{ $0.id == spell.id }) { draft.hero.spells[i].prepared=value } })).labelsHidden().toggleStyle(.checkbox).help("Prepare "+spell.name)
+                        GuidePreviewButton(name:spell.name) { GuideSpellPreview(spell:spell) }
                         Button { spellEditor=spell } label: { Image(systemName:"pencil") }.help("Edit "+spell.name).accessibilityLabel("Edit "+spell.name)
                         Button { draft.hero.spells.removeAll { $0.id == spell.id } } label: { Image(systemName:"minus.circle") }.help("Remove spell from draft").accessibilityLabel("Remove "+spell.name)
                     } content: {
@@ -79,6 +81,7 @@ extension CharacterGuide {
                     GuideExpandableRow(title:item.name,subtitle:"\(item.equipmentKind.rawValue) · ×\(item.quantity)",index:index) {
                         Toggle("Equip \(item.name)",isOn:Binding(get:{ draft.hero.items.first { $0.id == item.id }?.equipped ?? false },set:{ value in draft.hero.setItemEquipped(item.id,value,compendium:store.compendium) })).labelsHidden().toggleStyle(.checkbox).help("Equip "+item.name)
                         if [.melee,.ranged,.staff].contains(item.equipmentKind) { Button { attackEditor=suggestedAttack(item) } label: { Image(systemName:"scope") }.help("Configure an attack for this weapon").accessibilityLabel("Configure attack for "+item.name) }
+                        GuidePreviewButton(name:item.name) { GuideItemPreview(item:item) }
                         Button { itemEditor=item } label: { Image(systemName:"pencil") }.help("Edit "+item.name).accessibilityLabel("Edit "+item.name)
                         Button { draft.hero.items.removeAll { $0.id == item.id } } label: { Image(systemName:"minus.circle") }.help("Remove item from draft").accessibilityLabel("Remove "+item.name)
                     } content: { DescriptionText(text:item.notes.isEmpty ? "No description yet. Edit this item to configure armor, properties, and effects.":item.notes) }
