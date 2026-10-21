@@ -250,7 +250,7 @@ struct DiceAnimation: View {
             HStack(alignment:.firstTextBaseline,spacing:10) { Text(roll.expression).font(.system(size:12,design:.monospaced)).foregroundStyle(.secondary).lineLimit(2); Spacer(minLength:4); Text(settled ? "\(roll.total)":"…").font(.system(size:38,weight:.semibold,design:.rounded)).lineLimit(1).minimumScaleFactor(0.4) }.padding(.top,3)
             if let detail = roll.detail { Text(detail).font(.system(size:10)).foregroundStyle(gold).multilineTextAlignment(.center) }
             if roll.dice.count > 24 { Text("Showing 24 of \(roll.dice.count) dice · all results in history").font(.caption2).foregroundStyle(.secondary) }
-        }.padding(18).frame(width:faces.count <= 2 ? 280:320).background(surface).clipShape(RoundedRectangle(cornerRadius:14)).overlay(RoundedRectangle(cornerRadius:14).stroke(accent.opacity(0.28)))
+        }.foregroundStyle(ink).padding(18).frame(width:faces.count <= 2 ? 280:320).background(surface).clipShape(RoundedRectangle(cornerRadius:14)).overlay(RoundedRectangle(cornerRadius:14).stroke(accent.opacity(0.28)))
         .task {
             if !reduceMotion {
                 withAnimation(.easeOut(duration:0.8)) { angle = 720 }

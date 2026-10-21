@@ -70,7 +70,7 @@ struct FeaturePanel: View {
                 PagePicker(title:"Feature category",selectionTitle:filter?.rawValue ?? "All categories",selection:$filter) {
                     Text("All categories").tag(Optional<FeatureCategory>.none)
                     ForEach(FeatureCategory.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) }
-                }.frame(width:170)
+                }
                 Button("Browse feats",systemImage:"books.vertical") { browseFeats=true }.buttonStyle(PageButtonStyle())
                     .popover(isPresented:$browseFeats) { FeatQuickAdd(hero:$hero,entries:store.compendium.filter { $0.category == .feat }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) }
                 Button("Add feature",systemImage:"plus") { editing=CharacterFeature(category:filter ?? .other) }.buttonStyle(PageButtonStyle())
@@ -79,7 +79,7 @@ struct FeaturePanel: View {
                 let entries=(hero.featureEntries ?? []).filter { ($0.category ?? .other) == category }
                 if !entries.isEmpty && (filter == nil || filter == category) {
                     Text("\(category.rawValue) · \(entries.count)").font(.system(size:10,weight:.semibold)).foregroundStyle(gold).padding(.top,4)
-                    LazyVGrid(columns:[GridItem(.adaptive(minimum:270),spacing:8,alignment:.topLeading)],alignment:.leading,spacing:6) {
+                    FeatureColumns {
                         ForEach(SelectionRules.outline(entries)) { row in
                             featureRow(row.feature,depth:row.depth)
                         }
@@ -374,4 +374,31 @@ struct SpellDetails: View {
     }
     func navigate(_ direction:Int) { let next = position+direction; guard browseIDs.indices.contains(next) else { return }; browsingID = browseIDs[next]; castLevel = hero.availableSlot(for:spell) ?? max(1,spell.level); message = ""; cantripLevel = hero.cantripRoll(spell,at:hero.level)?.minimumCharacterLevel ?? 1 }
     func cast(_ mode:CastMode) { do { let result = try hero.cast(spell.id,mode:mode,at:castLevel,cantripLevel:spell.level == 0 ? cantripLevel:nil); store.record(result); message = result.event ? result.expression : "Rolled \(result.expression) = \(result.total)" } catch { message = error.localizedDescription } }
+}
+
+// Independent columns keep expanded descriptions from stretching neighboring rows.
+struct FeatureColumns: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let proposed = proposal.width ?? 540
+        let width = proposed.isFinite ? max(0,proposed):540
+        let columns = max(1,Int((width+8)/278))
+        let cellWidth = (width-CGFloat(columns-1)*8)/CGFloat(columns)
+        var heights = Array(repeating:CGFloat.zero,count:columns)
+        for (index,view) in subviews.enumerated() {
+            heights[index%columns] += view.sizeThatFits(.init(width:cellWidth,height:nil)).height+6
+        }
+        return CGSize(width:width,height:max(0,(heights.max() ?? 0)-6))
+    }
+    func placeSubviews(in bounds:CGRect, proposal:ProposedViewSize, subviews:Subviews, cache:inout ()) {
+        let width = bounds.width.isFinite ? max(0,bounds.width):540
+        let columns = max(1,Int((width+8)/278))
+        let cellWidth = (width-CGFloat(columns-1)*8)/CGFloat(columns)
+        var heights = Array(repeating:CGFloat.zero,count:columns)
+        for (index,view) in subviews.enumerated() {
+            let column = index%columns
+            let size = view.sizeThatFits(.init(width:cellWidth,height:nil))
+            view.place(at:CGPoint(x:bounds.minX+CGFloat(column)*(cellWidth+8),y:bounds.minY+heights[column]),proposal:.init(width:cellWidth,height:size.height))
+            heights[column] += size.height+6
+        }
+    }
 }

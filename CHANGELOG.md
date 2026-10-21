@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Expanded Sheet features flow in independent columns without empty neighboring rows. Filter menus fit their labels. Combat places compact conditions above saving throws and spell slots alongside ready actions. Dice result windows explicitly follow the selected app appearance.
+
 - Added Combat with compact action rows, spell slots, resources, and condition controls; global search (⌘K); per-character tab visibility; compact Sheet features and combined attacks/resources.
 - Added compact rest reviews, non-blocking success and selective Undo notices, clearer character export and full backup entry points, and consistent Welcome branding.
 - Isolated play UI checks cover interaction and responsive layouts. Development bundles stay outside Launchpad indexing.

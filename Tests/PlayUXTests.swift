@@ -84,6 +84,18 @@ struct UXProbe:NSViewRepresentable {
                     screenshot(window,root.appendingPathComponent("\(tab.lowercased())-\(mode)-small.png"))
                 }
             }
+            let previousAppearance=UserDefaults.standard.object(forKey:"appAppearance")
+            let presenter=DicePresenter()
+            for mode in ["light","dark"] {
+                UserDefaults.standard.set(mode,forKey:"appAppearance")
+                presenter.show(RollResult(label:"Appearance check",expression:"1d20+3",dice:[14],total:17),onDismiss:{})
+                await pause()
+                guard let popup=NSApp.windows.first(where:{ $0.title == "Dice result" && $0.isVisible }) else { fatalError("Missing dice panel") }
+                precondition(popup.effectiveAppearance.bestMatch(from:[.aqua,.darkAqua]) == (mode == "light" ? .aqua:.darkAqua))
+                screenshot(popup,root.appendingPathComponent("dice-"+mode+".png"))
+                presenter.dismiss()
+            }
+            if let previousAppearance { UserDefaults.standard.set(previousAppearance,forKey:"appAppearance") } else { UserDefaults.standard.removeObject(forKey:"appAppearance") }
             store.activeTab = "Combat"
             NSApp.appearance=NSAppearance(named:.aqua)
             var veteran=original;veteran.level=17;veteran.name="Aelar Windrunner";veteran.hp=85;veteran.maxHP=112;veteran.exhaustionLevel=0

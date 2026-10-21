@@ -20,12 +20,10 @@ struct CombatPanel:View {
             return a == b ? first.name.localizedStandardCompare(second.name) == .orderedAscending:a
         }
     }
-    var hasSupport:Bool { hero.slots.contains(where:{ $0 > 0 }) || !hero.resourceChoices.isEmpty }
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
             CombatVitals(hero:$hero,store:store,rest:rest)
-            CombatConditions(hero:$hero)
-            if width >= 560 && hasSupport {
+            if width >= 560 {
                 HStack(alignment:.top,spacing:16) {
                     actionList.frame(maxWidth:.infinity)
                     support.frame(width:width >= 850 ? 280:224)
@@ -39,7 +37,7 @@ struct CombatPanel:View {
         }
     }
     @ViewBuilder var support:some View {
-        if hasSupport { VStack(spacing:14) { slots;resources } }
+        VStack(alignment:.leading,spacing:14) { CombatConditions(hero:$hero);CombatSaves(hero:$hero,store:store);slots;resources }
     }
     @ViewBuilder var slots:some View {
         if hero.slots.contains(where:{ $0 > 0 }) { SpellSlotGrid(hero:$hero,manage:nil) }
@@ -58,11 +56,11 @@ struct CombatPanel:View {
             ControlFlowLayout(spacing:8) {
                 PagePicker(title:"Combat actions",selectionTitle:category.rawValue,selection:$category) {
                     ForEach(ActionCategory.allCases,id:\.self) { Text($0 == .creatures ? "Companions":$0.rawValue).tag($0) }
-                }.frame(width:135)
+                }
                 PagePicker(title:"Action timing",selectionTitle:timing?.rawValue ?? "All timings",selection:$timing) {
                     Text("All timings").tag(Optional<ActionTiming>.none)
                     ForEach(ActionTiming.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) }
-                }.frame(width:145)
+                }
                 if !query.isEmpty || favorites || timing != nil || category != .all {
                     Button("Clear") { query="";favorites=false;timing=nil;category = .all }.buttonStyle(.plain).font(.system(size:12)).foregroundStyle(accent)
                 }
@@ -162,7 +160,7 @@ struct CombatConditions:View {
             }
             PagePicker(title:"Exhaustion level",selectionTitle:"Exhaustion · \(hero.exhaustionLevel ?? 0)",selection:Binding(get:{ hero.exhaustionLevel ?? 0 },set:{ hero.exhaustionLevel=$0 })) {
                 ForEach(0...6,id:\.self) { Text($0 == 0 ? "None":"Level \($0)").tag($0) }
-            }.frame(width:145)
+            }
         }.padding(.horizontal,3).sheet(isPresented:$manage) { ConditionsEditor(hero:$hero) }
     }
 }
@@ -186,5 +184,27 @@ struct CombatResources:View {
     func change(_ choice:ResourceChoice,_ amount:Int) {
         guard var counter = hero.resource(choice.ref) else { return }
         counter.current = min(counter.maximum,max(0,counter.current+amount));hero.setResource(choice.ref,counter)
+    }
+}
+
+struct CombatSaves: View {
+    @Binding var hero:Hero
+    @ObservedObject var store:Store
+    var body:some View {
+        VStack(alignment:.leading,spacing:8) {
+            Text("SAVING THROWS").font(.system(size:10,weight:.semibold)).tracking(1).foregroundStyle(sky)
+            LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:6),count:3),spacing:6) {
+                ForEach(0..<6,id:\.self) { index in
+                    RollChoiceButton(explanation:hero.saveExplanation(index)) { mode in
+                        store.rollTyped(hero.expression("1d20",bonus:hero.saveBonus(index),targets:["saves","save.\(index)"]),abilities[index]+" saving throw",hero:hero,kind:.save,ability:index,mode:mode)
+                    } label: {
+                        VStack(spacing:4) {
+                            Text(String(abilities[index].prefix(3)).uppercased()).font(.system(size:9,weight:.medium))
+                            Text(signed(hero.saveBonus(index)+hero.testPenalty)).font(.system(size:15,weight:.semibold,design:.rounded)).monospacedDigit()
+                        }.frame(maxWidth:.infinity).padding(.vertical,8).background(sky.opacity(0.07),in:RoundedRectangle(cornerRadius:6))
+                    }.accessibilityLabel(abilities[index]+" saving throw "+signed(hero.saveBonus(index)+hero.testPenalty))
+                }
+            }
+        }.padding(12).background(surface,in:RoundedRectangle(cornerRadius:10))
     }
 }

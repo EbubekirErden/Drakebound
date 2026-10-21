@@ -10,6 +10,7 @@ import SwiftUI
         currentID = result.id
         let panel = NSPanel(contentRect:.zero,styleMask:[.borderless,.nonactivatingPanel],backing:.buffered,defer:false)
         panel.title = "Dice result"
+        panel.appearance = AppAppearance.selected.native
         panel.level = .popUpMenu
         panel.isFloatingPanel = true
         panel.worksWhenModal = true
