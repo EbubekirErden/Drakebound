@@ -10,7 +10,7 @@ extension Store {
     func navigate(to tab:String) {
         guard canPerformMenuAction else { return }
         spellDetail = nil; itemDetail = nil; showCompendium = tab == "Compendium"
-        if !showCompendium { activeTab = tab }
+        if !showCompendium { activeTab = tab == "Actions" ? "Combat":tab }
     }
     func consume(_ request:UICommandRequest) -> Bool {
         guard consumedCommandID != request.id,selected == request.heroID else { return false }
@@ -20,7 +20,7 @@ extension Store {
         guard characterCommandsAvailable && canPerformMenuAction else { return }
         if command == .addItem { navigate(to:"Equipment") }
         if command == .addSpell { navigate(to:"Spells") }
-        if command == .search && !showCompendium && !["Equipment","Spells","Actions"].contains(activeTab) { navigate(to:"Spells") }
+        if command == .search && !showCompendium && !["Equipment","Spells","Combat"].contains(activeTab) { navigate(to:"Spells") }
         commandRequest = UICommandRequest(action:command,heroID:selected!)
     }
 }
@@ -39,10 +39,11 @@ struct DrakeboundCommands:Commands {
         CommandGroup(replacing:.newItem) { Button("New Character") { if store.canPerformMenuAction { store.addHero() } }.keyboardShortcut("n").disabled(!store.menusAvailable) }
         CommandGroup(after:.newItem) {
             Button("Import Backup or Fight Club XML…") { if store.canPerformMenuAction { store.importBackup() } }.keyboardShortcut("i",modifiers:[.command,.shift]).disabled(!store.menusAvailable)
-            Button("Export Backup…") { if store.canPerformMenuAction { store.exportBackup() } }.keyboardShortcut("e",modifiers:[.command,.shift]).disabled(!store.menusAvailable)
+            Button("Back Up All Characters & References…") { if store.canPerformMenuAction { store.exportBackup() } }.keyboardShortcut("e",modifiers:[.command,.shift]).disabled(!store.menusAvailable)
         }
         CommandGroup(after:.importExport) {
             Button("Export Character PDF…") { if store.canPerformMenuAction { store.showPDFExport = true } }.keyboardShortcut("p",modifiers:[.command,.shift]).disabled(!store.characterCommandsAvailable)
+            Button("Export Character JSON…") { if let id = store.selected,store.canPerformMenuAction { store.exportCharacter(id) } }.disabled(!store.characterCommandsAvailable)
         }
         CommandGroup(replacing:.undoRedo) {
             Button("Undo") { store.undoFromMenu() }.keyboardShortcut("z").disabled(!store.editingText && !store.canUndoActivity)
@@ -65,13 +66,14 @@ struct DrakeboundCommands:Commands {
         }
         CommandMenu("Navigate") {
             Button("Sheet") { store.navigate(to:"Sheet") }.keyboardShortcut("1").disabled(!store.menusAvailable)
-            Button("Actions") { store.navigate(to:"Actions") }.keyboardShortcut("2").disabled(!store.menusAvailable)
+            Button("Combat") { store.navigate(to:"Combat") }.keyboardShortcut("2").disabled(!store.menusAvailable)
             Button("Equipment") { store.navigate(to:"Equipment") }.keyboardShortcut("3").disabled(!store.menusAvailable)
             Button("Spells") { store.navigate(to:"Spells") }.keyboardShortcut("4").disabled(!store.menusAvailable)
             Button("Journal") { store.navigate(to:"Journal") }.keyboardShortcut("5").disabled(!store.menusAvailable)
             Button("Creatures") { store.navigate(to:"Creatures") }.keyboardShortcut("6").disabled(!store.menusAvailable)
             Button("Compendium") { store.navigate(to:"Compendium") }.keyboardShortcut("7").disabled(!store.menusAvailable)
             Divider()
+            Button("Search Everywhere…") { store.beginGlobalSearch() }.keyboardShortcut("k").disabled(!store.menusAvailable || store.importingCompendium)
             Button("Find…") { store.request(.search) }.keyboardShortcut("f").disabled(!store.characterCommandsAvailable)
         }
         CommandMenu("Dice") {

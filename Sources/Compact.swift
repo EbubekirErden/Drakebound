@@ -21,6 +21,7 @@ struct HealthPanel: View {
     var rest: () -> Void
     @State private var adjusting: HealthAdjustment?
     @State private var hitDice = false
+    @State private var hpBreakdown = false
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     var body: some View {
         Card(title:"Health & recovery",tip:.health) {
@@ -28,16 +29,20 @@ struct HealthPanel: View {
                 HStack(alignment:.firstTextBaseline,spacing:5) {
                     Text("\(hero.hp)").font(.system(size:36,weight:.semibold,design:.rounded)).foregroundStyle(healthColor(hero.hp,hero.maximumHP)).contentTransition(.numericText())
                     Text("/ \(hero.maximumHP)").font(.system(size:16)).foregroundStyle(.secondary).help(hero.maximumHPExplanation)
+                    Button { hpBreakdown = true } label: { Image(systemName:"questionmark.circle").font(.system(size:13)).foregroundStyle(.secondary).frame(width:24,height:24) }
+                        .buttonStyle(.plain).accessibilityLabel("Maximum HP breakdown").help("How maximum HP is calculated")
+                        .popover(isPresented:$hpBreakdown) {
+                            VStack(alignment:.leading,spacing:10) { Text("Maximum HP").font(.headline); Text(hero.maximumHPExplanation).font(.system(size:12)).textSelection(.enabled).fixedSize(horizontal:false,vertical:true) }.padding(16).frame(width:300)
+                        }
                 }
                 Spacer()
                 DeathSaveControl(hero:$hero,store:store)
                 Button { adjusting = .temporary } label: { VStack(spacing:3) { Text("\(hero.tempHP)").font(.system(size:21,weight:.semibold,design:.rounded)); Text("TEMP HP").font(.system(size:8,weight:.bold)).tracking(1) }.foregroundStyle(sky).frame(width:76,height:48).background(sky.opacity(0.09)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).popover(isPresented:Binding(get:{ adjusting == .temporary },set:{ if !$0 { adjusting = nil } })) { HealthAmountPopup(hero:$hero,adjustment:.temporary) }
             }
             HealthBar(hp:hero.hp,maximum:hero.maximumHP,height:7).padding(.vertical,3)
-            HStack(spacing:8) {
+            ControlFlowLayout(spacing:8) {
                 healthAction("Damage","minus",coral,.damage)
                 healthAction("Heal","plus",leaf,.healing)
-                Spacer(minLength:8)
                 inspirationControl
                 Button { hitDice = true } label: { Label("Hit dice · \(max(0,hero.level-hero.hitDiceUsed))/\(hero.level)",systemImage:"dice").padding(.horizontal,12).frame(height:34).background(gold.opacity(0.09)).foregroundStyle(gold).clipShape(RoundedRectangle(cornerRadius:7)) }.buttonStyle(.plain).popover(isPresented:$hitDice) { HitDicePopup(hero:$hero,store:store) }
                 Button(action:rest) { Label("Rest",systemImage:"moon.stars").padding(.horizontal,12).frame(height:34).background(sky.opacity(0.09)).foregroundStyle(sky).clipShape(RoundedRectangle(cornerRadius:7)) }.buttonStyle(.plain)
@@ -76,48 +81,6 @@ struct SkillsPanel: View {
     func rollButton(_ bonus:Int,_ targets:[String],_ label:String,kind:D20Kind,ability:Int,explanation:String) -> some View {
         RollChoiceButton(explanation:explanation) { mode in store.rollTyped(hero.expression("1d20",bonus:bonus,targets:targets),label,hero:hero,kind:kind,ability:ability,mode:mode) } label: { Text(signed(bonus+hero.testPenalty)).font(.system(size:13,weight:.semibold,design:.monospaced)).foregroundStyle(accent).frame(minWidth:30,minHeight:24) }.accessibilityLabel(label+" "+signed(bonus+hero.testPenalty))
     }
-}
-
-struct CounterPanel: View {
-    @Binding var hero: Hero
-    @State var editing: ResourceCounter?
-    @State private var editingRef:ResourceRef?
-    @Environment(\.accessibilityReduceMotion) var reduceMotion
-    var body: some View {
-        SheetCard(title:"Resources",tip:.inventory,summary:hero.resourceChoices.map { "\($0.counter.name) \($0.counter.current)/\($0.counter.maximum)" }.joined(separator:" · ")) {
-            ScrollView(.horizontal) {
-                LazyHStack(spacing:10) {
-                ForEach(hero.resourceChoices) { choice in
-                    let counter = choice.counter
-                    VStack(alignment:.leading,spacing:10) {
-                        Button { editingRef = choice.ref; editing = counter } label: { HStack { Text(counter.name).font(.system(size:12,weight:.medium)).lineLimit(2); Spacer(minLength:0); Image(systemName:"pencil").font(.system(size:9)).foregroundStyle(.secondary) } }.buttonStyle(.plain)
-                        HStack {
-                            Text("\(counter.current)").font(.system(size:23,weight:.semibold,design:.rounded)).foregroundStyle(gold).contentTransition(.numericText())
-                            Text("/ \(counter.maximum)").font(.system(size:12)).foregroundStyle(.secondary)
-                            Spacer()
-                            Button { change(choice.ref,-1) } label: { Image(systemName:"minus") }.disabled(counter.current == 0)
-                            Button { change(choice.ref,1) } label: { Image(systemName:"plus") }.disabled(counter.current >= counter.maximum)
-                        }
-                        GeometryReader { proxy in
-                            ZStack(alignment:.leading) {
-                                Capsule().fill(gold.opacity(0.10))
-                                Capsule().fill(gold.gradient).frame(width:proxy.size.width*min(1,max(0,Double(counter.current)/Double(max(1,counter.maximum)))))
-                            }
-                        }.frame(height:5).accessibilityLabel("\(counter.current) of \(counter.maximum) remaining")
-                        Text(counter.resetSummary).font(.system(size:9)).foregroundStyle(.secondary)
-                    }.padding(12).frame(width:210,height:136,alignment:.topLeading).background(gold.opacity(0.04)).clipShape(RoundedRectangle(cornerRadius:8)).overlay(RoundedRectangle(cornerRadius:8).stroke(gold.opacity(0.10)))
-                }
-            }
-            }.scrollIndicators(.visible).frame(height:hero.resourceChoices.isEmpty ? 0:146)
-            Button { editingRef = nil; editing = ResourceCounter() } label: { Label("Counter",systemImage:"plus") }.buttonStyle(.plain).font(.caption).foregroundStyle(accent)
-        }
-        .sheet(item:$editing) { counter in CounterEditor(counter:counter,onSave:{ updated in
-            if let ref = editingRef { hero.setResource(ref,updated) }
-            else { hero.counters = (hero.counters ?? [])+[updated] }
-        },onDelete:{ if let ref = editingRef { hero.setResource(ref,nil) } }) }
-    }
-    func change(_ ref:ResourceRef,_ delta:Int) { if var counter = hero.resource(ref) { counter.current = min(counter.maximum,max(0,counter.current+delta)); withAnimation(reduceMotion ? nil:.easeOut(duration:0.2)) { hero.setResource(ref,counter) } } }
-
 }
 
 struct CounterEditor: View {

@@ -39,8 +39,9 @@ struct SheetDisplayMenu:View {
     @AppStorage("sheetSectionCollapsed.Attacks") private var attacks=false
     @AppStorage("sheetSectionCollapsed.Resources") private var resources=false
     @AppStorage("sheetSectionCollapsed.Conditions") private var conditions=false
+    @AppStorage("sheetSectionCollapsed.Attacks & resources") private var readiness=false
     var body:some View {
-        Button("Compact Sheet") { abilities=true;skills=true;features=true;bonuses=true;attacks=false;resources=false;conditions=false }
-        Button("Expand all Sheet sections") { abilities=false;skills=false;features=false;bonuses=false;attacks=false;resources=false;conditions=false }
+        Button("Compact Sheet") { abilities=true;skills=true;features=true;bonuses=true;attacks=false;resources=false;conditions=false;readiness=false }
+        Button("Expand all Sheet sections") { abilities=false;skills=false;features=false;bonuses=false;attacks=false;resources=false;conditions=false;readiness=false }
     }
 }

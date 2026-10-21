@@ -23,6 +23,12 @@ extension Store {
             if let before = activityBaseline[hero.id],before != current {
                 let hint = activityContext.flatMap { $0.heroID == hero.id && Date().timeIntervalSince($0.date) < 0.5 ? $0.title:nil }
                 activity.record(before:before,hero:hero,hint:hint)
+                if hero.id == selected,let entry = activity.next(for:hero.id),entry.undoable {
+                    let isRest = ["Short rest","Long rest","Full rest"].contains(hint ?? "")
+                    if before.hp != current.hp || before.tempHP != current.tempHP || isRest {
+                        notify(isRest ? "\(hint!) completed":entry.details.first ?? entry.title,heroID:hero.id,activityID:entry.id)
+                    } else if notice?.activityID != nil { notice = nil }
+                } else if notice?.activityID != nil { notice = nil }
                 changed = true
             }
             activityBaseline[hero.id] = current
@@ -45,6 +51,7 @@ extension Store {
             activityBaseline[restored.id] = CharacterPlayState(restored)
             activityContext = nil
             persistActivity(); save()
+            notice = nil
         } catch { self.error = error.localizedDescription }
     }
     var editingText:Bool { NSApp.keyWindow?.firstResponder is NSTextView }

@@ -25,6 +25,7 @@ struct CompendiumView:View {
     @AppStorage("compendiumInspectorEnabled") private var inspectorEnabled = false
     @AppStorage("compendiumSearchDescriptions") private var searchDescriptions = false
     private var canInspect:Bool { inspectorEnabled && browserWidth >= 950 }
+    @State private var conditionsReference=false
     @State private var message = ""
     @State private var selectionMode = false
     @State private var picks:[CompendiumPick] = []
@@ -76,6 +77,7 @@ struct CompendiumView:View {
             let found = await Task.detached { all.filter { $0.category == type && (group == "All" || $0.subcategory == group) && (chosenSchool == "All schools" || FightClubImport.school($0.value("school")) == chosenSchool) && (chosenClass == "All classes" || CompendiumSearch.classNames($0).contains { CompendiumSearch.normalized($0) == CompendiumSearch.normalized(chosenClass) }) && CompendiumSearch.matches($0,query:search,includeDescription:fullText) }.sorted { CompendiumSearch.precedes($0,$1,query:search) } }.value
             guard !Task.isCancelled else { return }; matches = found; limit = 100
         }
+        .sheet(isPresented:$conditionsReference) { ConditionsReference() }
         .sheet(item:$creation) { session in CompendiumCreator(session:session,classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name),hero:store.heroes.first(where:{ $0.id == store.selected }) ?? Hero(),save:{ store.upsertTemplate($0); selected = nil }) }
     }
     private var libraryContent:some View {
@@ -86,6 +88,7 @@ struct CompendiumView:View {
                     .buttonStyle(PageButtonStyle(prominent:canInspect)).disabled(browserWidth < 950)
                     .help(browserWidth < 950 ? "Widen the window to preview beside results":"Show or hide preview beside results")
                     .accessibilityLabel("Preview beside results").accessibilityValue(inspectorEnabled ? "On":"Off")
+                Button("Conditions",systemImage:"waveform.path.ecg") { conditionsReference=true }.buttonStyle(PageButtonStyle())
                 Menu {
                     Button(selectionMode ? "Cancel selection":"Select multiple") { selectionMode.toggle(); if !selectionMode { picks = [] } }
                     Button("Import XML…") { store.importBackup() }.disabled(store.importingCompendium)

@@ -25,16 +25,10 @@ struct EquipmentPanel:View {
                 PagePicker(title:"Type",selectionTitle:kind,selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.frame(width:150)
                 Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox).padding(.horizontal,10).frame(height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8))
                 CurrencyButton(hero:$hero).buttonStyle(PageButtonStyle())
-                Menu {
-                    Button("New container…",systemImage:"shippingbox") { containerEditor = EquipmentContainer(name:"") }
-                    Button("Browse compendium",systemImage:"books.vertical") { store.showCompendium = true }
-                    Divider()
-                    Button("Weapon & armor proficiency…",systemImage:"shield") { trainingOpen = true }
-                } label: { Image(systemName:"ellipsis").frame(width:PageControl.height,height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8)) }
-                    .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help("Equipment options").accessibilityLabel("Equipment options")
-                    .popover(isPresented:$trainingOpen) {
-                        EquipmentTrainingPopover(hero:$hero) { trainingOpen=false }
-                    }
+                Button("New container",systemImage:"shippingbox") { containerEditor = EquipmentContainer(name:"") }.buttonStyle(PageButtonStyle())
+                Button("Proficiencies",systemImage:"shield") { trainingOpen = true }.buttonStyle(PageButtonStyle())
+                    .popover(isPresented:$trainingOpen) { EquipmentTrainingPopover(hero:$hero) { trainingOpen=false } }
+                Button("Compendium",systemImage:"books.vertical") { store.showCompendium = true }.buttonStyle(PageButtonStyle())
             }.font(.system(size:12)).controlSize(.regular)
             if filtering {
                 ControlFlowLayout(spacing:6) {

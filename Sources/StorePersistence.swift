@@ -43,7 +43,7 @@ extension Store {
                 let existingIDs = Set(library.map(\.id))
                 for entry in compendium where entry.category == .spell && !existingIDs.contains(entry.id) { if let spell = entry.spell() { library.append(spell) } }
                 try saveCompendium(); save(); showCompendium = true
-                error = "Imported \(compendium.count-before) new compendium entries across \(Set(result.entries.map(\.category)).count) categories.\(result.repairedAmpersands > 0 ? " Repaired \(result.repairedAmpersands) unescaped ampersand during parsing; your original file is unchanged.":"") Exact duplicate records are kept once; distinct versions with the same name are retained. Reference descriptions do not activate rules automatically."
+                notify("Imported \(compendium.count-before) compendium entries",detail:"\(Set(result.entries.map(\.category)).count) categories.\(result.repairedAmpersands > 0 ? " Repaired \(result.repairedAmpersands) unescaped ampersand during parsing; your original file is unchanged.":"") Exact duplicates are kept once; distinct versions with the same name are retained. Reference descriptions do not activate rules automatically.")
             } catch { self.error = "Compendium import failed.\n\(error.localizedDescription)" }
             importingCompendium = false
         }
@@ -61,10 +61,22 @@ extension Store {
         }
     }
     func exportBackup() {
-        let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "Drakebound-backup.json"
+        let panel = NSSavePanel(); panel.allowedContentTypes = [.json]; panel.nameFieldStringValue = "Drakebound-all-characters-and-references.json"
+        panel.title="Back up all characters & references"
+        panel.message="Includes every character and their images, shared spells and compendium references. Activity history and interface preferences are not included."
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do { let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted]; try encoder.encode(Archive(heroes:heroes,library:library,compendium:compendium)).write(to:url,options:.atomic) }
         catch { self.error = error.localizedDescription }
+    }
+    func exportCharacter(_ id:UUID) {
+        guard let hero=heroes.first(where:{ $0.id == id }) else { return }
+        let name=hero.name.components(separatedBy:CharacterSet(charactersIn:"/:\n\r")).joined(separator:"-")
+        let panel=NSSavePanel();panel.allowedContentTypes=[.json];panel.nameFieldStringValue=name+"-character.json"
+        panel.title="Export \(hero.name)"
+        panel.message="This character only, including images, spells, equipment, features, companions and journal. Shared reference libraries are excluded."
+        guard panel.runModal() == .OK,let url=panel.url else { return }
+        do { try CharacterExport.data(for:hero).write(to:url,options:.atomic) }
+        catch { self.error="Character export failed.\n"+error.localizedDescription }
     }
     func importBackup() {
         guard !characterArchiveReadFailed else { return }
@@ -95,11 +107,11 @@ extension Store {
                 var added = 0
                 for hero in imported.heroes where !heroes.contains(where:{ $0.sourceXML == data && $0.name == hero.name }) { heroes.append(hero); selected = hero.id; added += 1 }
                 save()
-                error = "Imported \(added) character(s). Portraits, spells, equipment, features, counters, and creatures are included. Read ‘Fight Club import review’ in Journal for mappings and fields to verify. Existing characters were backed up before import."
+                notify("Imported \(added) character(s)",detail:"Portraits, spells, equipment, features, counters, and creatures are included. Read ‘Fight Club import review’ in Journal for mappings and fields to verify. Existing characters were backed up before import.",heroID:selected,reviewImport:added > 0)
             } else {
                 var added = 0
                 for var spell in imported.spells where !library.contains(where:{ $0.name.caseInsensitiveCompare(spell.name) == .orderedSame }) { spell.id = UUID(); library.append(spell); added += 1 }
-                save(); error = "Imported \(added) spells, including their custom roll formulas."
+                save(); notify("Imported \(added) spells",detail:"Custom roll formulas are included.")
             }
         } else {
             let archive = try JSONDecoder().decode(Archive.self,from:data); try validate(archive)
@@ -107,6 +119,7 @@ extension Store {
             for var spell in archive.library where !library.contains(where:{ $0.name == spell.name }) { spell.id = UUID(); library.append(spell) }
             if let entries = archive.compendium { compendium = CompendiumImport.merged(compendium,entries); let ids = Set(library.map(\.id)); for entry in compendium where !ids.contains(entry.id) { if let spell = entry.spell() { library.append(spell) } }; try saveCompendium() }
             selected = heroes.last?.id; save()
+            notify("Imported \(archive.heroes.count) character(s)",detail:"Characters and references were added to your existing library.",heroID:selected)
         }
     }
 }

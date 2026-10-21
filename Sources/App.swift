@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 func tabColor(_ title:String) -> Color {
     switch title {
-    case "Actions":return coral
+    case "Combat", "Actions":return coral
     case "Equipment":return gold
     case "Spells":return sky
     case "Journal":return journalTint
@@ -31,6 +31,14 @@ enum AppBrand {
         var options:[NSApplication.AboutPanelOptionKey:Any] = [:]
         if let icon { options[.applicationIcon] = icon }
         NSApplication.shared.orderFrontStandardAboutPanel(options:options)
+    }
+}
+struct BrandMark:View {
+    var body:some View {
+        Group {
+            if let mark = AppBrand.sidebarMark ?? AppBrand.icon { Image(nsImage:mark).resizable().scaledToFit() }
+            else { Image(systemName:"hexagon").resizable().scaledToFit().foregroundStyle(gold) }
+        }.accessibilityHidden(true)
     }
 }
 final class DrakeboundAppDelegate: NSObject, NSApplicationDelegate {
@@ -64,7 +72,7 @@ struct RootView: View {
     @AppStorage("sidebarWidth") private var sidebarWidth = 248.0
     @State private var resizeStart: Double?
     @Environment(\.accessibilityReduceMotion) var reduceMotion
-    let sections = [("Sheet","person.text.rectangle"),("Actions","bolt.fill"),("Equipment","backpack"),("Spells","sparkles"),("Journal","book.closed"),("Creatures","pawprint")]
+    let sections = CharacterTabs.all
     var body: some View {
         Group {
             if store.characterArchiveReadFailed || (store.heroes.isEmpty && !store.showCompendium) { WelcomeView(store:store) }
@@ -78,15 +86,22 @@ struct RootView: View {
             }
         }
         .overlay { if let item = store.itemDetail, let i = store.heroes.firstIndex(where:{ $0.id == item.heroID }) { DismissibleDetail(dismiss:{ store.itemDetail = nil }) { ItemDetails(hero:$store.heroes[i],store:store,presentation:item,close:{ store.itemDetail = nil }) } } }
+        .overlay { if let detail=store.searchDetail { DismissibleDetail(dismiss:{ store.searchDetail=nil }) { SearchDetailView(store:store,detail:detail) } } }
         .overlay { if store.importingCompendium { ZStack { Color.black.opacity(0.3); VStack(spacing:14) { ProgressView(); Text("Importing compendium…"); Text("Indexing local references across all categories").font(.caption).foregroundStyle(.secondary) }.padding(28).background(surface).clipShape(RoundedRectangle(cornerRadius:12)) } } }
         .overlay { if let session = store.characterGuide { CharacterGuide(session:session,store:store).id(session.id) } }
         .sheet(item:$store.compendiumAdd) { request in CompendiumDestination(store:store,request:request) }
         .sheet(isPresented:$store.showPDFExport) { if let hero = store.heroes.first(where:{ $0.id == store.selected }) { PDFExportView(hero:hero) } }
         .sheet(isPresented:$store.showHelp) { TipsLibrary() }
-        .onChange(of:store.selected) { _,_ in store.quickNoteOpen=false }
+        .sheet(isPresented:$store.globalSearchOpen,onDismiss:{ store.completeGlobalSearch() }) { GlobalSearchPanel(store:store) }
+        .onChange(of:store.selected) { _,_ in store.quickNoteOpen=false; if store.notice?.heroID != store.selected { store.notice = nil } }
         .onChange(of:store.characterGuide?.id) { _,_ in store.quickNoteOpen=false }
         .onChange(of:store.openEditorSheets) { _, count in if count > 0 { store.quickNoteOpen=false } }
         .onChange(of:store.heroes) { _,_ in store.captureActivity(); store.scheduleSave() }
+        .overlay(alignment:.bottom) {
+            if let notice = store.notice,store.error == nil,store.characterGuide == nil,store.openEditorSheets == 0 {
+                PlayNoticeView(store:store,notice:notice).id(notice.id).padding(.horizontal,20).padding(.bottom,80)
+            }
+        }
         .alert("Drakebound",isPresented:Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) { Button("OK") { store.error = nil } } message: { Text(store.error ?? "") }
     }
     private var workspace:some View {
@@ -110,8 +125,8 @@ struct RootView: View {
                         sidebarWidth = min(maximumWidth,max(220,width+(direction == .increment ? 20:-20)))
                     }.help(sidebarCompact ? "Expand the sidebar to resize":"Drag to resize sidebar")
                 VStack(spacing:0) {
-                    if !store.showCompendium { ScrollView(.horizontal) { HStack(spacing:4) {
-                        ForEach(sections,id:\.0) { title,icon in
+                    if !store.showCompendium { HStack(spacing:0) { ScrollView(.horizontal) { HStack(spacing:4) {
+                        ForEach(sections.filter { store.tabIsVisible($0.0) || tab == $0.0 },id:\.0) { title,icon in
                             Button { store.navigate(to:title) } label: {
                                 HStack(spacing:7) { Image(systemName:icon).font(.system(size:11)).foregroundStyle(tabColor(title).opacity(tab == title ? 1:0.6)); Text(title).font(.system(size:12,weight:tab == title ? .semibold:.regular)) }.foregroundStyle(tab == title ? ink:ink.opacity(0.52)).padding(.horizontal,15).padding(.vertical,13)
                                     .background { if tab == title { RoundedRectangle(cornerRadius:7).fill(paper).matchedGeometryEffect(id:"tab",in:tabs) } }
@@ -119,8 +134,9 @@ struct RootView: View {
                             }.buttonStyle(.plain)
                         }
                         Spacer(minLength:2)
-                        Text("5e").font(.system(size:10,weight:.medium)).foregroundStyle(.secondary).padding(.trailing,14)
-                    } }.frame(height:44).scrollIndicators(.hidden).padding(.top,8).padding(.horizontal,10).background(surface.opacity(0.65)).animation(reduceMotion ? nil:.easeInOut(duration:0.2),value:tab)
+                    } }.scrollIndicators(.hidden)
+                        CharacterTabsMenu(store:store)
+                    }.frame(height:44).padding(.top,8).padding(.horizontal,10).background(surface.opacity(0.65)).animation(reduceMotion ? nil:.easeInOut(duration:0.2),value:tab)
                     Divider().opacity(0.5) }
                     if store.showCompendium { CompendiumView(store:store) }
                     else if let i = store.heroes.firstIndex(where:{ $0.id == store.selected }) {
@@ -210,6 +226,11 @@ struct HeroView: View {
                             if tab == "Sheet" { SheetDisplayMenu();Divider() }
                             Button("Rest & recovery") { rest = true }
                             Button("Hit dice") { hitDice = true }
+                            Divider()
+                            Menu("Export this character") {
+                                Button("Character JSON…") { store.exportCharacter(hero.id) }
+                                Button("Character PDF…") { store.showPDFExport = true }
+                            }
                             Button("Duplicate character") { var copy = hero; copy.id = UUID(); copy.name += " copy"; store.heroes.append(copy); store.selected = copy.id; store.save() }
                             Divider(); Button("Delete character…",role:.destructive) { delete = true }.disabled(store.heroes.count <= 1)
                         }),levelUp:{ store.beginLevelUp(hero) })
@@ -217,10 +238,9 @@ struct HeroView: View {
                     }.frame(height:bannerHeight).padding(18).zIndex(0)
                     VStack(alignment:.leading,spacing:14) {
                         switch tab {
-                        case "Actions":
-                            ConcentrationChip(hero:$hero,store:store)
-                            QuickActionsPanel(hero:$hero,store:store,fullPage:true)
-                        case "Sheet": character
+                        case "Combat", "Actions":
+                            CombatPanel(hero:$hero,store:store,width:viewport.size.width-36,rest:{ rest=true })
+                        case "Sheet": character(width:viewport.size.width-36)
                         case "Equipment": equipment
                         case "Spells": spellbook
                         case "Journal": JournalPanel(hero:$hero,quickNote:{ store.beginQuickNote() })
@@ -231,7 +251,7 @@ struct HeroView: View {
             }.coordinateSpace(name:"heroScroll")
         }
     }
-    var character: some View {
+    func character(width:CGFloat) -> some View {
         VStack(spacing:14) {
             LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:8),count:5),spacing:8) {
                 sheetStat("AC","\(hero.armorClass)","shield").help(hero.armorClassExplanation)
@@ -241,11 +261,10 @@ struct HeroView: View {
                 sheetStat("PASSIVE","\(hero.passivePerception)","eye")
             }
             HealthPanel(hero:$hero,store:store,rest:{ rest = true })
+            SheetConditionSummary(hero:hero,store:store)
             AbilityTable(hero:$hero,store:store)
-            AttacksPanel(hero:$hero,store:store,edit:{ attackEditor = $0 })
-            CounterPanel(hero:$hero)
+            AttacksAndResourcesPanel(hero:$hero,store:store,width:width,edit:{ attackEditor = $0 })
             SkillsPanel(hero:$hero,store:store)
-            ConditionsPanel(hero:$hero)
             FeaturePanel(hero:$hero,store:store)
             BonusPanel(hero:$hero)
         }
@@ -275,10 +294,7 @@ struct HeroView: View {
                     }
             }
             HStack(spacing:12) { stat("SPELL SAVE DC","\(hero.spellDC)","shield").help(hero.spellDCExplanation); stat("SPELL ATTACK",signed(hero.spellAttack+hero.testPenalty),"sparkles").help(hero.spellAttackExplanation); Button("Manage slots") { managingSlots = true }.buttonStyle(PageButtonStyle(height:PageControl.statisticHeight)) }
-            Card(title:"Spell slots") {
-                ForEach(0..<9,id:\.self) { i in if hero.slots[i] > 0 { HStack { Text("Level \(i+1)").font(.system(size:12,weight:.semibold)).frame(width:70,alignment:.leading); ForEach(0..<hero.slots[i],id:\.self) { slot in Button { hero.usedSlots[i] = slot < hero.usedSlots[i] ? slot : slot+1 } label: { Image(systemName:slot < hero.usedSlots[i] ? "circle.fill":"circle").font(.system(size:19)).foregroundStyle(accent) }.buttonStyle(.plain).help("Toggle expended spell slots") }; Spacer(); Text("\(max(0,hero.slots[i]-hero.usedSlots[i])) remaining").font(.caption).foregroundStyle(.secondary) } } }
-                Text("Filled circles are expended. Set slot totals and casting ability in Edit character.").font(.caption2).foregroundStyle(.secondary)
-            }
+            SpellSlotGrid(hero:$hero,manage:{ managingSlots=true })
             VStack(spacing:10) {
                 ControlFlowLayout(spacing:10) {
                     HStack(spacing:2) {

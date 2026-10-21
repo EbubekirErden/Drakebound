@@ -6,7 +6,7 @@ Drakebound uses SwiftUI and AppKit with no third-party dependencies. It is compi
 
 ## Layout and build constraints
 
-Application sources live directly in `Sources/`. `scripts/build.sh` compiles `Sources/*.swift`, generates icon assets through `scripts/icon.swift`, writes the bundle metadata, and ad-hoc signs `build/Drakebound.app`.
+Application sources live directly in `Sources/`. `scripts/build.sh` compiles `Sources/*.swift`, generates icon assets through `scripts/icon.swift`, writes the bundle metadata, and ad-hoc signs `build/products.noindex/Drakebound.app`.
 
 Tests are executable Swift harnesses under `Tests/`. Scripts compile explicit source lists for different areas. Moving a file into a nested source directory requires updating the build glob and every affected test input list. Keep the existing layout until a dedicated structural refactor can be tested independently.
 

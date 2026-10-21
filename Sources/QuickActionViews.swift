@@ -28,7 +28,10 @@ struct ConcentrationChip:View {
         if let spell = hero.concentratingSpell {
             HStack(spacing:7) {
                 Label(spell.name,systemImage:"sparkle.magnifyingglass").lineLimit(1).help("Concentrating on \(spell.name). Damage creates a pending Constitution save in Health & recovery.")
-                if !hero.concentrationSaves.isEmpty { Button("Save pending · \(hero.concentrationSaves.count)") { store.navigate(to:"Sheet") }.buttonStyle(.plain).foregroundStyle(gold).help("Resolve pending concentration saves in Health & recovery") }
+                if !hero.concentrationSaves.isEmpty {
+                    if store.activeTab == "Combat" { Text("\(hero.concentrationSaves.count) save pending").foregroundStyle(gold) }
+                    else { Button("Save pending · \(hero.concentrationSaves.count)") { store.navigate(to:"Sheet") }.buttonStyle(.plain).foregroundStyle(gold).help("Resolve pending concentration saves in Health & recovery") }
+                }
                 Button { hero.endConcentration() } label: { Label("End",systemImage:"xmark").font(.system(size:9,weight:.semibold)) }.buttonStyle(.plain).help("End concentration on \(spell.name)").accessibilityLabel("End concentration on \(spell.name)")
             }.font(.system(size:10,weight:.medium)).foregroundStyle(sky).padding(.horizontal,9).padding(.vertical,6).background(sky.opacity(0.09)).clipShape(Capsule()).overlay(Capsule().stroke(sky.opacity(0.65)))
         }

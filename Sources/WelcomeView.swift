@@ -9,7 +9,7 @@ struct WelcomeView:View {
         ScrollView {
             VStack(alignment:.leading,spacing:24) {
                 HStack(spacing:12) {
-                    Image(systemName:"shield.lefthalf.filled").font(.system(size:30)).foregroundStyle(accent)
+                    BrandMark().frame(width:40,height:40)
                     Text("Drakebound").font(.system(size:22,weight:.semibold,design:.serif))
                     Spacer()
                     Text("Character companion").font(.system(size:12)).foregroundStyle(.secondary)

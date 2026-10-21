@@ -28,7 +28,7 @@ With the macOS Swift toolchain installed, run from the repository root:
 bash scripts/build.sh
 ```
 
-The app is created at `build/Drakebound.app`. See [Contributing](CONTRIBUTING.md) before development or testing.
+The app is created at `build/products.noindex/Drakebound.app`. See [Contributing](CONTRIBUTING.md) before development or testing.
 
 ## Documentation
 

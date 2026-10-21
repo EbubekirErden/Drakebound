@@ -8,7 +8,7 @@ This guide describes the current working tree. Features may be newer than the la
 
 ## Open the app
 
-Double-click `build/Drakebound.app` in Finder. You can drag it to Applications if you like. No browser, server, subscription, or developer tools are needed to use the built app.
+Use the installed copy in `/Applications/Drakebound.app`. Development builds are kept in `build/products.noindex/Drakebound.app` to avoid duplicate Launchpad entries. No browser, server, subscription, or developer tools are needed to use the built app.
 
 ## Included
 
@@ -290,3 +290,7 @@ Quick note is available beside New note in Journal, from the pencil icon in the 
 ## First launch
 
 With no saved characters, Welcome offers Create a character, Import a character, and an optional Explore a demo preview. Creation uses the existing step-by-step guide and saves only after review. Imports accept Drakebound JSON backups or Fight Club character XML. You can browse or import compendium references before creating a character, and return with Welcome in the sidebar. The demo is added only after choosing Open demo character and is clearly named as a demo. Existing characters open directly into the workspace. Removing the last character returns to Welcome and the empty roster persists after restarting. If the saved archive cannot be read, the original file is protected from writes; restore a verified backup in its folder and use Try again.
+
+### Compact play controls
+
+Combat (⌘2) brings together ready attacks, spells, abilities, conditions, slots, and resources. Use ⌘K to search character content and references. Customize optional tabs from the Tabs menu; numeric shortcuts keep their fixed destinations. On Sheet, feature names reveal details and resource counts open adjustment controls. Character JSON and PDF exports are in the character banner menu; Back up in the sidebar includes all characters, the saved spell library, and user references.

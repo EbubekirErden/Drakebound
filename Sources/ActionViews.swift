@@ -57,49 +57,88 @@ struct RollButtons: View {
     }
 }
 struct FeaturePanel: View {
-    @Binding var hero: Hero
-    @ObservedObject var store: Store
-    @State var editing: CharacterFeature?
+    @Binding var hero:Hero
+    @ObservedObject var store:Store
+    @State private var editing:CharacterFeature?
+    @State private var details:CharacterFeature?
     @State private var filter:FeatureCategory?
     @State private var browseFeats=false
     @State private var expanded:Set<UUID> = []
-    var body: some View {
+    var body:some View {
         SheetCard(title:"Features & traits",summary:"\((hero.featureEntries ?? []).count) features") {
             ControlFlowLayout(spacing:8) {
-                Button("All") { filter = nil }.buttonStyle(PageButtonStyle(prominent:filter == nil))
-                ForEach(FeatureCategory.allCases,id:\.self) { category in Button(category.rawValue) { filter = category }.buttonStyle(PageButtonStyle(prominent:filter == category)) }
-                Button { browseFeats=true } label: { Label("Browse feats",systemImage:"books.vertical") }.popover(isPresented:$browseFeats) { FeatQuickAdd(hero:$hero,entries:store.compendium.filter { $0.category == .feat }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) }; Button { editing = CharacterFeature(category:filter ?? .other) } label: { Label("Feature",systemImage:"plus") }.buttonStyle(.plain).foregroundStyle(accent)
-            }.buttonStyle(PageButtonStyle()).font(.system(size:11))
+                PagePicker(title:"Feature category",selectionTitle:filter?.rawValue ?? "All categories",selection:$filter) {
+                    Text("All categories").tag(Optional<FeatureCategory>.none)
+                    ForEach(FeatureCategory.allCases,id:\.self) { Text($0.rawValue).tag(Optional($0)) }
+                }.frame(width:170)
+                Button("Browse feats",systemImage:"books.vertical") { browseFeats=true }.buttonStyle(PageButtonStyle())
+                    .popover(isPresented:$browseFeats) { FeatQuickAdd(hero:$hero,entries:store.compendium.filter { $0.category == .feat }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) }
+                Button("Add feature",systemImage:"plus") { editing=CharacterFeature(category:filter ?? .other) }.buttonStyle(PageButtonStyle())
+            }
             ForEach(FeatureCategory.allCases,id:\.self) { category in
-                let entries = (hero.featureEntries ?? []).filter { ($0.category ?? .other) == category }
+                let entries=(hero.featureEntries ?? []).filter { ($0.category ?? .other) == category }
                 if !entries.isEmpty && (filter == nil || filter == category) {
-                    Text("\(category.rawValue) · \(entries.count)").font(.system(size:11,weight:.semibold)).foregroundStyle(gold).padding(.top,8)
-                    LazyVGrid(columns:[GridItem(.adaptive(minimum:280),spacing:10)],alignment:.leading,spacing:10) {
+                    Text("\(category.rawValue) · \(entries.count)").font(.system(size:10,weight:.semibold)).foregroundStyle(gold).padding(.top,4)
+                    LazyVGrid(columns:[GridItem(.adaptive(minimum:270),spacing:8,alignment:.topLeading)],alignment:.leading,spacing:6) {
                         ForEach(SelectionRules.outline(entries)) { row in
-                            let feature=row.feature
-                            VStack(alignment:.leading,spacing:10) {
-                                HStack(alignment:.top) {
-                                    Button { if expanded.contains(feature.id) { expanded.remove(feature.id) } else { expanded.insert(feature.id) } } label: {
-                                        HStack(alignment:.top,spacing:8) { Image(systemName:expanded.contains(feature.id) ? "chevron.down":"chevron.right").font(.system(size:9)).padding(.top,3); VStack(alignment:.leading,spacing:5) { Text(feature.name).font(.system(size:13,weight:.medium)); if let parent=(hero.featureEntries ?? []).first(where:{ $0.id == feature.parentFeatureID }) { Text("↳ "+parent.name).font(.caption2).foregroundStyle(accent) }; if let source = feature.source, !source.isEmpty { Text(source).font(.system(size:9)).foregroundStyle(sky) } }; Spacer(minLength:0) }.contentShape(Rectangle())
-                                    }.buttonStyle(.plain)
-                                    Button { editing = feature } label: { Image(systemName:"pencil") }.buttonStyle(.plain).help("Edit feature, source, uses, and rolls")
-                                }
-                                if !feature.text.isEmpty { Text(DescriptionMarkdown.attributed(feature.text)).font(.system(size:11)).foregroundStyle(expanded.contains(feature.id) ? ink:Color.secondary).lineLimit(expanded.contains(feature.id) ? nil:2).textSelection(.enabled).frame(maxWidth:.infinity,alignment:.leading) }
-                                ForEach(feature.resolvedEffects.filter(\.enabled)) { effect in Text(featureEffectSummary(effect,level:hero.level)).font(.caption).foregroundStyle(leaf) }
-                                if let counter = feature.counter {
-                                    HStack(spacing:8) { Text("Uses \(counter.current) / \(counter.maximum)").font(.caption).foregroundStyle(gold); Button { changeUses(feature,-1) } label: { Image(systemName:"minus") }.disabled(counter.current == 0); Button { changeUses(feature,1) } label: { Image(systemName:"plus") }.disabled(counter.current >= counter.maximum); Spacer(minLength:0) }.font(.caption)
-                                    Text(counter.resetSummary).font(.caption2).foregroundStyle(.secondary)
-                                }
-                                if feature.counter != nil || feature.resourceCost != nil { HStack { Button("Use feature") { store.performAction(SheetActionRef(kind:.featureUse,sourceID:feature.id),heroID:hero.id) }; if let cost = feature.resourceCost { Text(hero.resourceSummary(cost)).font(.caption2).foregroundStyle(gold) }; Spacer() }.font(.caption) }
-                                RollButtons(rolls:feature.rolls,hero:hero,store:store,source:feature.name,actionSource:SheetActionRef(kind:.featureRoll,sourceID:feature.id))
-                            }.padding(12).frame(maxWidth:.infinity,alignment:.topLeading).background(paper.opacity(0.55)).clipShape(RoundedRectangle(cornerRadius:8))
+                            featureRow(row.feature,depth:row.depth)
                         }
                     }
                 }
             }
-        }.sheet(item:$editing) { feature in FeatureEditor(feature:feature,hero:hero,onSave:{ updated in var all = hero.featureEntries ?? []; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.replaceFeatures(all) },onDelete:{ hero.replaceFeatures((hero.featureEntries ?? []).filter { $0.id != feature.id }) }) }
+            if (hero.featureEntries ?? []).isEmpty { Text("Add a feature or choose one from the compendium.").font(.caption).foregroundStyle(.secondary) }
+        }
+        .sheet(item:$editing) { feature in FeatureEditor(feature:feature,hero:hero,onSave:{ updated in var all=hero.featureEntries ?? [];if let i=all.firstIndex(where:{ $0.id == updated.id }) { all[i]=updated } else { all.append(updated) };hero.replaceFeatures(all) },onDelete:{ hero.replaceFeatures((hero.featureEntries ?? []).filter { $0.id != feature.id }) }) }
+        .popover(item:$details) { original in
+            let feature=hero.featureEntries?.first(where:{ $0.id == original.id }) ?? original
+            VStack(alignment:.leading,spacing:12) {
+                HStack { Text(feature.name).font(.headline);Spacer();Button("Done") { details=nil } }
+                ScrollView { featureBody(feature) }
+                Button("Edit feature") { details=nil;editing=feature }.buttonStyle(PageButtonStyle())
+            }.padding(18).frame(width:420,height:390).background(surface).foregroundStyle(ink)
+        }
     }
-    func changeUses(_ feature:CharacterFeature,_ delta:Int) { guard let i = hero.featureEntries?.firstIndex(where:{ $0.id == feature.id }), let counter = feature.counter else { return }; hero.featureEntries?[i].counter?.current = min(counter.maximum,max(0,counter.current+delta)) }
+    func featureRow(_ feature:CharacterFeature,depth:Int)->some View {
+        VStack(alignment:.leading,spacing:0) {
+            HStack(spacing:8) {
+                Button { toggle(feature) } label: {
+                    HStack(spacing:7) {
+                        Image(systemName:expanded.contains(feature.id) ? "chevron.down":"chevron.right").font(.system(size:9)).foregroundStyle(.secondary)
+                        Text(feature.name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
+                    }.padding(.leading,CGFloat(min(2,depth))*8).contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityLabel(feature.name+" details").accessibilityValue(expanded.contains(feature.id) ? "Expanded":"Collapsed")
+                    .highPriorityGesture(LongPressGesture(minimumDuration:0.6).exclusively(before:TapGesture()).onEnded { value in
+                        switch value { case .first:details=feature;case .second:toggle(feature) }
+                    })
+                if let counter=feature.counter { Text("\(counter.current)/\(counter.maximum)").font(.system(size:11,weight:.medium,design:.rounded)).monospacedDigit().foregroundStyle(gold) }
+            }.padding(10).frame(minHeight:38)
+                .contextMenu { Button("Feature details…") { details=feature };Button("Edit feature…") { editing=feature } }
+            if expanded.contains(feature.id) { featureBody(feature).padding(.horizontal,12).padding(.bottom,12) }
+        }.frame(maxWidth:.infinity,alignment:.leading).background(paper.opacity(0.55),in:RoundedRectangle(cornerRadius:7))
+    }
+    func featureBody(_ feature:CharacterFeature)->some View {
+        VStack(alignment:.leading,spacing:10) {
+            if let parent=(hero.featureEntries ?? []).first(where:{ $0.id == feature.parentFeatureID }) { Text("Part of "+parent.name).font(.caption).foregroundStyle(accent) }
+            if let source=feature.source,!source.isEmpty { Text(source).font(.caption).foregroundStyle(sky) }
+            if !feature.text.isEmpty { Text(DescriptionMarkdown.attributed(feature.text)).font(.system(size:12)).textSelection(.enabled).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading) }
+            ForEach(feature.resolvedEffects.filter(\.enabled)) { effect in Text(featureEffectSummary(effect,level:hero.level)).font(.caption).foregroundStyle(leaf) }
+            if let counter=feature.counter {
+                HStack(spacing:10) {
+                    Text("Uses \(counter.current)/\(counter.maximum)").monospacedDigit().foregroundStyle(gold)
+                    Button { changeUses(feature,-1) } label: { Image(systemName:"minus") }.disabled(counter.current == 0).accessibilityLabel("Spend "+feature.name)
+                    Button { changeUses(feature,1) } label: { Image(systemName:"plus") }.disabled(counter.current >= counter.maximum).accessibilityLabel("Restore "+feature.name)
+                }.font(.system(size:12))
+                Text(counter.resetSummary).font(.caption2).foregroundStyle(.secondary)
+            }
+            if feature.counter != nil || feature.resourceCost != nil {
+                Button("Use feature") { store.performAction(SheetActionRef(kind:.featureUse,sourceID:feature.id),heroID:hero.id) }.buttonStyle(PageButtonStyle())
+                if let cost=feature.resourceCost { Text(hero.resourceSummary(cost)).font(.caption).foregroundStyle(gold) }
+            }
+            RollButtons(rolls:feature.rolls,hero:hero,store:store,source:feature.name,actionSource:SheetActionRef(kind:.featureRoll,sourceID:feature.id))
+        }.frame(maxWidth:.infinity,alignment:.leading)
+    }
+    func toggle(_ feature:CharacterFeature) { if expanded.contains(feature.id) { expanded.remove(feature.id) } else { expanded.insert(feature.id) } }
+    func changeUses(_ feature:CharacterFeature,_ delta:Int) { guard let i=hero.featureEntries?.firstIndex(where:{ $0.id == feature.id }),let counter=feature.counter else { return };hero.featureEntries?[i].counter?.current=min(counter.maximum,max(0,counter.current+delta)) }
 }
 struct FeatureEditor:View {
     @State var feature:CharacterFeature
@@ -204,6 +243,7 @@ struct CastControl: View {
     @ObservedObject var store: Store
     var spell: Spell
     var compact = false
+    var showsOptionsButton = false
     @State private var choosing = false
     var title:String { spell.level > 0 && spell.usesSlot == false ? "Use":"Cast" }
     func cast(_ mode:CastMode,_ level:Int? = nil,_ tier:Int? = nil) {
@@ -212,6 +252,7 @@ struct CastControl: View {
         catch { store.error = error.localizedDescription }
     }
     var body: some View {
+        HStack(spacing:3) {
         Button { cast(hero.defaultCastMode(spell)) } label: {
             Text(title).font(.system(size:11,weight:.semibold)).foregroundStyle(sky).padding(.horizontal,12).frame(height:26).background(sky.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:6)).contentShape(Rectangle())
         }.buttonStyle(.plain)
@@ -223,13 +264,17 @@ struct CastControl: View {
             VStack(alignment:.leading,spacing:12) {
                 Text(spell.name).font(.headline).lineLimit(2)
                 Text("Casting options").font(.caption).foregroundStyle(.secondary)
-                ScrollView { VStack(alignment:.leading,spacing:7) { castingChoices }.frame(maxWidth:.infinity,alignment:.leading) }.frame(maxHeight:270)
+                ScrollView { VStack(alignment:.leading,spacing:7) { castingChoices }.frame(maxWidth:.infinity,alignment:.leading).buttonStyle(CastingOptionStyle()) }.frame(maxHeight:270)
                 Text("Choosing an option casts immediately. Opening this panel spends nothing.").font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
-            }.padding(16).frame(width:285).tint(sky)
+            }.padding(16).frame(width:285).background(surface).foregroundStyle(ink).tint(sky)
         }
         .help((spell.level == 0 ? "Click to cast without a slot":spell.usesSlot == false ? "Click to use without a spell slot":"Click to cast using the lowest available slot")+" · hold or right-click for casting options")
         .accessibilityLabel(title+" "+spell.name)
         .modifier(PreparedCasting(prepared:spell.prepared))
+        if showsOptionsButton {
+            Button { choosing=true } label: { Image(systemName:"chevron.down").font(.system(size:10,weight:.semibold)).foregroundStyle(sky).frame(width:24,height:26).background(sky.opacity(0.08),in:RoundedRectangle(cornerRadius:6)) }.buttonStyle(.plain).accessibilityLabel("Casting options for "+spell.name).help("Choose slot level, ritual, or free use").modifier(PreparedCasting(prepared:spell.prepared))
+        }
+        }
     }
     func castDamage(at slot: Int) -> String {
         guard let roll = (spell.rolls ?? []).first(where:{ $0.id == spell.automaticRollID }), let expression = try? hero.resolveRoll(roll.expression(spell:spell,slot:slot),spell:spell,slot:slot) else { return "" }
@@ -252,6 +297,15 @@ struct CastControl: View {
                     .disabled((spell.freeUses ?? 0) > 0 && (spell.freeRemaining ?? spell.freeUses ?? 0) <= 0)
             }
         }
+    }
+}
+private struct CastingOptionStyle:ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration:Configuration)->some View {
+        configuration.label.font(.system(size:12,weight:.medium)).foregroundStyle(ink)
+            .padding(.horizontal,10).padding(.vertical,9).frame(maxWidth:.infinity,alignment:.leading)
+            .background(sky.opacity(configuration.isPressed ? 0.16:0.07),in:RoundedRectangle(cornerRadius:6))
+            .contentShape(Rectangle()).opacity(enabled ? 1:0.4)
     }
 }
 struct SlotManager: View {

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added Combat with compact action rows, spell slots, resources, and condition controls; global search (⌘K); per-character tab visibility; compact Sheet features and combined attacks/resources.
+- Added compact rest reviews, non-blocking success and selective Undo notices, clearer character export and full backup entry points, and consistent Welcome branding.
+- Isolated play UI checks cover interaction and responsive layouts. Development bundles stay outside Launchpad indexing.
+
 - Saving is faster and smoother: characters are encoded and written on a background queue, strictly in order, and nothing is rewritten when the characters and library are unchanged. Quit, import, and level-up still finish their writes before continuing. The file format is unchanged.
 - Test and preview safety: `Store` accepts an explicit save location, so previews and harnesses use a physically separate directory. The model test no longer reads your live save (set `DRAKEBOUND_ARCHIVE_FIXTURE` to a copy to verify an archive).
 - `scripts/test.sh` compiles harnesses in parallel and skips unchanged ones. Added archive-writer tests and a GitHub Actions workflow.

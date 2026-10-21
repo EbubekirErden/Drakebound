@@ -19,6 +19,11 @@ import UniformTypeIdentifiers
     @Published var rollMode = RollMode.normal
     private let dicePresenter = DicePresenter()
     @Published var error: String?
+    @Published var globalSearchOpen = false
+    @Published var searchDetail:SearchDetail?
+    var pendingSearchResult:GlobalSearchResult?
+    @Published var notice: PlayNotice?
+    @Published var hiddenTabsByHero:[String:[String]] = [:]
     @Published var compendium:[CompendiumEntry] = []
     @Published var compendiumRevision = 0
     @Published var showPDFExport = false
@@ -48,6 +53,9 @@ import UniformTypeIdentifiers
     /// Companion files (compendium, activity, backups) are always stored beside `file`.
     init(file location:URL? = nil) {
         file = location ?? Store.liveFile
+        if file.standardizedFileURL == Store.liveFile.standardizedFileURL {
+            hiddenTabsByHero = UserDefaults.standard.dictionary(forKey:"hiddenTabsByHero") as? [String:[String]] ?? [:]
+        }
         if FileManager.default.fileExists(atPath:file.path) {
             do { let a = try JSONDecoder().decode(Archive.self,from:Data(contentsOf:file)); try validate(a); heroes = a.heroes; library = a.library }
             catch { characterArchiveReadFailed = true; self.error = "Your saved file could not be read. It has been left untouched. Restore a verified backup in the data folder, then choose Try again.\n\(error.localizedDescription)" }

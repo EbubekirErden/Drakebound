@@ -63,6 +63,7 @@ struct PartySidebar: View {
     var body: some View {
         VStack(alignment:.leading,spacing:0) {
             brand
+            GlobalSearchButton(store:store,compact:compact).padding(.horizontal,12).padding(.bottom,8)
             if !compact && !store.heroes.isEmpty {
                 HStack {
                     Text("Characters").font(.system(size:12,weight:.semibold))
@@ -118,14 +119,10 @@ struct PartySidebar: View {
     }
 
     private var exportControl: some View {
-        Menu {
-            Button("Character PDF…") { store.showPDFExport = true }.disabled(store.selected == nil)
-            Button("Backup JSON…") { store.exportBackup() }
-        } label: { transferLabel("Export",icon:"square.and.arrow.up") }
-            .menuStyle(.borderlessButton).menuIndicator(.hidden).tint(ink.opacity(0.7))
-            .frame(maxWidth:.infinity,minHeight:36)
+        Button { store.exportBackup() } label: { transferLabel("Back up",icon:"externaldrive") }
+            .buttonStyle(.plain).frame(maxWidth:.infinity,minHeight:36)
             .background(ink.opacity(0.04),in:RoundedRectangle(cornerRadius:8))
-            .help("Export character PDF or JSON backup").accessibilityLabel("Export")
+            .help("Back up all characters, images, shared spells and references to JSON. Activity history and interface preferences are not included.").accessibilityLabel("Back up all characters and references")
     }
 
     private func transferLabel(_ title:String,icon:String) -> some View {
@@ -141,10 +138,7 @@ struct PartySidebar: View {
             Button {
                 withAnimation(reduceMotion ? nil:.easeInOut(duration:0.2)) { compact.toggle() }
             } label: {
-                Group {
-                    if let mark = AppBrand.sidebarMark { Image(nsImage:mark).resizable().scaledToFit() }
-                    else { Image(systemName:"hexagon").resizable().scaledToFit().foregroundStyle(gold) }
-                }.frame(width:36,height:36).contentShape(Rectangle())
+                BrandMark().frame(width:36,height:36).contentShape(Rectangle())
             }.buttonStyle(.plain).help(compact ? "Expand sidebar":"Compact sidebar")
                 .accessibilityLabel(compact ? "Expand sidebar":"Compact sidebar")
             if !compact {

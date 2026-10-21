@@ -23,7 +23,7 @@ Package only the reviewed app. For example, from the repository root, replace `V
 ```sh
 mkdir -p output/releases
 /usr/bin/ditto -c -k --sequesterRsrc --keepParent \
-  build/Drakebound.app output/releases/Drakebound-vVERSION-macOS-arm64.zip
+  build/products.noindex/Drakebound.app output/releases/Drakebound-vVERSION-macOS-arm64.zip
 shasum -a 256 output/releases/Drakebound-vVERSION-macOS-arm64.zip
 ```
 

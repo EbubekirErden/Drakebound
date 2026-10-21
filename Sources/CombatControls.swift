@@ -108,30 +108,46 @@ struct RestEditor: View {
     @ObservedObject var store: Store
     @State private var selected = CounterReset.shortRest
     @Environment(\.dismiss) private var dismiss
-    var names: [String] {
-        (hero.counters ?? []).filter { $0.restEvents.contains(selected) }.map(\.name) + (hero.featureEntries ?? []).filter { $0.counter?.restEvents.contains(selected) == true }.map(\.name)
+    init(hero:Binding<Hero>,store:Store,initialRest:CounterReset = .shortRest) {
+        _hero = hero;self.store = store;_selected = State(initialValue:initialRest)
     }
+    var preview:RestPreview { RestPreview(hero:hero,event:selected) }
     var body: some View {
-        VStack(alignment:.leading,spacing:18) {
-            HStack { Text("Rest & recovery").font(.title2.bold()); Spacer(); Button("Cancel") { dismiss() } }
-            HStack(spacing:10) { restCard(.shortRest,"cup.and.saucer","Hit dice & selected uses"); restCard(.longRest,"moon.stars","HP, slots & recovery"); restCard(.fullRest,"sun.max","Complete recovery") }
+        VStack(alignment:.leading,spacing:16) {
+            HStack { Text("Rest & recovery").font(.title3.bold()); Spacer(); Button("Cancel") { dismiss() }.keyboardShortcut(.cancelAction) }
+            Picker("Rest",selection:$selected) {
+                Text("Short rest").tag(CounterReset.shortRest)
+                Text("Long rest").tag(CounterReset.longRest)
+                Text("Full rest").tag(CounterReset.fullRest)
+            }.pickerStyle(.segmented).labelsHidden()
             VStack(alignment:.leading,spacing:10) {
-                Text("\(selected.rawValue) preview").font(.headline)
-                Text(selected == .shortRest ? "Spend hit dice before or after this rest using Hit dice. Completing a short rest refills only counters you assigned to it. Spell slots also recover when short-rest slot recovery is enabled." : selected == .longRest ? "Restore HP and spell slots; clear temporary HP and death saves; restore spell free uses; reduce exhaustion by one. Recover \(hero.edition == "2024" ? "all":"half your total") hit dice using \(hero.edition) rules." : "House-rule full recovery: restore HP, spell slots, all hit dice, and spell free uses; clear temporary HP, death saves, and all exhaustion. Counters use their separate Full rest setting.").font(.system(size:12)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
-                if selected == .shortRest && hero.slotsRecoverOnShortRest == true { Label("Spell slots will recover",systemImage:"sparkles").font(.caption).foregroundStyle(sky) }
-                Divider()
-                Text("Counters that will refill").font(.system(size:12,weight:.semibold))
-                if names.isEmpty { Text("None assigned to this rest").foregroundStyle(.secondary).font(.caption) }
-                else { ScrollView { VStack(alignment:.leading,spacing:7) { ForEach(Array(names.enumerated()),id:\.offset) { _,name in Label(name,systemImage:"arrow.clockwise").font(.caption) } }.frame(maxWidth:.infinity,alignment:.leading) }.frame(maxHeight:120) }
-                Text("Change reset rules in a counter or feature’s editor. Rest types are independent.").font(.caption2).foregroundStyle(.secondary)
-            }.padding(16).frame(maxWidth:.infinity,alignment:.leading).background(surface).clipShape(RoundedRectangle(cornerRadius:10))
-            HStack { Spacer(); Button("Complete \(selected.rawValue.lowercased())") {
-                switch selected { case .shortRest: hero.resetCounters(for:.shortRest); case .longRest: hero.longRest(); case .fullRest: hero.fullRest(); case .manual: break }
-                store.record(RollResult(label:selected.rawValue,expression:"Recovery completed · \(names.count) configured counters",dice:[],total:0,event:true)); dismiss()
-            }.buttonStyle(.borderedProminent) }
-        }.padding(24).frame(width:620).tint(accent)
-    }
-    func restCard(_ rest:CounterReset,_ icon:String,_ description:String) -> some View {
-        Button { selected = rest } label: { VStack(spacing:9) { Image(systemName:icon).font(.system(size:23)).foregroundStyle(rest == .shortRest ? gold:rest == .longRest ? sky:leaf); Text(rest.rawValue).font(.system(size:13,weight:.semibold)); Text(description).font(.system(size:9)).foregroundStyle(.secondary) }.frame(maxWidth:.infinity).frame(height:98).background((selected == rest ? accent:Color.gray).opacity(0.09)).clipShape(RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).stroke(selected == rest ? accent:.clear)) }.buttonStyle(.plain)
+                ForEach(preview.rows) { row in
+                    HStack(alignment:.firstTextBaseline,spacing:16) {
+                        Text(row.title).foregroundStyle(.secondary)
+                        Spacer(minLength:8)
+                        Text(row.value).multilineTextAlignment(.trailing).fixedSize(horizontal:false,vertical:true)
+                    }
+                    if row.id != preview.rows.last?.id { Divider().opacity(0.5) }
+                }
+            }.font(.system(size:12)).padding(14).background(surface,in:RoundedRectangle(cornerRadius:9))
+            if !preview.resources.isEmpty {
+                HStack(alignment:.top,spacing:8) {
+                    Text("Refills").foregroundStyle(.secondary)
+                    ScrollView { Text(preview.resources.joined(separator:", ")).frame(maxWidth:.infinity,alignment:.leading).fixedSize(horizontal:false,vertical:true) }.frame(maxHeight:65)
+                }.font(.system(size:11))
+            }
+            Text(preview.note).font(.system(size:11)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+            HStack {
+                Spacer()
+                Button("Complete \(selected.rawValue.lowercased())") {
+                    let names = preview.resources.count
+                    hero = preview.after
+                    store.record(RollResult(label:selected.rawValue,expression:"Recovery completed · \(names) configured resources",dice:[],total:0,event:true))
+                    store.captureActivity()
+                    if store.notice?.activityID == nil { store.notify("\(selected.rawValue) completed",heroID:hero.id) }
+                    dismiss()
+                }.buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+            }
+        }.padding(20).frame(width:480).background(paper).foregroundStyle(ink).tint(accent)
     }
 }

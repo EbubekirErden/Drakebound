@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-APP="build/Drakebound.app"
+APP="build/products.noindex/Drakebound.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" build/module-cache
 xcrun swiftc -swift-version 5 -O -module-cache-path build/module-cache -target arm64-apple-macosx14.0 Sources/*.swift -o "$APP/Contents/MacOS/Drakebound" -framework SwiftUI -framework AppKit -framework UniformTypeIdentifiers
 xcrun swift -module-cache-path build/module-cache scripts/icon.swift build/AppIcon.iconset
@@ -33,4 +33,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 codesign --force --deep --sign - "$APP"
+# Development bundles should not become extra Drakebound entries in Launchpad.
+DRAKEBOUND_REGISTRAR="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+if [ -x "$DRAKEBOUND_REGISTRAR" ]; then
+    "$DRAKEBOUND_REGISTRAR" -u "$PWD/$APP" >/dev/null 2>&1 || true
+fi
 echo "Built: $APP"

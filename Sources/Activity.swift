@@ -31,8 +31,13 @@ struct CharacterPlayState:Codable,Equatable {
         boundary += (h.classLevels ?? []).map { "class:\($0.id):\($0.level)" }
         boundary += h.attacks.map { "attack:\($0.id):\($0.equipmentID?.uuidString ?? "manual")" }
         boundary += h.items.map { "item:\($0.id)" }
-        boundary += (h.featureEntries ?? []).map { feature in
-            "effects:"+feature.id.uuidString+":"+(feature.effectMode?.rawValue ?? "legacy")+":"+feature.resolvedEffects.map { effect in "\(effect.id):\(effect.target):\(effect.amount):\(effect.perLevel):\(effect.enabled)" }.joined(separator:";")
+        for feature in h.featureEntries ?? [] {
+            let mode:String = feature.effectMode?.rawValue ?? "legacy"
+            let effects:[String] = feature.resolvedEffects.map { effect in
+                "\(effect.id):\(effect.target):\(effect.amount):\(effect.perLevel):\(effect.enabled)"
+            }
+            let signature:String = effects.joined(separator:";")
+            boundary.append("effects:\(feature.id):\(mode):\(signature)")
         }
         boundary += h.spells.map { "spell:\($0.id):\($0.freeUses ?? 0)" }
         boundary += (h.creatures ?? []).map { "creature:\($0.id):\($0.maximumHP)" }
