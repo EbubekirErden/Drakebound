@@ -29,6 +29,18 @@ let conditionDefinitions = [
     ConditionDefinition(name:"Stunned",summary:"Incapacitated; STR/DEX saves fail.",reminder:"2014 prevents movement; 2024 does not. Incoming advantage."),
     ConditionDefinition(name:"Unconscious",summary:"Incapacitated; no movement; STR/DEX saves fail.",reminder:"Also prone; resolve awareness and nearby critical hits manually.")
 ]
+struct ConditionReference:Identifiable,Equatable {
+    var id:String { name.lowercased() }
+    var name:String
+    var summary:String
+    var text:String
+}
+let exhaustion2014 = "2014: cumulative check disadvantage at 1; half speed at 2; attack/save disadvantage at 3; half maximum HP at 4; no movement at 5; death at 6."
+let exhaustion2024 = "2024: −2 per level on typed D20 tests and −5 ft per level. Level 6 is fatal."
+let conditionReferences = conditionDefinitions.map {
+    ConditionReference(name:$0.name,summary:$0.summary,text:$0.summary+"\n\n"+$0.reminder)
+} + [ConditionReference(name:"Exhaustion",summary:"Cumulative penalties by level · 2014 and 2024",text:exhaustion2014+"\n\n"+exhaustion2024)]
+
 extension Hero {
     var edition: String { rulesEdition ?? (characterClass.contains("2024") ? "2024":"2014") }
     func hasCondition(_ name:String) -> Bool { conditions.contains { $0.caseInsensitiveCompare(name) == .orderedSame } }

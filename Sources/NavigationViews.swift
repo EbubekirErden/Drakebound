@@ -24,7 +24,8 @@ struct CompendiumView:View {
     @State private var spellClass = "All classes"
     @AppStorage("compendiumInspectorEnabled") private var inspectorEnabled = false
     @AppStorage("compendiumSearchDescriptions") private var searchDescriptions = false
-    private var canInspect:Bool { !conditionsReference && inspectorEnabled && browserWidth >= 950 }
+    private var canInspect:Bool { inspectorEnabled && browserWidth >= 950 }
+    @State private var selectedCondition:ConditionReference?
     @State private var conditionsReference=false
     @State private var message = ""
     @State private var selectionMode = false
@@ -49,13 +50,17 @@ struct CompendiumView:View {
                 if canInspect {
                     InspectorResizeHandle(width:$inspectorWidth,maximum:min(540,max(300,browserWidth-560)))
                     Group {
-                        if let selected { referenceDetails(selected) }
+                        if conditionsReference,let selectedCondition { ConditionReferenceDetails(reference:selectedCondition) }
+                        else if !conditionsReference,let selected { referenceDetails(selected) }
                         else { ContentUnavailableView("Select a reference",systemImage:"sidebar.right",description:Text("Preview an entry here while keeping your search and filters visible.")) }
                     }.frame(width:fittedInspectorWidth).frame(maxHeight:.infinity).background(surface.opacity(0.5))
                 }
             }
             .overlay {
-                if let selected, !canInspect || expandedDetail {
+                if conditionsReference,let selectedCondition,!canInspect || expandedDetail {
+                    DismissibleDetail(dismiss:{ if !canInspect { self.selectedCondition=nil };expandedDetail=false }) { ConditionReferenceDetails(reference:selectedCondition) }
+                }
+                if !conditionsReference,let selected, !canInspect || expandedDetail {
                     DismissibleDetail(dismiss:{ if !canInspect { self.selected = nil }; expandedDetail = false; message = "" }) { referenceDetails(selected) }
                 }
             }
@@ -84,11 +89,11 @@ struct CompendiumView:View {
             PageToolbar(title:"Compendium",subtitle:"\(store.compendium.count.formatted()) reference entries",searchTitle:"Search compendium…",query:$query,focus:$searchFocused) {
                 if !conditionsReference {
                 Button { creation = CompendiumCreation(category:category) } label: { Label("New \(category.singular.lowercased())",systemImage:"plus") }.buttonStyle(PageButtonStyle(prominent:true))
-                Button { if inspectorEnabled { selected = nil; message = "" }; inspectorEnabled.toggle(); expandedDetail = false } label: { Label("Preview",systemImage:"rectangle.split.2x1") }
+                }
+                Button { if inspectorEnabled { selected = nil;selectedCondition=nil; message = "" }; inspectorEnabled.toggle(); expandedDetail = false } label: { Label("Preview",systemImage:"rectangle.split.2x1") }
                     .buttonStyle(PageButtonStyle(prominent:canInspect)).disabled(browserWidth < 950)
                     .help(browserWidth < 950 ? "Widen the window to preview beside results":"Show or hide preview beside results")
                     .accessibilityLabel("Preview beside results").accessibilityValue(inspectorEnabled ? "On":"Off")
-                }
                 Menu {
                     if !conditionsReference {
                     Button(selectionMode ? "Cancel selection":"Select multiple") { selectionMode.toggle(); if !selectionMode { picks = [] } }
@@ -103,7 +108,7 @@ struct CompendiumView:View {
             }
             ScrollView(.horizontal,showsIndicators:true) { HStack(spacing:6) {
                 ForEach(CompendiumCategory.allCases,id:\.self) { type in
-                    Button { conditionsReference=false;category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8).background((!conditionsReference && type == category ? accent:ink).opacity(!conditionsReference && type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).accessibilityAddTraits(!conditionsReference && type == category ? .isSelected:[])
+                    Button { conditionsReference=false;selectedCondition=nil;expandedDetail=false;category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8).background((!conditionsReference && type == category ? accent:ink).opacity(!conditionsReference && type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).accessibilityAddTraits(!conditionsReference && type == category ? .isSelected:[])
                 }
                 Button { conditionsReference=true;selected=nil;expandedDetail=false;selectionMode=false;picks=[] } label: {
                     VStack(spacing:5) {
@@ -114,7 +119,7 @@ struct CompendiumView:View {
                 }.buttonStyle(.plain).accessibilityLabel("Conditions reference category").accessibilityAddTraits(conditionsReference ? .isSelected:[])
             } }.accessibilityLabel("Compendium categories")
             if conditionsReference {
-                ConditionsCompendiumPage(query:query)
+                ConditionsCompendiumPage(query:query,selectedID:selectedCondition?.id) { condition in selectedCondition=condition;expandedDetail=false }
             } else {
             categoryFilters
             if selectionMode {

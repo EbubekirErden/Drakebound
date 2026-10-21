@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Global search includes all condition references and exhaustion, with exact condition names ahead of partial reference names. Conditions supports Compendium’s resizable Preview sidebar and narrow-window detail overlay.
+
 - Conditions is an inline Compendium category with searchable condition and exhaustion reference cards; switching categories no longer opens a sheet.
 
 - Compendium Conditions now sits after Backgrounds in the horizontally scrollable category row, with a visible scroll indicator when needed.

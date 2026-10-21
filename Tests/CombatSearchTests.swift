@@ -25,6 +25,16 @@ import Foundation
         precondition(hero == before,"Search construction and queries cannot mutate a character")
         let noCharacter=GlobalSearchIndex(hero:nil,library:[extra],compendium:[reference])
         precondition(noCharacter.search("eclair").first?.character == false)
+        let troll=CompendiumEntry(id:UUID(),category:.monster,name:"Blinded Troll",fields:[])
+        let rulesIndex=GlobalSearchIndex(hero:nil,library:[],compendium:[troll])
+        let blinded=rulesIndex.search("blinded")
+        precondition(blinded.first?.target == .condition("blinded"),"Exact condition must rank above a partial creature name")
+        precondition(blinded.contains { $0.target == .reference(troll.id) })
+        for condition in conditionReferences {
+            precondition(rulesIndex.search(condition.name).contains { $0.target == .condition(condition.id) },"Every condition, including exhaustion, is searchable without a character")
+        }
+        precondition(rulesIndex.search("condition blinded").first?.target == .condition("blinded"))
+        precondition(rulesIndex.search("sight checks").contains { $0.target == .condition("blinded") })
         let data=try CharacterExport.data(for:hero)
         let archive=try JSONDecoder().decode(Archive.self,from:data)
         precondition(archive.heroes == [hero] && archive.library.isEmpty && archive.compendium == nil)

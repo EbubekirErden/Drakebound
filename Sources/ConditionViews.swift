@@ -96,41 +96,59 @@ struct ExhaustionRuleDetail:View {
     var body:some View {
         VStack(alignment:.leading,spacing:8) {
             Text("Exhaustion").font(.system(size:13,weight:.semibold))
-            Text("2014: cumulative check disadvantage at 1; half speed at 2; attack/save disadvantage at 3; half maximum HP at 4; no movement at 5; death at 6.")
-            Text("2024: −2 per level on typed D20 tests and −5 ft per level. Level 6 is fatal.")
+            Text(exhaustion2014)
+            Text(exhaustion2024)
         }.font(.system(size:12)).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled)
     }
 }
 
 struct ConditionsCompendiumPage:View {
     var query:String
-    var matches:[ConditionDefinition] {
-        conditionDefinitions.filter { CompendiumSearch.matches(name:$0.name,summary:$0.summary,classes:"",source:"",description:$0.reminder,query:query,includeDescription:true) }
-    }
-    var showExhaustion:Bool {
-        CompendiumSearch.matches(name:"Exhaustion",summary:"2014 2024 cumulative levels speed D20 tests disadvantage maximum HP death",classes:"",source:"",query:query)
+    var selectedID:String? = nil
+    var select:(ConditionReference)->Void
+    var matches:[ConditionReference] {
+        conditionReferences.filter { CompendiumSearch.matches(name:$0.name,summary:$0.summary,classes:"",source:"",description:$0.text,query:query,includeDescription:true) }
     }
     var body:some View {
         VStack(alignment:.leading,spacing:12) {
-            Text("\(matches.count+(showExhaustion ? 1:0)) condition references").font(.system(size:11)).foregroundStyle(.secondary)
-            if matches.isEmpty && !showExhaustion {
-                ContentUnavailableView.search(text:query)
-            } else {
+            Text("\(matches.count) condition references").font(.system(size:11)).foregroundStyle(.secondary)
+            if matches.isEmpty { ContentUnavailableView.search(text:query) }
+            else {
                 ScrollView {
                     LazyVGrid(columns:[GridItem(.adaptive(minimum:280),spacing:10,alignment:.top)],alignment:.leading,spacing:10) {
                         ForEach(matches) { condition in
-                            ConditionRuleDetail(condition:condition).padding(14).background(surface,in:RoundedRectangle(cornerRadius:8))
+                            Button { select(condition) } label: {
+                                HStack(spacing:10) {
+                                    VStack(alignment:.leading,spacing:6) {
+                                        Text(condition.name).font(.system(size:13,weight:.semibold))
+                                        Text(condition.summary).font(.system(size:11)).foregroundStyle(.secondary).fixedSize(horizontal:false,vertical:true)
+                                    }.frame(maxWidth:.infinity,alignment:.leading)
+                                    Image(systemName:"chevron.right").font(.system(size:10)).foregroundStyle(.secondary)
+                                }.padding(14).background(surface,in:RoundedRectangle(cornerRadius:8))
+                                    .overlay(RoundedRectangle(cornerRadius:8).stroke(selectedID == condition.id ? accent:Color.clear))
+                            }.buttonStyle(.plain).accessibilityLabel(condition.name+" condition reference")
                         }
-                        if showExhaustion { ExhaustionRuleDetail().padding(14).background(surface,in:RoundedRectangle(cornerRadius:8)) }
                     }
-                    Text("Tracked effects update stats and typed rolls. Incoming damage, senses, target-dependent restrictions and critical hits remain table decisions.").font(.system(size:11)).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(.top,12)
-                    HStack {
-                        Link("2014 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/basic-rules-2014/appendix-a-conditions")!)
-                        Link("2024 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary")!)
-                        Spacer()
-                    }.font(.system(size:11)).padding(.top,8)
                 }
             }
         }.frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
+    }
+}
+
+struct ConditionReferenceDetails:View {
+    var reference:ConditionReference
+    var body:some View {
+        ScrollView {
+            VStack(alignment:.leading,spacing:14) {
+                Text(reference.name).font(.title2.bold())
+                Text("Condition · Rules reference").font(.caption).foregroundStyle(.secondary)
+                Text(reference.text).font(.system(size:13)).textSelection(.enabled)
+                Text("Tracked effects update stats and typed rolls. Incoming damage, senses, target-dependent restrictions and critical hits remain table decisions.").font(.system(size:11)).foregroundStyle(.secondary)
+                HStack {
+                    Link("2014 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/basic-rules-2014/appendix-a-conditions")!)
+                    Link("2024 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary")!)
+                }.font(.system(size:11))
+            }.frame(maxWidth:.infinity,alignment:.leading).padding(20)
+        }.foregroundStyle(ink)
     }
 }

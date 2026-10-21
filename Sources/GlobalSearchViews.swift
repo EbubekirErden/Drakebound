@@ -27,6 +27,11 @@ extension Store {
     func openSearchResult(_ result:GlobalSearchResult) {
         globalSearchOpen=false
         spellDetail=nil;itemDetail=nil;searchDetail=nil
+        if case .condition(let id) = result.target {
+            guard let condition=conditionReferences.first(where:{ $0.id == id }) else { return }
+            searchDetail=SearchDetail(title:condition.name,subtitle:"Condition · Rules reference",text:condition.text)
+            return
+        }
         if case .reference(let id) = result.target {
             guard let entry=compendium.first(where:{ $0.id == id }) else { return }
             searchDetail=SearchDetail(title:entry.name,subtitle:entry.category.singular+" · "+entry.sourceDescription,text:entry.text,reference:entry)
@@ -59,7 +64,7 @@ extension Store {
             guard let action=hero.sheetActions.first(where:{ $0.ref == ref }) else { return }
             let text=hero.creatureFeature(ref)?.text ?? hero.creatureAttack(ref)?.description ?? ""
             searchDetail=SearchDetail(title:action.name,subtitle:action.subtitle,text:text,action:action,heroID:hero.id)
-        case .reference,.librarySpell:break
+        case .reference,.librarySpell,.condition:break
         }
     }
 }

@@ -2,7 +2,7 @@ import Foundation
 
 enum SearchTarget:Equatable {
     case spell(UUID),item(UUID),feature(UUID),attack(UUID),creature(UUID),action(SheetActionRef)
-    case reference(UUID),librarySpell(UUID)
+    case reference(UUID),librarySpell(UUID),condition(String)
 }
 struct GlobalSearchResult:Identifiable,Equatable {
     var id:String
@@ -39,6 +39,9 @@ struct GlobalSearchIndex {
             for action in hero.creatureActions {
                 entries.append(GlobalSearchResult(name:action.name,subtitle:action.subtitle,kind:"Companion action",character:true,target:.action(action.ref),id:"action:"+action.id))
             }
+        }
+        for condition in conditionReferences {
+            entries.append(GlobalSearchResult(name:condition.name,subtitle:condition.summary,kind:"Condition",character:false,target:.condition(condition.id),id:"condition:"+condition.id,keywords:condition.text+" rules"))
         }
         for entry in compendium {
             entries.append(GlobalSearchResult(name:entry.name,subtitle:entry.summary,kind:entry.category.singular,character:false,target:.reference(entry.id),id:"reference:"+entry.id.uuidString,keywords:entry.sourceDescription))
