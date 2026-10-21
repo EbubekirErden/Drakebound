@@ -27,7 +27,7 @@ extension Store {
                 lastSavedArchive = archive
                 writer.enqueue(archive,to:file) { [weak self] failure in
                     guard let failure else { return }
-                    Task { @MainActor in self?.lastSavedArchive = nil; self?.error = "Could not save: \(failure.localizedDescription)" }
+                    Task { @MainActor [weak self] in self?.lastSavedArchive = nil; self?.error = "Could not save: \(failure.localizedDescription)" }
                 }
             } else {
                 try writer.writeAndWait(archive,to:file); lastSavedArchive = archive
@@ -57,7 +57,7 @@ extension Store {
         lastSavedCompendium = entries
         writer.enqueue(to:target,data:{ try JSONEncoder().encode(entries) }) { [weak self] failure in
             guard let failure else { return }
-            Task { @MainActor in self?.lastSavedCompendium = nil; self?.error = "Could not save the compendium. Your changes stay in the app and will be saved again on the next change.\n\(failure.localizedDescription)" }
+            Task { @MainActor [weak self] in self?.lastSavedCompendium = nil; self?.error = "Could not save the compendium. Your changes stay in the app and will be saved again on the next change.\n\(failure.localizedDescription)" }
         }
     }
     func exportBackup() {

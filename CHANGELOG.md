@@ -14,7 +14,7 @@
 - Optional tabs can be hidden per character. Rest reviews are compact; successful imports and selected undoable changes use non-blocking notices. Character JSON/PDF export is separate from the all-character backup entry point. Welcome uses consistent app branding.
 - Dice result windows follow Light/Dark/System appearance. Narrow-window and large-text checks cover the main play pages; development bundles stay outside Launchpad indexing.
 - Character saves are encoded and written in order on a background queue, skipping unchanged data. Quit, import and level-up still flush pending writes. The character archive format is unchanged.
-- Simplified creature-reference score rendering to avoid older Swift compiler type-check timeouts in CI.
+- Simplified creature-reference score rendering and made save-error task captures explicit for compatibility with older Swift compilers in CI.
 - Test and preview Stores use explicit isolated data directories. Regression harnesses compile in parallel and skip unchanged builds; CI verifies rules/data and the app build.
 
 ## 1.0.0 — 2026-10-18
