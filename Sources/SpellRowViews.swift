@@ -23,11 +23,20 @@ struct SpellbookRow:View {
         HStack(spacing:10) {
             Button { if let i = hero.spells.firstIndex(where:{ $0.id == spell.id }) { hero.spells[i].prepared.toggle() } } label: { Image(systemName:spell.prepared ? "checkmark.circle.fill":"circle") }.buttonStyle(.plain).help("Toggle prepared").accessibilityLabel("Toggle prepared for "+spell.name)
             Button { store.openSpell(spell,hero:hero,ids:navigationIDs) } label: {
-                VStack(alignment:.leading,spacing:5) { Text(spell.name).font(.system(size:14,weight:.semibold)); Text("\(spell.school) · \(spell.time) · \(spell.range)").font(.system(size:11)).foregroundStyle(.secondary).lineLimit(1) }.frame(maxWidth:.infinity,alignment:.leading)
+                ViewThatFits(in:.horizontal) {
+                    HStack(spacing:10) { spellName;metadata.fixedSize() }
+                    VStack(alignment:.leading,spacing:3) { spellName;metadata.lineLimit(1) }
+                }.frame(maxWidth:.infinity,alignment:.leading)
             }.buttonStyle(.plain)
             SpellConcentrationMark(hero:$hero,spell:spell)
-            CastControl(hero:$hero,store:store,spell:spell)
-            Button { if hero.concentrationSpellID == spell.id { hero.endConcentration() }; hero.spells.removeAll { $0.id == spell.id } } label: { Image(systemName:"minus.circle") }.buttonStyle(.plain).help("Remove spell")
-        }.padding(.horizontal,9).padding(.vertical,8).modifier(ConcentrationOutline(active:hero.concentrationSpellID == spell.id))
+            CastControl(hero:$hero,store:store,spell:spell,compact:true,showsOptionsButton:true)
+            Menu {
+                Button("Spell details…") { store.openSpell(spell,hero:hero,ids:navigationIDs) }
+                Button("Remove spell",role:.destructive) { if hero.concentrationSpellID == spell.id { hero.endConcentration() };hero.spells.removeAll { $0.id == spell.id } }
+            } label: { Image(systemName:"ellipsis").frame(width:20,height:26) }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel(spell.name+" options")
+        }.padding(.horizontal,12).padding(.vertical,6).modifier(ConcentrationOutline(active:hero.concentrationSpellID == spell.id))
     }
+    var spellName:some View { Text(spell.name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true) }
+    var metadata:some View { Text([spell.time,spell.range].filter { !$0.isEmpty }.joined(separator:" · ")).font(.system(size:10)).foregroundStyle(.secondary).help(spell.school+" · "+spell.duration) }
+
 }

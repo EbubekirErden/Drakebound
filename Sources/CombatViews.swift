@@ -70,10 +70,15 @@ struct CombatPanel:View {
                     let members = actions.filter { group == .creatures ? $0.ref.kind.isCreature:!$0.ref.kind.isCreature && group.includes($0.ref) }
                     if !members.isEmpty {
                         CombatSectionHeading(title:group == .creatures ? "Companions":group.rawValue,count:members.count,color:group == .attacks ? coral:group == .spells ? sky:group == .items ? gold:accent)
-                        ForEach(members) { action in
-                            CombatActionRow(hero:$hero,store:store,action:action)
-                            Divider().opacity(0.4).padding(.horizontal,12)
-                        }
+                        if group == .spells {
+                            ForEach(0...9,id:\.self) { level in
+                                let spells = members.filter { action in hero.spells.first(where:{ $0.id == action.ref.sourceID })?.level == level }
+                                if !spells.isEmpty {
+                                    CombatSectionHeading(title:level == 0 ? "Cantrips":"Level \(level)",count:spells.count,color:sky)
+                                    actionRows(spells)
+                                }
+                            }
+                        } else { actionRows(members) }
                     }
                 }
                 if actions.isEmpty {
@@ -86,6 +91,13 @@ struct CombatPanel:View {
                 .overlay(RoundedRectangle(cornerRadius:10).stroke(ink.opacity(0.07)))
         }
     }
+    @ViewBuilder func actionRows(_ members:[SheetAction])->some View {
+        ForEach(members) { action in
+            CombatActionRow(hero:$hero,store:store,action:action)
+            Divider().opacity(0.4).padding(.horizontal,12)
+        }
+    }
+
 }
 
 struct CombatSectionHeading:View {

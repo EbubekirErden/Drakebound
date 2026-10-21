@@ -295,4 +295,6 @@ With no saved characters, Welcome offers Create a character, Import a character,
 
 Combat (⌘2) brings together ready attacks, spells, abilities, conditions, slots, and resources. Use ⌘K to search character content and references. Customize optional tabs from the Tabs menu; numeric shortcuts keep their fixed destinations. On Sheet, feature names reveal details and resource counts open adjustment controls. Character JSON and PDF exports are in the character banner menu; Back up in the sidebar includes all characters, the saved spell library, and user references.
 
-Combat’s support column starts with conditions, then six saving throw roll controls and spell slots. Saving throws support the usual roll modes and condition modifiers. Expanded Sheet features grow within their own column.
+Combat’s support column starts with conditions, then six saving throw roll controls and spell slots. Saving throws support the usual roll modes and condition modifiers.
+
+Click a Sheet feature name to read its description and use controls in a popover; Done closes it without rearranging the list. Combat groups ready spells into Cantrips and ascending spell levels, keeping favorites first within each level. The Spells tab keeps preparation, concentration, and casting options in compact rows; click the name for full details and use the row menu to remove a spell.

@@ -74,6 +74,24 @@ struct UXProbe:NSViewRepresentable {
         let window = NSWindow(contentRect:NSRect(x:0,y:0,width:900,height:620),styleMask:[.titled,.closable],backing:.buffered,defer:false)
         window.isReleasedWhenClosed = false;window.contentView = host;window.makeKeyAndOrderFront(nil)
         Task { @MainActor in
+            if ProcessInfo.processInfo.environment["DRAKEBOUND_RENDER_ONLY"] == "1" {
+                let binding=Binding<Hero>(get:{ store.heroes[0] },set:{ store.heroes[0]=$0 })
+                for width in [650,1000] {
+                    window.setContentSize(NSSize(width:width,height:900))
+                    host.rootView=AnyView(ScrollView { VStack(spacing:0) { ForEach(0...9,id:\.self) { level in
+                        let spells=store.heroes[0].spells.filter { $0.level == level }
+                        if !spells.isEmpty { CombatSectionHeading(title:level == 0 ? "Cantrips":"Level \(level)",count:spells.count,color:sky)
+                            ForEach(spells) { spell in SpellbookRow(hero:binding,store:store,spell:spell,navigationIDs:store.heroes[0].spells.map(\.id)) }
+                        }
+                    } }.padding(16) }.background(surface).foregroundStyle(ink).preferredColorScheme(.light))
+                    await pause();screenshot(window,root.appendingPathComponent("spell-rows-\(width).png"))
+                    host.rootView=AnyView(ScrollView { CombatPanel(hero:binding,store:store,width:CGFloat(width-40),rest:{}).padding(20) }.background(paper).foregroundStyle(ink).preferredColorScheme(.light))
+                    await pause();screenshot(window,root.appendingPathComponent("combat-groups-\(width).png"))
+                }
+                store.saveTaskCancellationForGuide();store.flushPendingWrites()
+                print("PASS: isolated compact spell rows and combat level groups rendered at two widths")
+                fflush(stdout);Darwin.exit(0)
+            }
             NSApp.activate(ignoringOtherApps:true);window.makeKeyAndOrderFront(nil)
             for mode in ["light","dark"] {
                 NSApp.appearance = NSAppearance(named:mode == "light" ? .aqua:.darkAqua)
@@ -107,6 +125,8 @@ struct UXProbe:NSViewRepresentable {
             await pause();screenshot(window,root.appendingPathComponent("combat-light-wide.png"))
             window.setContentSize(NSSize(width:900,height:620));await pause()
             screenshot(window,root.appendingPathComponent("combat-level17-small.png"))
+            // After the small-window screenshot, reveal the full support column for interaction.
+            window.setContentSize(NSSize(width:1260,height:1100));await pause()
             // Exercise actual row controls, not fixtures in the live Store.
             let beforeHit=store.heroes[0]
             await click("attack-hit",window:window)
@@ -158,11 +178,13 @@ struct UXProbe:NSViewRepresentable {
             let featureID=compact.featureEntries![0].id
             let beforeDisclosure=store.heroes[0]
             await click("feature-toggle-"+featureID.uuidString,window:window)
-            precondition(descendants(window.contentView!).contains { $0.identifier?.rawValue == "feature-description" })
+            guard let featureWindow=NSApp.windows.first(where:{ $0.isVisible && $0.contentView.map(descendants)?.contains(where:{ $0.identifier?.rawValue == "feature-description" }) == true }) else { fatalError("Feature details did not open") }
+            precondition(!descendants(window.contentView!).contains { $0.identifier?.rawValue == "feature-description" },"Description must stay outside the compact list")
             precondition(store.heroes[0] == beforeDisclosure,"Reading a feature cannot change character data")
-            screenshot(window,root.appendingPathComponent("sheet-feature-expanded.png"))
-            await click("feature-toggle-"+featureID.uuidString,window:window)
-            precondition(!descendants(window.contentView!).contains { $0.identifier?.rawValue == "feature-description" })
+            screenshot(window,root.appendingPathComponent("sheet-feature-list-stable.png"))
+            screenshot(featureWindow,root.appendingPathComponent("sheet-feature-popup.png"))
+            await click("feature-done",window:featureWindow)
+            precondition(!featureWindow.isVisible)
             await click("resource-chip-"+store.heroes[0].resourceChoices[0].ref.key,window:window)
             guard let resourceWindow=NSApp.windows.first(where:{ $0.isVisible && $0.contentView.map(descendants)?.contains(where:{ $0.identifier?.rawValue == "resource-spend" }) == true }) else { fatalError("Resource details did not open") }
             precondition(store.heroes[0] == beforeDisclosure)
@@ -170,6 +192,15 @@ struct UXProbe:NSViewRepresentable {
             await click("resource-spend",window:resourceWindow)
             precondition(store.heroes[0].counters![0].current == 1 && store.heroes[0].counters![1].current == 2)
             await click("resource-done",window:resourceWindow)
+            host.rootView=AnyView(ScrollView { VStack(spacing:0) { ForEach(0...9,id:\.self) { level in
+                let spells=store.heroes[0].spells.filter { $0.level == level }
+                if !spells.isEmpty { CombatSectionHeading(title:level == 0 ? "Cantrips":"Level \(level)",count:spells.count,color:sky)
+                    ForEach(spells) { spell in SpellbookRow(hero:binding,store:store,spell:spell,navigationIDs:store.heroes[0].spells.map(\.id)) }
+                }
+            } }.padding(16) }.background(surface).foregroundStyle(ink).preferredColorScheme(.light))
+            await pause();screenshot(window,root.appendingPathComponent("spell-rows-compact.png"))
+            host.rootView=AnyView(ScrollView { CombatPanel(hero:binding,store:store,width:960,rest:{}).padding(20) }.background(paper).foregroundStyle(ink).preferredColorScheme(.light))
+            await pause();screenshot(window,root.appendingPathComponent("combat-level-groups.png"))
             window.setContentSize(NSSize(width:650,height:700))
             host.rootView=AnyView(ScrollView { VStack(spacing:14) { AttacksAndResourcesPanel(hero:binding,store:store,width:610,edit:{ _ in });FeaturePanel(hero:binding,store:store) }.padding(20) }.background(paper).foregroundStyle(ink).preferredColorScheme(.light))
             await pause();screenshot(window,root.appendingPathComponent("sheet-compact-sections-narrow.png"))
@@ -194,7 +225,7 @@ struct UXProbe:NSViewRepresentable {
             try? await Task.sleep(nanoseconds:350_000_000)
             screenshot(window,root.appendingPathComponent("welcome-branded.png"))
             store.saveTaskCancellationForGuide();store.flushPendingWrites()
-            print("PASS: isolated Combat/Sheet/Spells layouts, high-level slots, actual attack/slot controls, global search routing without spending, rest and branding; compact feature disclosure, resource adjustment and condition toggles")
+            print("PASS: isolated Combat/Sheet/Spells layouts, high-level slots, actual attack/slot controls, global search routing without spending, rest and branding; feature popovers without reflow, compact spell rows, level grouping, resource adjustment and condition toggles")
             fflush(stdout);Darwin.exit(0)
         }
         NSApp.run()

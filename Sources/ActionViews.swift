@@ -63,7 +63,6 @@ struct FeaturePanel: View {
     @State private var details:CharacterFeature?
     @State private var filter:FeatureCategory?
     @State private var browseFeats=false
-    @State private var expanded:Set<UUID> = []
     var body:some View {
         SheetCard(title:"Features & traits",summary:"\((hero.featureEntries ?? []).count) features") {
             ControlFlowLayout(spacing:8) {
@@ -79,7 +78,7 @@ struct FeaturePanel: View {
                 let entries=(hero.featureEntries ?? []).filter { ($0.category ?? .other) == category }
                 if !entries.isEmpty && (filter == nil || filter == category) {
                     Text("\(category.rawValue) · \(entries.count)").font(.system(size:10,weight:.semibold)).foregroundStyle(gold).padding(.top,4)
-                    FeatureColumns {
+                    LazyVGrid(columns:[GridItem(.adaptive(minimum:270),spacing:8,alignment:.topLeading)],alignment:.leading,spacing:6) {
                         ForEach(SelectionRules.outline(entries)) { row in
                             featureRow(row.feature,depth:row.depth)
                         }
@@ -89,32 +88,24 @@ struct FeaturePanel: View {
             if (hero.featureEntries ?? []).isEmpty { Text("Add a feature or choose one from the compendium.").font(.caption).foregroundStyle(.secondary) }
         }
         .sheet(item:$editing) { feature in FeatureEditor(feature:feature,hero:hero,onSave:{ updated in var all=hero.featureEntries ?? [];if let i=all.firstIndex(where:{ $0.id == updated.id }) { all[i]=updated } else { all.append(updated) };hero.replaceFeatures(all) },onDelete:{ hero.replaceFeatures((hero.featureEntries ?? []).filter { $0.id != feature.id }) }) }
-        .popover(item:$details) { original in
-            let feature=hero.featureEntries?.first(where:{ $0.id == original.id }) ?? original
-            VStack(alignment:.leading,spacing:12) {
-                HStack { Text(feature.name).font(.headline);Spacer();Button("Done") { details=nil } }
-                ScrollView { featureBody(feature) }
-                Button("Edit feature") { details=nil;editing=feature }.buttonStyle(PageButtonStyle())
-            }.padding(18).frame(width:420,height:390).background(surface).foregroundStyle(ink)
-        }
     }
     func featureRow(_ feature:CharacterFeature,depth:Int)->some View {
-        VStack(alignment:.leading,spacing:0) {
+        Button { details=feature } label: {
             HStack(spacing:8) {
-                Button { toggle(feature) } label: {
-                    HStack(spacing:7) {
-                        Image(systemName:expanded.contains(feature.id) ? "chevron.down":"chevron.right").font(.system(size:9)).foregroundStyle(.secondary)
-                        Text(feature.name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
-                    }.padding(.leading,CGFloat(min(2,depth))*8).contentShape(Rectangle())
-                }.buttonStyle(.plain).accessibilityLabel(feature.name+" details").accessibilityValue(expanded.contains(feature.id) ? "Expanded":"Collapsed")
-                    .highPriorityGesture(LongPressGesture(minimumDuration:0.6).exclusively(before:TapGesture()).onEnded { value in
-                        switch value { case .first:details=feature;case .second:toggle(feature) }
-                    })
+                Text(feature.name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
                 if let counter=feature.counter { Text("\(counter.current)/\(counter.maximum)").font(.system(size:11,weight:.medium,design:.rounded)).monospacedDigit().foregroundStyle(gold) }
-            }.padding(10).frame(minHeight:38)
-                .contextMenu { Button("Feature details…") { details=feature };Button("Edit feature…") { editing=feature } }
-            if expanded.contains(feature.id) { featureBody(feature).padding(.horizontal,12).padding(.bottom,12) }
-        }.frame(maxWidth:.infinity,alignment:.leading).background(paper.opacity(0.55),in:RoundedRectangle(cornerRadius:7))
+                Image(systemName:"info.circle").font(.system(size:11)).foregroundStyle(.secondary)
+            }.padding(.leading,CGFloat(min(2,depth))*8).padding(10).frame(minHeight:38)
+                .background(paper.opacity(0.55),in:RoundedRectangle(cornerRadius:7)).contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityLabel(feature.name+" details")
+            .contextMenu { Button("Feature details…") { details=feature };Button("Edit feature…") { editing=feature } }
+            .popover(isPresented:Binding(get:{ details?.id == feature.id },set:{ if !$0 { details=nil } })) {
+                VStack(alignment:.leading,spacing:12) {
+                    HStack { Text(feature.name).font(.headline);Spacer();Button("Done") { details=nil }.accessibilityLabel("Close feature details") }
+                    ScrollView { featureBody(feature) }
+                    Button("Edit feature") { details=nil;editing=feature }.buttonStyle(PageButtonStyle())
+                }.padding(18).frame(width:380,height:320).background(surface).foregroundStyle(ink)
+            }
     }
     func featureBody(_ feature:CharacterFeature)->some View {
         VStack(alignment:.leading,spacing:10) {
@@ -137,7 +128,6 @@ struct FeaturePanel: View {
             RollButtons(rolls:feature.rolls,hero:hero,store:store,source:feature.name,actionSource:SheetActionRef(kind:.featureRoll,sourceID:feature.id))
         }.frame(maxWidth:.infinity,alignment:.leading)
     }
-    func toggle(_ feature:CharacterFeature) { if expanded.contains(feature.id) { expanded.remove(feature.id) } else { expanded.insert(feature.id) } }
     func changeUses(_ feature:CharacterFeature,_ delta:Int) { guard let i=hero.featureEntries?.firstIndex(where:{ $0.id == feature.id }),let counter=feature.counter else { return };hero.featureEntries?[i].counter?.current=min(counter.maximum,max(0,counter.current+delta)) }
 }
 struct FeatureEditor:View {
@@ -374,31 +364,4 @@ struct SpellDetails: View {
     }
     func navigate(_ direction:Int) { let next = position+direction; guard browseIDs.indices.contains(next) else { return }; browsingID = browseIDs[next]; castLevel = hero.availableSlot(for:spell) ?? max(1,spell.level); message = ""; cantripLevel = hero.cantripRoll(spell,at:hero.level)?.minimumCharacterLevel ?? 1 }
     func cast(_ mode:CastMode) { do { let result = try hero.cast(spell.id,mode:mode,at:castLevel,cantripLevel:spell.level == 0 ? cantripLevel:nil); store.record(result); message = result.event ? result.expression : "Rolled \(result.expression) = \(result.total)" } catch { message = error.localizedDescription } }
-}
-
-// Independent columns keep expanded descriptions from stretching neighboring rows.
-struct FeatureColumns: Layout {
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let proposed = proposal.width ?? 540
-        let width = proposed.isFinite ? max(0,proposed):540
-        let columns = max(1,Int((width+8)/278))
-        let cellWidth = (width-CGFloat(columns-1)*8)/CGFloat(columns)
-        var heights = Array(repeating:CGFloat.zero,count:columns)
-        for (index,view) in subviews.enumerated() {
-            heights[index%columns] += view.sizeThatFits(.init(width:cellWidth,height:nil)).height+6
-        }
-        return CGSize(width:width,height:max(0,(heights.max() ?? 0)-6))
-    }
-    func placeSubviews(in bounds:CGRect, proposal:ProposedViewSize, subviews:Subviews, cache:inout ()) {
-        let width = bounds.width.isFinite ? max(0,bounds.width):540
-        let columns = max(1,Int((width+8)/278))
-        let cellWidth = (width-CGFloat(columns-1)*8)/CGFloat(columns)
-        var heights = Array(repeating:CGFloat.zero,count:columns)
-        for (index,view) in subviews.enumerated() {
-            let column = index%columns
-            let size = view.sizeThatFits(.init(width:cellWidth,height:nil))
-            view.place(at:CGPoint(x:bounds.minX+CGFloat(column)*(cellWidth+8),y:bounds.minY+heights[column]),proposal:.init(width:cellWidth,height:size.height))
-            heights[column] += size.height+6
-        }
-    }
 }

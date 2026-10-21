@@ -318,10 +318,18 @@ struct HeroView: View {
                     }
                 }
             }
-            ForEach(0...9,id:\.self) { level in
-                let matching = hero.spells.filter { $0.level == level && (spellLevel == -1 || $0.level == spellLevel) && (preparation.includes($0)) && (search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)) }
-                if !matching.isEmpty { Card(title:level == 0 ? "Cantrips" : "Level \(level)") { ForEach(matching) { spell in SpellbookRow(hero:$hero,store:store,spell:spell,navigationIDs:spellNavigationIDs) } } }
-            }
+            VStack(spacing:0) {
+                ForEach(0...9,id:\.self) { level in
+                    let matching = hero.spells.filter { $0.level == level && (spellLevel == -1 || $0.level == spellLevel) && preparation.includes($0) && (search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)) }
+                    if !matching.isEmpty {
+                        CombatSectionHeading(title:level == 0 ? "Cantrips":"Level \(level)",count:matching.count,color:sky)
+                        ForEach(matching) { spell in
+                            SpellbookRow(hero:$hero,store:store,spell:spell,navigationIDs:spellNavigationIDs)
+                            Divider().opacity(0.4).padding(.horizontal,12)
+                        }
+                    }
+                }
+            }.background(surface,in:RoundedRectangle(cornerRadius:10))
             Button("Browse the compendium") { store.showCompendium = true }.buttonStyle(.plain).foregroundStyle(sky)
             if !hero.spells.isEmpty && !hero.spells.contains(where: { (spellLevel == -1 || $0.level == spellLevel) && preparation.includes($0) && (search.isEmpty || $0.name.localizedCaseInsensitiveContains(search)) }) {
                 CenteredEmptyState("No matching spells",systemImage:"sparkles",description:Text("Try another level, preparation filter, or search."),height:300)
