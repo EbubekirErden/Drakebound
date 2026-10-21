@@ -19,8 +19,7 @@ struct WelcomeTestRoot:View {
     @MainActor static func main() {
         _ = NSApplication.shared;NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.asyncAfter(deadline:.now()+60) { fputs("FAIL: welcome check timed out\n",stderr);Darwin.exit(1) }
-        let store=Store()
-        precondition(CommandLine.arguments.count == 2 && store.file.path == CommandLine.arguments[1],"Fixture Store must use the compiled isolated path")
+        let store=Store(file:URL(fileURLWithPath:CommandLine.arguments[1]));precondition(store.file.path != Store.liveFile.path,"Tests must never use the live save");precondition(CommandLine.arguments.count == 2 && store.file.path == CommandLine.arguments[1],"Fixture Store must use the compiled isolated path")
         precondition(store.heroes.isEmpty && store.selected == nil && !FileManager.default.fileExists(atPath:store.file.path),"Fresh install must not seed a demo")
         precondition(store.compendium.count == 1675 && store.library.count >= 339,"Fresh installs must include the offline SRD")
         precondition(store.error == nil,"Bundled rules should load without an import")
@@ -48,7 +47,7 @@ struct WelcomeTestRoot:View {
         try bitmap.representation(using:.png,properties:[:])!.write(to:URL(fileURLWithPath:CommandLine.arguments[1]).deletingLastPathComponent().appendingPathComponent(name+".png"))
     }
     static func fixtureStore() -> Store {
-        let store=Store();precondition(store.file.path == CommandLine.arguments[1]);return store
+        let store=Store(file:URL(fileURLWithPath:CommandLine.arguments[1]));precondition(store.file.path != Store.liveFile.path,"Tests must never use the live save");precondition(store.file.path == CommandLine.arguments[1]);return store
     }
     static func run(_ store:Store,window:NSWindow) async {
         NSApp.appearance=NSAppearance(named:.darkAqua);NSApp.activate(ignoringOtherApps:true);window.makeKeyAndOrderFront(nil)

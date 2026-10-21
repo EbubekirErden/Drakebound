@@ -29,14 +29,13 @@ extension Store {
             next[i] = hero
         } else { next.append(hero) }
         let archive = Archive(heroes:next,library:bundledSRD.userSpells(library)); try validate(archive)
-        let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted,.sortedKeys]
-        let encoded = try encoder.encode(archive)
-        try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
+        flushPendingWrites()
         if draft.isLevelUp && FileManager.default.fileExists(atPath:file.path) {
+            try FileManager.default.createDirectory(at:file.deletingLastPathComponent(),withIntermediateDirectories:true)
             try Data(contentsOf:file).write(to:file.deletingLastPathComponent().appendingPathComponent("before-level-up-\(UUID().uuidString).json"),options:.atomic)
         }
         saveTaskCancellationForGuide()
-        try encoded.write(to:file,options:.atomic)
+        try writer.writeAndWait(archive,to:file); lastSavedArchive = archive
         heroes = next; selected = hero.id; showCompendium = false; characterGuide = nil
     }
 }

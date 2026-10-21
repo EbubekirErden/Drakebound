@@ -16,7 +16,8 @@ Tests are executable Swift harnesses under `Tests/`. Scripts compile explicit so
 
 | Area | Representative files in `Sources/` |
 | --- | --- |
-| Application and persistence | `App.swift`, `AppCommands.swift`, `Models.swift` |
+| Application shell | `App.swift`, `AppCommands.swift` |
+| State and persistence | `Store.swift` (state), `StorePersistence.swift` (saving, imports, backups), `ArchiveWriter.swift` (ordered background writes), `Models.swift` |
 | Main workspace and navigation | `ContentViews.swift`, `NavigationViews.swift`, `Appearance.swift` |
 | Creation and level-up | `CharacterGuide.swift`, `GuideStore.swift`, `GuideSteps.swift`, `Progression.swift` |
 | Rules and play state | `Mechanics.swift`, `PlayActions.swift`, `Conditions.swift`, `Concentration.swift`, `DeathSaves.swift`, `Activity.swift` |

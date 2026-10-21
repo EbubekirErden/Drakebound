@@ -76,8 +76,8 @@ import Foundation
         legacyJSON["items"] = legacyItems
         let migrated = try JSONDecoder().decode(Hero.self,from:JSONSerialization.data(withJSONObject:legacyJSON))
         assert(migrated.bonuses == nil && migrated.counters == nil && migrated.armorClass == 12)
-        let savedURL = FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("Fellowship5e/characters.json")
-        if FileManager.default.fileExists(atPath:savedURL.path) { let saved = try JSONDecoder().decode(Archive.self,from:Data(contentsOf:savedURL)); try validate(saved); print("PASS: existing saved characters remain readable") }
+        // Never read the live save. Optionally verify a copy: DRAKEBOUND_ARCHIVE_FIXTURE=/path/to/copy.json
+        if let fixture = ProcessInfo.processInfo.environment["DRAKEBOUND_ARCHIVE_FIXTURE"], !fixture.contains("Application Support/Fellowship5e") { let saved = try JSONDecoder().decode(Archive.self,from:Data(contentsOf:URL(fileURLWithPath:fixture))); try validate(saved); print("PASS: archive fixture remains readable") }
         var story = Hero.sample
         let originalNotes = story.notes
         story.migrateContent()

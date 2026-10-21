@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Saving is faster and smoother: characters are encoded and written on a background queue, strictly in order, and nothing is rewritten when the characters and library are unchanged. Quit, import, and level-up still finish their writes before continuing. The file format is unchanged.
+- Test and preview safety: `Store` accepts an explicit save location, so previews and harnesses use a physically separate directory. The model test no longer reads your live save (set `DRAKEBOUND_ARCHIVE_FIXTURE` to a copy to verify an archive).
+- `scripts/test.sh` compiles harnesses in parallel and skips unchanged ones. Added archive-writer tests and a GitHub Actions workflow.
+
 ## 1.0.0 — 2026-10-18
 
 - Included offline SRD compendium: 339 spells, 12 core classes with SRD subclasses and progression tables, 9 species, 4 backgrounds, 17 feats, 963 equipment/magic-item references and variants, and 331 creature references. New users can create and browse without importing a library.

@@ -14,8 +14,7 @@ struct QuickNotePreviewRoot:View {
     @MainActor static func main() {
         _ = NSApplication.shared;NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.asyncAfter(deadline:.now()+40) { fputs("FAIL: quick-note UI check timed out\n",stderr);Darwin.exit(1) }
-        let store=Store()
-        precondition(CommandLine.arguments.count == 2 && store.file.path == CommandLine.arguments[1],"Test Store must use its compiled isolated path")
+        let store=Store(file:URL(fileURLWithPath:CommandLine.arguments[1]));precondition(store.file.path != Store.liveFile.path,"Tests must never use the live save");precondition(CommandLine.arguments.count == 2 && store.file.path == CommandLine.arguments[1],"Test Store must use its compiled isolated path")
         var first=Hero();first.name="Capture test A";first.items=[];first.attacks=[];first.spells=[];first.migrateContent()
         first.journalEntries=[JournalEntry(title:"Existing pinned note",description:"Keep this intact",pinned:true,tags:["Lore"])]
         var second=Hero();second.name="Untouched test B";second.items=[];second.attacks=[];second.spells=[];second.migrateContent()

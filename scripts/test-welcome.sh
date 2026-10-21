@@ -11,9 +11,6 @@ live=Path.home()/'Library/Application Support/Fellowship5e'
 names=['characters.json','compendium.json','activity.json']
 (root/'live-hashes.json').write_text(json.dumps({name:hashlib.sha256((live/name).read_bytes()).hexdigest() if (live/name).exists() else None for name in names}))
 s=Path('Sources/App.swift').read_text()
-old='file = FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("Fellowship5e/characters.json")'
-assert s.count(old)==1
-s=s.replace(old,'file = URL(fileURLWithPath:"'+str(root/'data/characters.json')+'")')
 s=s.replace('@main struct DrakeboundApp','struct DrakeboundApp')
 (root/'IsolatedApp.swift').write_text(s)
 w=Path('Sources/WelcomeView.swift').read_text()
