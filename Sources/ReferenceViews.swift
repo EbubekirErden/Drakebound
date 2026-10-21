@@ -52,13 +52,7 @@ struct CreatureReferenceStats:View {
             if scores.contains(where:{ !entry.value($0).isEmpty }) {
                 HStack(spacing:0) {
                     ForEach(scores,id:\.self) { key in
-                        VStack(spacing:6) {
-                            Text(key.uppercased()).font(.system(size:9,weight:.semibold)).foregroundStyle(.secondary)
-                            Text(entry.value(key).isEmpty ? "—":entry.value(key)).font(.system(size:19,weight:.semibold,design:.rounded)).monospacedDigit()
-                            Text(Int(entry.value(key)).map { signed(Int(floor(Double($0-10)/2))) } ?? "—").font(.system(size:11,weight:.medium)).foregroundStyle(sky).monospacedDigit()
-                        }.frame(maxWidth:.infinity).padding(.vertical,12)
-                            .overlay(alignment:.trailing) { if key != "cha" { Rectangle().fill(ink.opacity(0.09)).frame(width:1) } }
-                            .accessibilityElement(children:.combine).accessibilityLabel(referenceLabel(key)+" "+entry.value(key)+", modifier "+(Int(entry.value(key)).map { signed(Int(floor(Double($0-10)/2))) } ?? "unknown"))
+                        CreatureReferenceAbility(key:key,value:entry.value(key),separator:key != "cha")
                     }
                 }.background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:8)).overlay(RoundedRectangle(cornerRadius:8).stroke(ink.opacity(0.09)))
             }
@@ -80,6 +74,27 @@ struct CreatureReferenceStats:View {
     func display(_ key:String) -> String {
         let value = entry.value(key)
         return key == "size" ? (["T":"Tiny","S":"Small","M":"Medium","L":"Large","H":"Huge","G":"Gargantuan"][value] ?? value):value
+    }
+}
+
+// Keep score formatting outside the enclosing view builder for older Swift compilers.
+private struct CreatureReferenceAbility:View {
+    var key:String
+    var value:String
+    var separator:Bool
+    var modifier:String? {
+        guard let score=Int(value) else { return nil }
+        return signed(Int(floor(Double(score-10)/2)))
+    }
+    var accessibilityText:String { referenceLabel(key)+" "+value+", modifier "+(modifier ?? "unknown") }
+    var body:some View {
+        VStack(spacing:6) {
+            Text(key.uppercased()).font(.system(size:9,weight:.semibold)).foregroundStyle(.secondary)
+            Text(value.isEmpty ? "—":value).font(.system(size:19,weight:.semibold,design:.rounded)).monospacedDigit()
+            Text(modifier ?? "—").font(.system(size:11,weight:.medium)).foregroundStyle(sky).monospacedDigit()
+        }.frame(maxWidth:.infinity).padding(.vertical,12)
+            .overlay(alignment:.trailing) { if separator { Rectangle().fill(ink.opacity(0.09)).frame(width:1) } }
+            .accessibilityElement(children:.combine).accessibilityLabel(accessibilityText)
     }
 }
 
