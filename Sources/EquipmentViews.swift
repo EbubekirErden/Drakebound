@@ -22,7 +22,7 @@ struct EquipmentPanel:View {
                 Button { adding=true } label: { Label("Add item",systemImage:"plus") }.buttonStyle(PageButtonStyle(color:gold,prominent:true)).popover(isPresented:$adding) { EquipmentQuickAdd(entries:store.compendium.filter { $0.category == .item }.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending },onAdd:{ hero.items.append($0) },onCustom:{ edit(Item(name:"",kind:.gear)) }) }
             }
             ControlFlowLayout(spacing:10) {
-                PagePicker(title:"Type",selectionTitle:kind,selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }.frame(width:150)
+                PagePicker(title:"Type",selectionTitle:kind,selection:$kind) { Text("All types").tag("All types"); ForEach(types,id:\.self) { Text($0).tag($0) } }
                 Toggle("Equipped",isOn:$equippedOnly).toggleStyle(.checkbox).padding(.horizontal,10).frame(height:PageControl.height).background(surface,in:RoundedRectangle(cornerRadius:8))
                 CurrencyButton(hero:$hero).buttonStyle(PageButtonStyle())
                 Button("New container",systemImage:"shippingbox") { containerEditor = EquipmentContainer(name:"") }.buttonStyle(PageButtonStyle())
@@ -39,10 +39,11 @@ struct EquipmentPanel:View {
                     Text("\(items.count) of \(hero.items.count) entries").font(.system(size:11)).foregroundStyle(.secondary)
                 }
             }
-            LazyVStack(spacing:10) {
+            LazyVStack(spacing:0) {
                 if items.contains(where:{ $0.containerID == nil }) || !filtering { inventoryGroup(nil) }
                 ForEach(hero.inventoryContainers) { storage in if !filtering || items.contains(where:{ $0.containerID == storage.id }) { inventoryGroup(storage) } }
             }
+            .background(surface,in:RoundedRectangle(cornerRadius:10))
             if items.isEmpty && filtering { CenteredEmptyState("No matching equipment",systemImage:"backpack",description:Text("Try another search, type, or turn off Equipped."),height:220) }
         }
         .sheet(item:$containerEditor) { storage in ContainerEditor(storage:storage,existing:hero.inventoryContainers) { updated in var all = hero.inventoryContainers; if let i = all.firstIndex(where:{ $0.id == updated.id }) { all[i] = updated } else { all.append(updated) }; hero.equipmentContainers = all } }
@@ -52,29 +53,43 @@ struct EquipmentPanel:View {
         let group = items.filter { $0.containerID == storage?.id }
         let total = hero.items.filter { $0.containerID == storage?.id }.count
         let open = storage.map { !collapsed.contains($0.id) } ?? true
-        return VStack(spacing:7) {
+        return VStack(spacing:0) {
             HStack {
                 if let storage { Button { if collapsed.contains(storage.id) { collapsed.remove(storage.id) } else { collapsed.insert(storage.id) } } label: { Label(storage.name,systemImage:open ? "chevron.down":"chevron.right") }.buttonStyle(.plain).accessibilityLabel("\(open ? "Collapse":"Expand") \(storage.name)") }
                 else { Label("Carried",systemImage:"backpack") }
                 Spacer(); Text(String(format:"%d items · %.1f lb",total,hero.inventoryWeight(in:storage?.id))).font(.caption2).foregroundStyle(.secondary)
                 if let storage { Menu { Button("Rename container") { containerEditor = storage }; Button("Remove container · keep items") { hero.removeContainer(storage.id) } } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20) }
-            }.font(.system(size:12,weight:.medium)).foregroundStyle(gold).padding(.vertical,6)
+            }.font(.system(size:10,weight:.semibold)).foregroundStyle(gold).padding(.horizontal,12).padding(.top,14).padding(.bottom,8)
             if open {
-                ForEach(group) { item in itemRow(item) }
+                ForEach(group) { item in itemRow(item);Divider().opacity(0.4).padding(.horizontal,12) }
                 if group.isEmpty && !filtering { Text("Empty · move items here from their menu or editor").font(.caption2).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(8) }
             }
-        }.padding(10).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.07)))
+        }
     }
     func itemRow(_ item:Item) -> some View {
         let siblings=items.filter { $0.containerID == item.containerID }.map(\.id)
         let position=siblings.firstIndex(of:item.id) ?? 0
-        return HStack(spacing:10) {
-            ListReorderGrip(token:ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),name:item.name,enabled:siblings.count > 1)
-            Button { hero.setItemEquipped(item.id,!item.equipped,compendium:store.compendium) } label: { Image(systemName:item.equipped ? "checkmark.square.fill":"square").font(.system(size:15)).foregroundStyle(item.equipped ? accent:Color.secondary) }.buttonStyle(.plain).help("Equip \(item.name)")
-            Button { store.itemDetail = ItemPresentation(heroID:hero.id,itemID:item.id,ids:items.map(\.id)) } label: {
-                HStack(spacing:12) { VStack(alignment:.leading,spacing:4) { Text(item.name).font(.system(size:13,weight:.medium)); Text(item.equipmentKind.rawValue).font(.system(size:10)).foregroundStyle(.secondary) }; Spacer(minLength:0); if !(item.rolls ?? []).isEmpty { Image(systemName:"dice").foregroundStyle(sky) }; if !(item.bonuses ?? []).isEmpty || item.armorBase != nil { Text("Effects").font(.caption2).foregroundStyle(gold) }; if item.requiresAttunement == true { Text(item.attuned == true ? "Attuned":"Unattuned").font(.caption2).foregroundStyle(item.attuned == true ? sky:coral) }; Text(String(format:"%.1f lb",Double(item.quantity)*item.weight)).font(.system(size:11)).foregroundStyle(.secondary).frame(width:70,alignment:.trailing) }.contentShape(Rectangle())
-            }.buttonStyle(.plain).help("Open \(item.name) details")
-            Text("×\(item.quantity)").font(.system(size:12,weight:.medium,design:.monospaced)).frame(width:40,alignment:.trailing)
+        return CombatRowLayout {
+            HStack(spacing:8) {
+                ListReorderGrip(token:ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),name:item.name,enabled:siblings.count > 1)
+                Button { hero.setItemEquipped(item.id,!item.equipped,compendium:store.compendium) } label: {
+                    Image(systemName:item.equipped ? "checkmark.circle.fill":"circle").foregroundStyle(item.equipped ? accent:Color.secondary).frame(width:20,height:26)
+                }.buttonStyle(.plain).help((item.equipped ? "Unequip ":"Equip ")+item.name).accessibilityLabel("Toggle equipped for "+item.name).accessibilityValue(item.equipped ? "Equipped":"Carried")
+                Button { openItem(item) } label: {
+                    ViewThatFits(in:.horizontal) {
+                        HStack(spacing:9) { itemName(item);itemType(item).fixedSize() }
+                        VStack(alignment:.leading,spacing:3) { itemName(item);itemType(item) }
+                    }.frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle())
+                }.buttonStyle(.plain).help("Open "+item.name+" details").accessibilityLabel(item.name+" details")
+            }
+            HStack(spacing:9) {
+                if !(item.rolls ?? []).isEmpty { Image(systemName:"dice").font(.system(size:11)).foregroundStyle(sky).help("Custom rolls available in item details") }
+                if !(item.bonuses ?? []).isEmpty || item.armorBase != nil { Image(systemName:"bolt.circle").font(.system(size:11)).foregroundStyle(gold).help("Configured effects · open item for details") }
+                if item.requiresAttunement == true {
+                    Button { openItem(item) } label: { Text(item.attuned == true ? "Attuned":"Unattuned").font(.system(size:10)).foregroundStyle(item.attuned == true ? sky:coral) }.buttonStyle(.plain).help("Open item to change attunement")
+                }
+                Text(String(format:"%.1f lb",Double(item.quantity)*item.weight)).font(.system(size:10)).foregroundStyle(.secondary).monospacedDigit().frame(minWidth:46,alignment:.trailing)
+                Text("×\(item.quantity)").font(.system(size:11,weight:.medium,design:.monospaced)).frame(minWidth:26,alignment:.trailing)
             Menu {
                 Button("Edit item") { edit(item) }
                 Button("Move up in container") { if position > 0 { hero.reorderEquipment(ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),onto:siblings[position-1],visibleIDs:siblings) } }.disabled(position == 0)
@@ -85,10 +100,15 @@ struct EquipmentPanel:View {
                     ForEach(hero.inventoryContainers) { storage in Button(storage.name) { hero.placeItem(item.id,in:storage.id) }.disabled(item.containerID == storage.id) }
                 }
                 Button("Remove equipment",role:.destructive) { hero.items.removeAll { $0.id == item.id } }
-            } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20).accessibilityLabel("Options for \(item.name)")
-        }.padding(.horizontal,10).padding(.vertical,10).background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:8))
+            } label: { Image(systemName:"ellipsis").frame(width:20,height:26) }.menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().accessibilityLabel("Options for \(item.name)")
+            }.fixedSize(horizontal:true,vertical:false)
+        }.padding(.horizontal,12).padding(.vertical,6)
             .modifier(ListReorderDropTarget { token in hero.reorderEquipment(token,onto:item.id,visibleIDs:siblings) })
     }
+    func openItem(_ item:Item) { store.itemDetail=ItemPresentation(heroID:hero.id,itemID:item.id,ids:items.map(\.id)) }
+    func itemName(_ item:Item)->some View { Text(item.name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true) }
+    func itemType(_ item:Item)->some View { Text(item.equipmentKind.rawValue).font(.system(size:10)).foregroundStyle(.secondary) }
+
 }
 struct ContainerEditor:View {
     @State var storage:EquipmentContainer
