@@ -2,7 +2,7 @@ import Foundation
 
 enum SearchTarget:Equatable {
     case spell(UUID),item(UUID),feature(UUID),attack(UUID),creature(UUID),action(SheetActionRef)
-    case reference(UUID),librarySpell(UUID),condition(String)
+    case reference(UUID),librarySpell(UUID),condition(String),hero(UUID),note(UUID)
 }
 struct GlobalSearchResult:Identifiable,Equatable {
     var id:String
@@ -10,17 +10,29 @@ struct GlobalSearchResult:Identifiable,Equatable {
     var subtitle:String
     var kind:String
     var character:Bool
+    var heroID:UUID?
     var target:SearchTarget
     var searchable:String
-    init(name:String,subtitle:String,kind:String,character:Bool,target:SearchTarget,id:String,keywords:String = "") {
+    init(name:String,subtitle:String,kind:String,character:Bool,target:SearchTarget,id:String,keywords:String = "",heroID:UUID? = nil) {
+        self.heroID=heroID
         self.name=name;self.subtitle=subtitle;self.kind=kind;self.character=character;self.target=target;self.id=id
         searchable=CompendiumSearch.normalized([name,subtitle,kind,keywords].joined(separator:" "))
     }
 }
 struct GlobalSearchIndex {
     var entries:[GlobalSearchResult] = []
+    var selectedID:UUID?
     init(hero:Hero?,library:[Spell],compendium:[CompendiumEntry]) {
-        if let hero {
+        self.init(heroes:hero.map { [$0] } ?? [],selectedID:hero?.id,library:library,compendium:compendium)
+    }
+    init(heroes:[Hero],selectedID:UUID?,library:[Spell],compendium:[CompendiumEntry]) {
+        self.selectedID=selectedID
+        for hero in heroes {
+            let start=entries.count
+            entries.append(GlobalSearchResult(name:hero.name,subtitle:hero.characterClass+" · Level \(hero.level)",kind:"Character",character:true,target:.hero(hero.id),id:"character"))
+            for note in hero.journalEntries ?? [] {
+                entries.append(GlobalSearchResult(name:note.title.isEmpty ? "Untitled note":note.title,subtitle:"Journal · "+note.normalizedTags.joined(separator:", "),kind:"Note",character:true,target:.note(note.id),id:"note:"+note.id.uuidString,keywords:note.description+" "+note.normalizedTags.joined(separator:" ")))
+            }
             for spell in hero.spells {
                 entries.append(GlobalSearchResult(name:spell.name,subtitle:(spell.level == 0 ? "Cantrip":"Level \(spell.level)")+" · "+spell.school+(spell.prepared ? "":" · not prepared"),kind:"Spell",character:true,target:.spell(spell.id),id:"spell:"+spell.id.uuidString,keywords:spell.classes ?? ""))
             }
@@ -38,6 +50,12 @@ struct GlobalSearchIndex {
             }
             for action in hero.creatureActions {
                 entries.append(GlobalSearchResult(name:action.name,subtitle:action.subtitle,kind:"Companion action",character:true,target:.action(action.ref),id:"action:"+action.id))
+            }
+            for index in start..<entries.count {
+                entries[index].heroID=hero.id
+                entries[index].id="hero:"+hero.id.uuidString+":"+entries[index].id
+                entries[index].subtitle=hero.name+" · "+entries[index].subtitle
+                entries[index].searchable += " "+CompendiumSearch.normalized(hero.name)
             }
         }
         for condition in conditionReferences {
@@ -63,6 +81,9 @@ struct GlobalSearchIndex {
             if a.character != b.character { return a.character }
             let first=rank(a),second=rank(b)
             if first != second { return first < second }
+            if a.heroID != b.heroID && a.character && b.character {
+                if a.heroID == selectedID { return true };if b.heroID == selectedID { return false }
+            }
             let order=a.name.localizedStandardCompare(b.name)
             return order == .orderedSame ? a.id < b.id:order == .orderedAscending
         }.prefix(max(0,limit)))

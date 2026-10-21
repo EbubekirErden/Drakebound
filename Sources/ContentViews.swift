@@ -53,11 +53,6 @@ struct PictureControls: View {
 struct PartySidebar: View {
     @ObservedObject var store: Store
     @Binding var compact: Bool
-    @State private var characterQuery = ""
-    private var matchingCharacters: [Hero] {
-        let query = characterQuery.trimmingCharacters(in:.whitespacesAndNewlines)
-        return compact || query.isEmpty ? store.heroes:store.heroes.filter { $0.name.localizedCaseInsensitiveContains(query) || $0.characterClass.localizedCaseInsensitiveContains(query) }
-    }
     @Environment(\.accessibilityReduceMotion) var reduceMotion
 
     var body: some View {
@@ -70,21 +65,11 @@ struct PartySidebar: View {
                     Spacer()
                     Text("\(store.heroes.count)").font(.system(size:11)).foregroundStyle(.secondary)
                 }.padding(.horizontal,18).padding(.top,20).padding(.bottom,10)
-                HStack(spacing:7) {
-                    Image(systemName:"magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search characters",text:$characterQuery).textFieldStyle(.plain).accessibilityLabel("Search characters")
-                    if !characterQuery.isEmpty {
-                        Button { characterQuery = "" } label: { Image(systemName:"xmark.circle.fill").foregroundStyle(.secondary) }
-                            .buttonStyle(.plain).help("Clear character search").accessibilityLabel("Clear character search")
-                    }
-                }.font(.system(size:12)).padding(9).background(paper.opacity(0.7),in:RoundedRectangle(cornerRadius:8)).padding(.horizontal,12).padding(.bottom,10)
+
             }
             ScrollView {
                 VStack(spacing:6) {
-                    ForEach(matchingCharacters) { hero in characterRow(hero) }
-                    if matchingCharacters.isEmpty && !characterQuery.isEmpty {
-                        Text("No matching characters").font(.caption).foregroundStyle(.secondary).padding(.vertical,12)
-                    }
+                    ForEach(store.heroes) { hero in characterRow(hero) }
                     Button { store.addHero() } label: { sidebarLabel("New character",icon:"plus") }
                         .buttonStyle(.plain).foregroundStyle(.secondary).help("New character · ⌘N")
                 }.padding(.horizontal,10).padding(.top,compact ? 12:0)
@@ -168,7 +153,7 @@ struct PartySidebar: View {
     private func characterRow(_ hero: Hero) -> some View {
         let selected = store.selected == hero.id && !store.showCompendium
         return Button {
-            withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { store.selected = hero.id; store.showCompendium = false }
+            withAnimation(reduceMotion ? nil:.easeOut(duration:0.18)) { store.searchNavigation=nil;store.selected = hero.id; store.showCompendium = false }
         } label: {
             HStack(spacing:12) {
                 VStack(spacing:5) {
@@ -204,6 +189,7 @@ struct PartySidebar: View {
 
 struct JournalPanel: View {
     @Binding var hero: Hero
+    var initialNoteID:UUID? = nil
     var quickNote:(()->Void)? = nil
     @Environment(\.colorScheme) private var colorScheme
     @State var expanded: Set<UUID> = []
@@ -292,10 +278,10 @@ struct JournalPanel: View {
                             }.padding(.top,8)
                         }
                     }.padding(16).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).overlay(RoundedRectangle(cornerRadius:9).stroke(ink.opacity(0.06)))
-                    .modifier(ListReorderDropTarget { token in hero.reorderJournal(token,onto:entry.id,visibleIDs:visibleNotes.map(\.id)) })
+                    .modifier(ListReorderDropTarget { token in hero.reorderJournal(token,onto:entry.id,visibleIDs:visibleNotes.map(\.id)) }).id(entry.id)
                 }
             }
-        }.onAppear { hero.migrateContent() }
+        }.onAppear { hero.migrateContent();if let initialNoteID { expanded.insert(initialNoteID) } }
         .sheet(item:$editing) { note in
             JournalNoteEditor(note:note,isNew:!entries.wrappedValue.contains { $0.id == note.id }) { saved in
                 if let index = hero.journalEntries?.firstIndex(where:{ $0.id == saved.id }) {
@@ -327,7 +313,7 @@ struct CreaturesPanel: View {
             }
             ForEach(creatures) { $creature in
                 if matches(creature) && creature.isActive {
-                    CreatureCard(creature:$creature,store:store,deactivate:{ hero.setCreatureActive(creature.id,false) },edit:{ editing = creature },remove:{ let id = creature.id; hero.creatures?.removeAll { $0.id == id } })
+                    CreatureCard(creature:$creature,store:store,deactivate:{ hero.setCreatureActive(creature.id,false) },edit:{ editing = creature },remove:{ let id = creature.id; hero.creatures?.removeAll { $0.id == id } }).id(creature.id)
                 }
             }
             if matching.contains(where:{ !$0.isActive }) {
@@ -340,7 +326,7 @@ struct CreaturesPanel: View {
                                 Spacer()
                                 Button("Edit") { editing = creature }.buttonStyle(.borderless)
                                 Button(creature.isSummon ? "Summon":"Activate") { hero.setCreatureActive(creature.id,true) }.buttonStyle(.bordered).tint(accent).accessibilityLabel("Activate "+creature.name)
-                            }.padding(8).background(paper.opacity(0.4)).clipShape(RoundedRectangle(cornerRadius:7))
+                            }.padding(8).background(paper.opacity(0.4)).clipShape(RoundedRectangle(cornerRadius:7)).id(creature.id)
                         }
                     }
                 }

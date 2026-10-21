@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Unified sidebar search covers every character, journal titles/text/tags, companions (including inactive ones), owned spells and other character content before references. Results show their owner and open the actual character entry, including expanded journal notes and companion cards; duplicated content IDs remain isolated by owner.
+
 - Global search includes all condition references and exhaustion, with exact condition names ahead of partial reference names. Conditions supports Compendium’s resizable Preview sidebar and narrow-window detail overlay.
 
 - Conditions is an inline Compendium category with searchable condition and exhaustion reference cards; switching categories no longer opens a sheet.

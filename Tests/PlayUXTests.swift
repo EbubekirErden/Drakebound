@@ -74,6 +74,43 @@ struct UXProbe:NSViewRepresentable {
         let window = NSWindow(contentRect:NSRect(x:0,y:0,width:900,height:620),styleMask:[.titled,.closable],backing:.buffered,defer:false)
         window.isReleasedWhenClosed = false;window.contentView = host;window.makeKeyAndOrderFront(nil)
         Task { @MainActor in
+            if ProcessInfo.processInfo.environment["DRAKEBOUND_SEARCH_ONLY"] == "1" {
+                var owner=original;owner.id=UUID();owner.name="Shennie"
+                var pet=Creature();pet.name="Tirpik";pet.description="A character-owned companion"
+                var inactive=Creature();inactive.name="Resting familiar";inactive.active=false
+                owner.creatures=[pet,inactive]
+                let note=JournalEntry(title:"Earlier notes",description:"The hidden observatory",tags:["Session"])
+                owner.journalEntries=[note]
+                let fireball=Spell(name:"Fireball",level:3)
+                owner.spells.append(fireball)
+                store.heroes=[original,owner];store.selected=original.id;store.showCompendium=true
+                let unchanged=store.heroes
+                let index=GlobalSearchIndex(heroes:store.heroes,selectedID:store.selected,library:store.library,compendium:store.compendium)
+                let ownerResult=index.search("shennie").first { $0.target == .hero(owner.id) }!
+                store.openSearchResult(ownerResult)
+                precondition(store.selected == owner.id && store.activeTab == "Sheet" && !store.showCompendium)
+                let spellResult=index.search("fireball").first { $0.target == .spell(fireball.id) && $0.heroID == owner.id }!
+                store.selected=original.id;store.openSearchResult(spellResult)
+                precondition(store.selected == owner.id && store.activeTab == "Spells")
+                precondition(store.spellDetail?.heroID == owner.id && store.spellDetail?.spell.id == fireball.id && store.spellDetail?.library == false)
+                let petResult=index.search("tirpik").first!
+                store.selected=original.id;store.openSearchResult(petResult)
+                precondition(store.selected == owner.id && store.activeTab == "Creatures" && store.searchDetail == nil && store.spellDetail == nil)
+                precondition(store.searchNavigation?.entryID == pet.id)
+                window.setContentSize(NSSize(width:1100,height:800))
+                host.rootView=AnyView(RootView(store:store).preferredColorScheme(.light))
+                await pause();await pause();screenshot(window,root.appendingPathComponent("search-owned-companion.png"))
+                store.openSearchResult(index.search("earlier notes").first { $0.target == .note(note.id) && $0.heroID == owner.id }!)
+                precondition(store.activeTab == "Journal" && store.searchNavigation?.entryID == note.id)
+                await pause();await pause();screenshot(window,root.appendingPathComponent("search-owned-note.png"))
+                store.openSearchResult(index.search("resting familiar").first!)
+                precondition(store.activeTab == "Creatures" && store.searchNavigation?.entryID == inactive.id)
+                await pause();await pause();screenshot(window,root.appendingPathComponent("search-inactive-companion.png"))
+                precondition(store.heroes == unchanged,"Opening owned search results cannot change archives or activate companions")
+                store.saveTaskCancellationForGuide();store.flushPendingWrites()
+                print("PASS: cross-character quick access opens the owning character, saved spell, expanded note, active and inactive companions without changing data")
+                fflush(stdout);Darwin.exit(0)
+            }
             if ProcessInfo.processInfo.environment["DRAKEBOUND_RENDER_ONLY"] == "1" {
                 let binding=Binding<Hero>(get:{ store.heroes[0] },set:{ store.heroes[0]=$0 })
                 for width in [650,1000] {
@@ -142,7 +179,8 @@ struct UXProbe:NSViewRepresentable {
             screenshot(sheet,root.appendingPathComponent("global-search.png"))
             precondition(store.heroes == beforeSearch,"Typing search must not change resources")
             let known=store.heroes[0].spells.first { $0.name == "Magic missile" }!
-            await click("search-result-spell:"+known.id.uuidString,window:sheet)
+            let knownResult=GlobalSearchIndex(heroes:store.heroes,selectedID:store.selected,library:store.library,compendium:store.compendium).search("magic missile").first { $0.target == .spell(known.id) && $0.heroID == store.heroes[0].id }!
+            await click("search-result-"+knownResult.id,window:sheet)
             await pause()
             precondition(!store.globalSearchOpen && store.spellDetail?.spell.id == known.id)
             precondition(store.heroes == beforeSearch,"Opening a spell result must not cast it")
@@ -242,7 +280,7 @@ struct UXProbe:NSViewRepresentable {
         await pause()
     }
     @MainActor static func typeSearch(_ query:String,window:NSWindow) async {
-        guard let field=window.contentView.map(descendants)?.compactMap({ $0 as? NSTextField }).first(where:{ $0.placeholderString?.hasPrefix("Search spells") == true }) else { fatalError("Missing global search field") }
+        guard let field=window.contentView.map(descendants)?.compactMap({ $0 as? NSTextField }).first(where:{ $0.placeholderString?.hasPrefix("Search characters") == true }) else { fatalError("Missing global search field") }
         field.selectText(nil)
         guard let editor=window.firstResponder as? NSTextView else { fatalError("Search field is not focused") }
         editor.insertText(query,replacementRange:NSRange(location:0,length:editor.string.utf16.count))

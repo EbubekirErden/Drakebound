@@ -218,6 +218,7 @@ struct HeroView: View {
     @ViewBuilder var page:some View {
         GeometryReader { viewport in
             let bannerHeight = bannerExpanded ? min(380,max(275,(viewport.size.width-36)/3.5)):min(200,max(160,(viewport.size.width-36)/5))
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment:.leading,spacing:-24) {
                     GeometryReader { position in
@@ -243,12 +244,19 @@ struct HeroView: View {
                         case "Sheet": character(width:viewport.size.width-36)
                         case "Equipment": equipment
                         case "Spells": spellbook
-                        case "Journal": JournalPanel(hero:$hero,quickNote:{ store.beginQuickNote() })
-                        default: CreaturesPanel(hero:$hero,store:store)
+                        case "Journal": JournalPanel(hero:$hero,initialNoteID:store.searchNavigation?.heroID == hero.id ? store.searchNavigation?.entryID:nil,quickNote:{ store.beginQuickNote() }).id(store.searchNavigation?.id)
+                        default: CreaturesPanel(hero:$hero,store:store).id(store.searchNavigation?.id)
                         }
                     }.padding(18).frame(maxWidth:.infinity).background(paper).clipShape(UnevenRoundedRectangle(topLeadingRadius:18,topTrailingRadius:18)).zIndex(1)
                 }
             }.coordinateSpace(name:"heroScroll")
+                .task(id:store.searchNavigation?.id) {
+                    guard let destination=store.searchNavigation,destination.heroID == hero.id,let entryID=destination.entryID else { return }
+                    try? await Task.sleep(nanoseconds:200_000_000)
+                    guard !Task.isCancelled else { return }
+                    proxy.scrollTo(entryID,anchor:.top)
+                }
+            }
         }
     }
     func character(width:CGFloat) -> some View {

@@ -293,7 +293,7 @@ With no saved characters, Welcome offers Create a character, Import a character,
 
 ### Compact play controls
 
-Combat (⌘2) brings together ready attacks, spells, abilities, conditions, slots, and resources. Use ⌘K to search character content and references. Customize optional tabs from the Tabs menu; numeric shortcuts keep their fixed destinations. On Sheet, feature names reveal details and resource counts open adjustment controls. Character JSON and PDF exports are in the character banner menu; Back up in the sidebar includes all characters, the saved spell library, and user references.
+Combat (⌘2) brings together ready attacks, spells, abilities, conditions, slots, and resources. Use the single sidebar Search everything button or ⌘K to search all characters, their content, and references. Customize optional tabs from the Tabs menu; numeric shortcuts keep their fixed destinations. On Sheet, feature names reveal details and resource counts open adjustment controls. Character JSON and PDF exports are in the character banner menu; Back up in the sidebar includes all characters, the saved spell library, and user references.
 
 Combat’s support column starts with conditions, then six saving throw roll controls and spell slots. Saving throws support the usual roll modes and condition modifiers.
 
@@ -302,3 +302,5 @@ Click a Sheet feature name to read its description and use controls in a popover
 In Compendium, scroll the category row horizontally to reach Conditions after Backgrounds. Conditions displays searchable condition and exhaustion references directly in Compendium.
 
 Global search includes condition and exhaustion rules even without a selected character. In Compendium → Conditions, click a card to read its rules. Preview shows the selected rules in the resizable right sidebar on wide windows; narrower windows use the usual detail overlay. Reading rules does not apply a condition to a character.
+
+Global search finds character names, journal titles/text/tags, companions including inactive ones, spells including unprepared ones, equipment, features and attacks across all characters. Owned results appear before references and include the character name. Opening one switches to its owner: character results open Sheet, companions open their card in Creatures, notes open expanded in Journal, and spells open that character’s spell details. Opening a result never casts, activates a creature or spends a resource.

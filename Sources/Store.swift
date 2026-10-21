@@ -19,6 +19,7 @@ import UniformTypeIdentifiers
     @Published var rollMode = RollMode.normal
     private let dicePresenter = DicePresenter()
     @Published var error: String?
+    @Published var searchNavigation:SearchNavigation?
     @Published var globalSearchOpen = false
     @Published var searchDetail:SearchDetail?
     var pendingSearchResult:GlobalSearchResult?

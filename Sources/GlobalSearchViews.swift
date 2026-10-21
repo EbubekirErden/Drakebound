@@ -1,5 +1,14 @@
 import SwiftUI
 
+struct SearchNavigation:Identifiable {
+    var id=UUID()
+    var heroID:UUID
+    var target:SearchTarget
+    var entryID:UUID? {
+        switch target { case .creature(let id),.note(let id):return id;default:return nil }
+    }
+}
+
 struct SearchDetail:Identifiable {
     var id=UUID()
     var title:String
@@ -43,11 +52,21 @@ extension Store {
             else { let reference=TemplateFactory.spell(spell);searchDetail=SearchDetail(title:spell.name,subtitle:"Library spell",text:spell.text,reference:reference) }
             return
         }
-        guard let hero=heroes.first(where:{ $0.id == selected }) else { return }
+        guard let hero=heroes.first(where:{ $0.id == (result.heroID ?? selected) }) else { return }
+        selected=hero.id;showCompendium=false
+        searchNavigation=nil
         switch result.target {
+        case .hero:
+            activeTab="Sheet"
+        case .note(let id):
+            guard hero.journalEntries?.contains(where:{ $0.id == id }) == true else { return }
+            activeTab="Journal"
+            searchNavigation=SearchNavigation(heroID:hero.id,target:result.target)
         case .spell(let id):
+            activeTab="Spells"
             if let spell=hero.spells.first(where:{ $0.id == id }) { openSpell(spell,hero:hero,ids:hero.spells.map(\.id)) }
         case .item(let id):
+            activeTab="Equipment"
             if hero.items.contains(where:{ $0.id == id }) { itemDetail=ItemPresentation(heroID:hero.id,itemID:id,ids:hero.items.map(\.id)) }
         case .feature(let id):
             guard let feature=hero.featureEntries?.first(where:{ $0.id == id }) else { return }
@@ -58,8 +77,9 @@ extension Store {
             let ref=SheetActionRef(kind:.attack,sourceID:id)
             searchDetail=SearchDetail(title:attack.name,subtitle:hero.attackUnavailableReason(attack) ?? "Attack",text:attack.description ?? "",action:SheetAction(ref:ref,name:attack.name,subtitle:attack.type),heroID:hero.id)
         case .creature(let id):
-            guard let creature=hero.creatures?.first(where:{ $0.id == id }) else { return }
-            searchDetail=SearchDetail(title:creature.name,subtitle:"Companion · HP \(creature.hp)/\(creature.maximumHP) · AC \(creature.ac)",text:creature.description,heroID:hero.id)
+            guard hero.creatures?.contains(where:{ $0.id == id }) == true else { return }
+            activeTab="Creatures"
+            searchNavigation=SearchNavigation(heroID:hero.id,target:result.target)
         case .action(let ref):
             guard let action=hero.sheetActions.first(where:{ $0.ref == ref }) else { return }
             let text=hero.creatureFeature(ref)?.text ?? hero.creatureAttack(ref)?.description ?? ""
@@ -105,8 +125,8 @@ struct GlobalSearchPanel:View {
             HStack { Text("↑ ↓ to choose · Return to open");Spacer();Text("Opening a result spends nothing") }.font(.system(size:10)).foregroundStyle(.secondary).padding(.horizontal,18).padding(.vertical,12)
         }.frame(width:640,height:490).background(paper).foregroundStyle(ink)
             .task {
-                let hero=store.heroes.first { $0.id == store.selected },library=store.library,compendium=store.compendium
-                index=await Task.detached { GlobalSearchIndex(hero:hero,library:library,compendium:compendium) }.value
+                let heroes=store.heroes,selectedID=store.selected,library=store.library,compendium=store.compendium
+                index=await Task.detached { GlobalSearchIndex(heroes:heroes,selectedID:selectedID,library:library,compendium:compendium) }.value
                 focused=true
             }
             .task(id:query+String(index?.entries.count ?? 0)) {
@@ -122,7 +142,7 @@ struct GlobalSearchPanel:View {
     private var searchHeader:some View {
         HStack(spacing:12) {
             Image(systemName:"magnifyingglass").foregroundStyle(accent)
-            TextField("Search spells, equipment, features…",text:$query).textFieldStyle(.plain).font(.system(size:17)).focused($focused).accessibilityLabel("Search everything")
+            TextField("Search characters, notes, spells…",text:$query).textFieldStyle(.plain).font(.system(size:17)).focused($focused).accessibilityLabel("Search everything")
                 .onSubmit(openSelection)
                 .onKeyPress(.downArrow) { move(1);return .handled }
                 .onKeyPress(.upArrow) { move(-1);return .handled }
@@ -134,7 +154,7 @@ struct GlobalSearchPanel:View {
             if query.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty {
                 VStack(alignment:.leading,spacing:12) {
                     Text("Find what you need, then get back to play.").font(.system(size:16,weight:.medium,design:.serif))
-                    Text("Search your character’s spells, equipment, features and attacks, plus the reference library.").font(.system(size:13)).foregroundStyle(.secondary)
+                    Text("Search all your characters, notes, companions, spells, equipment and features, plus references.").font(.system(size:13)).foregroundStyle(.secondary)
                     Text("Try a name, spell level, equipment type or feature.").font(.system(size:12)).foregroundStyle(.secondary)
                 }.padding(24)
             } else if index == nil {
@@ -144,7 +164,7 @@ struct GlobalSearchPanel:View {
             } else {
                 ForEach(Array(results.enumerated()),id:\.element.id) { number,result in
                     if number == 0 || results[number-1].character != result.character {
-                        Text(result.character ? "YOUR CHARACTER":"REFERENCES").font(.system(size:10,weight:.semibold)).tracking(1).foregroundStyle(.secondary).padding(.horizontal,12).padding(.top,14).padding(.bottom,6)
+                        Text(result.character ? "YOUR CHARACTERS":"REFERENCES").font(.system(size:10,weight:.semibold)).tracking(1).foregroundStyle(.secondary).padding(.horizontal,12).padding(.top,14).padding(.bottom,6)
                     }
                     GlobalSearchResultRow(result:result,selected:selection == result.id) { store.chooseSearchResult(result) }.id(result.id)
                 }
@@ -179,7 +199,7 @@ struct GlobalSearchResultRow:View {
                 Image(systemName:"arrow.up.forward").font(.system(size:10)).foregroundStyle(.secondary)
             }.padding(12).frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle())
                 .background(selected ? accent.opacity(0.12):Color.clear,in:RoundedRectangle(cornerRadius:8))
-        }.buttonStyle(.plain).accessibilityLabel(result.name+", "+result.kind+", "+(result.character ? "your character":"reference"))
+        }.buttonStyle(.plain).accessibilityLabel(result.name+", "+result.kind+", "+(result.character ? "character entry":"reference"))
     }
 }
 

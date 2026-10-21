@@ -35,6 +35,21 @@ import Foundation
         }
         precondition(rulesIndex.search("condition blinded").first?.target == .condition("blinded"))
         precondition(rulesIndex.search("sight checks").contains { $0.target == .condition("blinded") })
+        var other=hero;other.id=UUID();other.name="Shennie"
+        var pet=Creature();pet.name="Tirpik";pet.active=false
+        other.creatures=[pet]
+        let note=JournalEntry(title:"Earlier notes",description:"A hidden observatory",tags:["Session"])
+        other.journalEntries=[note]
+        let shared=GlobalSearchIndex(heroes:[hero,other],selectedID:hero.id,library:[],compendium:[reference])
+        precondition(shared.search("shennie").contains { $0.target == .hero(other.id) && $0.heroID == other.id })
+        precondition(shared.search("tirpik").first?.target == .creature(pet.id))
+        precondition(shared.search("tirpik").first?.heroID == other.id)
+        precondition(shared.search("earlier notes").contains { $0.target == .note(note.id) && $0.heroID == other.id })
+        precondition(shared.search("hidden observatory").first?.heroID == other.id)
+        precondition(shared.search("session note").contains { $0.target == .note(note.id) })
+        let ownedSpells=shared.search("eclair").filter { $0.character }
+        precondition(ownedSpells.count == 2 && Set(ownedSpells.map(\.id)).count == 2,"Copied content IDs must be scoped by owning character")
+        precondition(ownedSpells[0].heroID == hero.id && ownedSpells[1].heroID == other.id)
         let data=try CharacterExport.data(for:hero)
         let archive=try JSONDecoder().decode(Archive.self,from:data)
         precondition(archive.heroes == [hero] && archive.library.isEmpty && archive.compendium == nil)

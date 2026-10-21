@@ -9,6 +9,7 @@ extension Store {
     var characterCommandsAvailable:Bool { menusAvailable && heroes.contains { $0.id == selected } }
     func navigate(to tab:String) {
         guard canPerformMenuAction else { return }
+        searchNavigation=nil
         spellDetail = nil; itemDetail = nil; showCompendium = tab == "Compendium"
         if !showCompendium { activeTab = tab == "Actions" ? "Combat":tab }
     }
