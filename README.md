@@ -13,8 +13,8 @@ Current builds are not notarized, so macOS may require approval to open them.
 ## Features
 
 - Guided character creation and level-up.
-- Character sheets, attacks, dice rolls, and resource tracking.
-- Spellbooks, inventory, journals, and companions.
+- Character sheets and a dedicated Combat tab with attacks, saves, dice, and resource tracking.
+- Compact spellbooks, inventory, journals, and companions, with unified quick-access search (⌘K).
 - Offline SRD library and Fight Club XML imports.
 - JSON backups and printable character PDFs.
 

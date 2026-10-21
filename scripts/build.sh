@@ -21,8 +21,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <key>CFBundleDisplayName</key><string>Drakebound</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleIconFile</key><string>DrakeboundD20.icns</string>
-<key>CFBundleVersion</key><string>41</string>
-<key>CFBundleShortVersionString</key><string>1.0.0</string>
+<key>CFBundleVersion</key><string>42</string>
+<key>CFBundleShortVersionString</key><string>1.1.0</string>
 <key>UTExportedTypeDeclarations</key><array><dict>
 <key>UTTypeIdentifier</key><string>local.fellowship.five.list-reorder</string>
 <key>UTTypeDescription</key><string>Drakebound list order</string>

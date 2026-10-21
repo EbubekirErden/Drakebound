@@ -2,33 +2,20 @@
 
 ## Unreleased
 
-- Concentration and pending saves live in the Combat status column beside conditions and saving throws, and in a separate Sheet status card. Starting or ending concentration no longer changes the HP section height.
+## 1.1.0 — 2026-10-21
 
-- Click an equipment quantity to open a compact adjustment popup with immediate ±1 controls and Add, Remove, or Set amounts. Zero retains the inventory entry; changes stay within 0–999.
-
-- Equipment now uses a compact shared list like Spells, with container headings, subtle row dividers, responsive item metadata, and visible equipped/attunement status, quantity and weight. Existing details, reordering and container actions remain available.
-
-- Character banners default to expanded on Sheet and compact on other tabs, with independent per-tab overrides and a page-default reset in the size button’s context menu. Creature cards use compact attack rows and stat controls, smaller portraits, and a single name heading.
-
-- Unified sidebar search covers every character, journal titles/text/tags, companions (including inactive ones), owned spells and other character content before references. Results show their owner and open the actual character entry, including expanded journal notes and companion cards; duplicated content IDs remain isolated by owner.
-
-- Global search includes all condition references and exhaustion, with exact condition names ahead of partial reference names. Conditions supports Compendium’s resizable Preview sidebar and narrow-window detail overlay.
-
-- Conditions is an inline Compendium category with searchable condition and exhaustion reference cards; switching categories no longer opens a sheet.
-
-- Compendium Conditions now sits after Backgrounds in the horizontally scrollable category row, with a visible scroll indicator when needed.
-
-- Sheet feature details open in anchored popovers without expanding the list. Combat spells group by level. The Spells tab uses a compact shared list with responsive metadata and direct casting options.
-
-- Sheet features stay compact with on-demand descriptions. Filter menus fit their labels. Combat places compact conditions above saving throws and spell slots alongside ready actions. Dice result windows explicitly follow the selected app appearance.
-
-- Added Combat with compact action rows, spell slots, resources, and condition controls; global search (⌘K); per-character tab visibility; compact Sheet features and combined attacks/resources.
-- Added compact rest reviews, non-blocking success and selective Undo notices, clearer character export and full backup entry points, and consistent Welcome branding.
-- Isolated play UI checks cover interaction and responsive layouts. Development bundles stay outside Launchpad indexing.
-
-- Saving is faster and smoother: characters are encoded and written on a background queue, strictly in order, and nothing is rewritten when the characters and library are unchanged. Quit, import, and level-up still finish their writes before continuing. The file format is unchanged.
-- Test and preview safety: `Store` accepts an explicit save location, so previews and harnesses use a physically separate directory. The model test no longer reads your live save (set `DRAKEBOUND_ARCHIVE_FIXTURE` to a copy to verify an archive).
-- `scripts/test.sh` compiles harnesses in parallel and skips unchanged ones. Added archive-writer tests and a GitHub Actions workflow.
+- Dedicated Combat tab replaces Actions, with compact ready-action rows, spells grouped by level, saving throws, spell slots, resources, and condition controls. Existing numeric shortcuts keep their destinations.
+- Unified search (⌘K) finds all characters, journal titles/text/tags, owned spells, equipment, features, attacks, active/inactive companions, and references. Results identify their owner and open the actual entry; copied content IDs remain isolated by character.
+- Compact Sheet features open descriptions and use controls in popovers. Attacks and resources share a responsive section. Spellbooks, equipment and creature attacks use smaller rows with direct controls and on-demand details.
+- Click equipment quantities for ±1 or Add/Remove/Set controls. Quantity zero retains the inventory entry; changes update weight.
+- Concentration and pending saves have a separate status card near combat conditions and saving throws. HP section height stays fixed when concentration changes.
+- Conditions is a searchable Compendium category with the same resizable Preview sidebar and detail overlay as other references. Category navigation scrolls horizontally.
+- Character banners default to expanded on Sheet and compact on other tabs. The size button remembers per-tab overrides and offers a page-default reset.
+- Optional tabs can be hidden per character. Rest reviews are compact; successful imports and selected undoable changes use non-blocking notices. Character JSON/PDF export is separate from the all-character backup entry point. Welcome uses consistent app branding.
+- Dice result windows follow Light/Dark/System appearance. Narrow-window and large-text checks cover the main play pages; development bundles stay outside Launchpad indexing.
+- Character saves are encoded and written in order on a background queue, skipping unchanged data. Quit, import and level-up still flush pending writes. The character archive format is unchanged.
+- Simplified creature-reference score rendering to avoid older Swift compiler type-check timeouts in CI.
+- Test and preview Stores use explicit isolated data directories. Regression harnesses compile in parallel and skip unchanged builds; CI verifies rules/data and the app build.
 
 ## 1.0.0 — 2026-10-18
 
