@@ -37,7 +37,7 @@ struct CombatPanel:View {
         }
     }
     @ViewBuilder var support:some View {
-        VStack(alignment:.leading,spacing:14) { CombatConditions(hero:$hero);CombatSaves(hero:$hero,store:store);slots;resources }
+        VStack(alignment:.leading,spacing:14) { CombatConditions(hero:$hero);ConcentrationStatus(hero:$hero,store:store);CombatSaves(hero:$hero,store:store);slots;resources }
     }
     @ViewBuilder var slots:some View {
         if hero.slots.contains(where:{ $0 > 0 }) { SpellSlotGrid(hero:$hero,manage:nil) }
@@ -146,8 +146,6 @@ struct CombatVitals:View {
                 Button("Rest…",action:rest).buttonStyle(PageButtonStyle())
             }
             if hero.hp == 0 || hero.deathSuccesses > 0 || hero.deathFailures > 0 { DeathSaveControl(hero:$hero,store:store) }
-            if hero.concentratingSpell != nil { ConcentrationChip(hero:$hero,store:store) }
-            ConcentrationSavePrompt(hero:$hero,store:store)
         }.padding(14).background(surface,in:RoundedRectangle(cornerRadius:10))
             .overlay(RoundedRectangle(cornerRadius:10).stroke(ink.opacity(0.08)))
             .popover(item:$adjustment) { HealthAmountPopup(hero:$hero,adjustment:$0) }

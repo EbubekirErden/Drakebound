@@ -279,6 +279,7 @@ struct HeroView: View {
             }
             HealthPanel(hero:$hero,store:store,rest:{ rest = true })
             SheetConditionSummary(hero:hero,store:store)
+            ConcentrationStatus(hero:$hero,store:store)
             AbilityTable(hero:$hero,store:store)
             AttacksAndResourcesPanel(hero:$hero,store:store,width:width,edit:{ attackEditor = $0 })
             SkillsPanel(hero:$hero,store:store)

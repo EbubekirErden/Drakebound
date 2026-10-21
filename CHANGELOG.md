@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Concentration and pending saves live in the Combat status column beside conditions and saving throws, and in a separate Sheet status card. Starting or ending concentration no longer changes the HP section height.
+
 - Click an equipment quantity to open a compact adjustment popup with immediate ±1 controls and Add, Remove, or Set amounts. Zero retains the inventory entry; changes stay within 0–999.
 
 - Equipment now uses a compact shared list like Spells, with container headings, subtle row dividers, responsive item metadata, and visible equipped/attunement status, quantity and weight. Existing details, reordering and container actions remain available.

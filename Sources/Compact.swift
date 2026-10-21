@@ -47,8 +47,6 @@ struct HealthPanel: View {
                 Button { hitDice = true } label: { Label("Hit dice · \(max(0,hero.level-hero.hitDiceUsed))/\(hero.level)",systemImage:"dice").padding(.horizontal,12).frame(height:34).background(gold.opacity(0.09)).foregroundStyle(gold).clipShape(RoundedRectangle(cornerRadius:7)) }.buttonStyle(.plain).popover(isPresented:$hitDice) { HitDicePopup(hero:$hero,store:store) }
                 Button(action:rest) { Label("Rest",systemImage:"moon.stars").padding(.horizontal,12).frame(height:34).background(sky.opacity(0.09)).foregroundStyle(sky).clipShape(RoundedRectangle(cornerRadius:7)) }.buttonStyle(.plain)
             }.font(.system(size:12,weight:.medium))
-            if hero.concentratingSpell != nil { ConcentrationChip(hero:$hero,store:store) }
-            ConcentrationSavePrompt(hero:$hero,store:store)
 
         }.animation(reduceMotion ? nil:.easeOut(duration:0.3),value:hero.hp)
     }

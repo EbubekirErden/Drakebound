@@ -1,5 +1,22 @@
 import SwiftUI
 
+struct ConcentrationStatus:View {
+    @Binding var hero:Hero
+    @ObservedObject var store:Store
+    var body:some View {
+        VStack(alignment:.leading,spacing:8) {
+            Text("CONCENTRATION").font(.system(size:10,weight:.semibold)).tracking(1).foregroundStyle(sky)
+            if let spell=hero.concentratingSpell {
+                HStack(alignment:.top,spacing:8) {
+                    Label(spell.name,systemImage:"sparkle.magnifyingglass").font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true).frame(maxWidth:.infinity,alignment:.leading)
+                    Button { hero.endConcentration() } label: { Label("End",systemImage:"xmark").font(.system(size:10,weight:.medium)) }.buttonStyle(.plain).foregroundStyle(sky).accessibilityLabel("End concentration on "+spell.name)
+                }
+            } else { Text("Not concentrating").font(.system(size:11)).foregroundStyle(.secondary) }
+            ConcentrationSavePrompt(hero:$hero,store:store)
+        }.padding(12).frame(maxWidth:.infinity,alignment:.leading).background(surface,in:RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).stroke(ink.opacity(0.07)))
+    }
+}
+
 struct ConcentrationSavePrompt:View {
     @Binding var hero:Hero
     @ObservedObject var store:Store
@@ -9,7 +26,8 @@ struct ConcentrationSavePrompt:View {
     var body:some View {
         Group {
             if let save = hero.concentrationSaves.first {
-                HStack(spacing:8) {
+                VStack(alignment:.leading,spacing:8) {
+                    HStack(spacing:8) {
                     Image(systemName:"shield.lefthalf.filled").foregroundStyle(gold)
                     VStack(alignment:.leading,spacing:3) {
                         Text("Concentration save · DC \(save.dc)").font(.system(size:11,weight:.semibold))
@@ -17,10 +35,13 @@ struct ConcentrationSavePrompt:View {
                     }
                     Spacer(minLength:4)
                     if hero.concentrationSaveAdvantage == true { Text("ADV").font(.system(size:9,weight:.semibold)).foregroundStyle(gold).help("Concentration advantage is enabled in save details. Opposing disadvantage cancels it.") }
+                    }
+                    ControlFlowLayout(spacing:8) {
                     RollChoiceButton(explanation:hero.saveExplanation(2)+"\nConcentration advantage: \(hero.concentrationSaveAdvantage == true ? "enabled":"off")") { mode in
                         do { record(try hero.rollConcentrationSave(save.id,manual:mode ?? store.rollMode)) } catch { store.error = error.localizedDescription }
                     } label: { Text("Roll save").font(.system(size:11,weight:.semibold)).foregroundStyle(sky).padding(7).background(sky.opacity(0.08)).clipShape(RoundedRectangle(cornerRadius:6)) }
                     Button("Enter result…") { details = save }.font(.system(size:11)).help("Enter a physical-dice total, adjust the DC, or configure concentration advantage")
+                    }
                 }.padding(9).background(gold.opacity(0.06)).clipShape(RoundedRectangle(cornerRadius:8)).overlay(RoundedRectangle(cornerRadius:8).stroke(gold.opacity(0.22)))
             } else if !outcome.isEmpty {
                 HStack { Text(outcome).font(.system(size:10)).foregroundStyle(succeeded ? leaf:coral); Spacer(); Button { outcome = "" } label: { Image(systemName:"xmark").font(.system(size:9)) }.buttonStyle(.plain).accessibilityLabel("Dismiss concentration save result") }
