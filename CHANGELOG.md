@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Click an equipment quantity to open a compact adjustment popup with immediate ±1 controls and Add, Remove, or Set amounts. Zero retains the inventory entry; changes stay within 0–999.
+
 - Equipment now uses a compact shared list like Spells, with container headings, subtle row dividers, responsive item metadata, and visible equipped/attunement status, quantity and weight. Existing details, reordering and container actions remain available.
 
 - Character banners default to expanded on Sheet and compact on other tabs, with independent per-tab overrides and a page-default reset in the size button’s context menu. Creature cards use compact attack rows and stat controls, smaller portraits, and a single name heading.

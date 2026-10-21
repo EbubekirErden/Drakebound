@@ -89,7 +89,9 @@ struct EquipmentPanel:View {
                     Button { openItem(item) } label: { Text(item.attuned == true ? "Attuned":"Unattuned").font(.system(size:10)).foregroundStyle(item.attuned == true ? sky:coral) }.buttonStyle(.plain).help("Open item to change attunement")
                 }
                 Text(String(format:"%.1f lb",Double(item.quantity)*item.weight)).font(.system(size:10)).foregroundStyle(.secondary).monospacedDigit().frame(minWidth:46,alignment:.trailing)
-                Text("×\(item.quantity)").font(.system(size:11,weight:.medium,design:.monospaced)).frame(minWidth:26,alignment:.trailing)
+                EquipmentQuantityButton(quantity:Binding(get:{ hero.items.first(where:{ $0.id == item.id })?.quantity ?? item.quantity },set:{ value in
+                    if let index=hero.items.firstIndex(where:{ $0.id == item.id }) { hero.items[index].quantity=value }
+                }),name:item.name)
             Menu {
                 Button("Edit item") { edit(item) }
                 Button("Move up in container") { if position > 0 { hero.reorderEquipment(ListReorderToken(kind:.equipment,heroID:hero.id,entryID:item.id,containerID:item.containerID),onto:siblings[position-1],visibleIDs:siblings) } }.disabled(position == 0)
@@ -156,4 +158,56 @@ struct ItemDetails:View {
         }
     }
     func navigate(_ direction:Int) { let next = position+direction; guard presentation.ids.indices.contains(next) else { return }; currentID = presentation.ids[next] }
+}
+
+struct EquipmentQuantityButton:View {
+    @Binding var quantity:Int
+    var name:String
+    @State private var open=false
+    var body:some View {
+        Button { open=true } label: {
+            Text("×\(quantity)").font(.system(size:11,weight:.medium,design:.monospaced)).foregroundStyle(gold).frame(minWidth:26,minHeight:26,alignment:.trailing).contentShape(Rectangle())
+        }.buttonStyle(.plain).help("Change quantity of "+name).accessibilityLabel("Change quantity of "+name).accessibilityValue(String(quantity))
+            .popover(isPresented:$open) { EquipmentQuantityPopup(quantity:$quantity,name:name) }
+    }
+}
+
+enum EquipmentQuantityOperation:String,CaseIterable { case add="Add",remove="Remove",set="Set" }
+struct EquipmentQuantityPopup:View {
+    @Binding var quantity:Int
+    var name:String
+    @State var amount=""
+    @State var operation=EquipmentQuantityOperation.add
+    @Environment(\.dismiss) private var dismiss
+    var result:Int? {
+        guard let value=Int(amount.trimmingCharacters(in:.whitespacesAndNewlines)),(0...999).contains(value) else { return nil }
+        let next:Int
+        switch operation {
+        case .add:
+            let sum=quantity.addingReportingOverflow(value)
+            guard !sum.overflow else { return nil };next=sum.partialValue
+        case .remove:
+            guard value <= quantity else { return nil };next=quantity-value
+        case .set:next=value
+        }
+        return (0...999).contains(next) ? next:nil
+    }
+    var body:some View {
+        VStack(alignment:.leading,spacing:12) {
+            HStack { Text("Quantity").font(.headline);Spacer();Button("Done") { dismiss() } }
+            Text(name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true)
+            HStack(spacing:20) {
+                Button { quantity=max(0,quantity-1) } label: { Image(systemName:"minus").frame(width:28,height:28) }.disabled(quantity <= 0).accessibilityLabel("Remove one "+name)
+                Text("×\(quantity)").font(.system(size:26,weight:.semibold,design:.rounded)).monospacedDigit().foregroundStyle(gold).frame(maxWidth:.infinity)
+                Button { quantity=min(999,quantity+1) } label: { Image(systemName:"plus").frame(width:28,height:28) }.disabled(quantity >= 999).accessibilityLabel("Add one "+name)
+            }
+            Picker("Change",selection:$operation) { ForEach(EquipmentQuantityOperation.allCases,id:\.self) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented)
+            TextField("Whole number · 0–999",text:$amount).textFieldStyle(.roundedBorder).onSubmit(apply).accessibilityLabel("Quantity amount")
+            HStack {
+                Text(result.map { "New quantity: \($0)" } ?? (amount.isEmpty ? "Zero keeps the item in inventory":"Enter an amount that leaves 0–999" )).font(.caption2).foregroundStyle(.secondary)
+                Spacer();Button("Apply",action:apply).buttonStyle(.borderedProminent).disabled(result == nil)
+            }
+        }.padding(18).frame(width:320).background(surface).foregroundStyle(ink).tint(gold)
+    }
+    func apply() { guard let result else { return };quantity=result;amount="" }
 }

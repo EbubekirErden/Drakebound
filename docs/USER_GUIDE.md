@@ -308,3 +308,5 @@ Global search finds character names, journal titles/text/tags, companions includ
 Sheet starts with an expanded character banner; other tabs start compact. The banner size button remembers your choice separately for each tab. Right-click it to choose Expanded, Compact, or Use page default. Creature attacks use compact Hit and damage buttons; click an attack name for its full description.
 
 Equipment uses compact rows grouped under Carried and your containers. Click the circle to equip or unequip, and the item name for details, rolls and quantity controls. Attunement status also opens details. Drag handles and row menus retain reordering and Move to container actions.
+
+Click an equipment row’s ×quantity to adjust it without opening item details. Use +/− for one at a time, or choose Add, Remove, or Set, enter a whole number, and Apply. Done closes the popup. Quantity zero keeps the entry; weight updates with quantity.
