@@ -24,7 +24,7 @@ struct CompendiumView:View {
     @State private var spellClass = "All classes"
     @AppStorage("compendiumInspectorEnabled") private var inspectorEnabled = false
     @AppStorage("compendiumSearchDescriptions") private var searchDescriptions = false
-    private var canInspect:Bool { inspectorEnabled && browserWidth >= 950 }
+    private var canInspect:Bool { !conditionsReference && inspectorEnabled && browserWidth >= 950 }
     @State private var conditionsReference=false
     @State private var message = ""
     @State private var selectionMode = false
@@ -77,19 +77,22 @@ struct CompendiumView:View {
             let found = await Task.detached { all.filter { $0.category == type && (group == "All" || $0.subcategory == group) && (chosenSchool == "All schools" || FightClubImport.school($0.value("school")) == chosenSchool) && (chosenClass == "All classes" || CompendiumSearch.classNames($0).contains { CompendiumSearch.normalized($0) == CompendiumSearch.normalized(chosenClass) }) && CompendiumSearch.matches($0,query:search,includeDescription:fullText) }.sorted { CompendiumSearch.precedes($0,$1,query:search) } }.value
             guard !Task.isCancelled else { return }; matches = found; limit = 100
         }
-        .sheet(isPresented:$conditionsReference) { ConditionsReference() }
         .sheet(item:$creation) { session in CompendiumCreator(session:session,classOptions:store.compendium.filter { $0.category == .classEntry }.map(\.name),hero:store.heroes.first(where:{ $0.id == store.selected }) ?? Hero(),save:{ store.upsertTemplate($0); selected = nil }) }
     }
     private var libraryContent:some View {
         VStack(alignment:.leading,spacing:14) {
             PageToolbar(title:"Compendium",subtitle:"\(store.compendium.count.formatted()) reference entries",searchTitle:"Search compendium…",query:$query,focus:$searchFocused) {
+                if !conditionsReference {
                 Button { creation = CompendiumCreation(category:category) } label: { Label("New \(category.singular.lowercased())",systemImage:"plus") }.buttonStyle(PageButtonStyle(prominent:true))
                 Button { if inspectorEnabled { selected = nil; message = "" }; inspectorEnabled.toggle(); expandedDetail = false } label: { Label("Preview",systemImage:"rectangle.split.2x1") }
                     .buttonStyle(PageButtonStyle(prominent:canInspect)).disabled(browserWidth < 950)
                     .help(browserWidth < 950 ? "Widen the window to preview beside results":"Show or hide preview beside results")
                     .accessibilityLabel("Preview beside results").accessibilityValue(inspectorEnabled ? "On":"Off")
+                }
                 Menu {
+                    if !conditionsReference {
                     Button(selectionMode ? "Cancel selection":"Select multiple") { selectionMode.toggle(); if !selectionMode { picks = [] } }
+                    }
                     Button("Import XML…") { store.importBackup() }.disabled(store.importingCompendium)
                     Divider()
                     Toggle("Search descriptions too",isOn:$searchDescriptions)
@@ -100,16 +103,19 @@ struct CompendiumView:View {
             }
             ScrollView(.horizontal,showsIndicators:true) { HStack(spacing:6) {
                 ForEach(CompendiumCategory.allCases,id:\.self) { type in
-                    Button { category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8).background((type == category ? accent:ink).opacity(type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).accessibilityAddTraits(type == category ? .isSelected:[])
+                    Button { conditionsReference=false;category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8).background((!conditionsReference && type == category ? accent:ink).opacity(!conditionsReference && type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).accessibilityAddTraits(!conditionsReference && type == category ? .isSelected:[])
                 }
-                Button { conditionsReference=true } label: {
+                Button { conditionsReference=true;selected=nil;expandedDetail=false;selectionMode=false;picks=[] } label: {
                     VStack(spacing:5) {
                         Text("Conditions").font(.system(size:11,weight:.medium))
-                        Text("Rules").font(.system(size:9)).foregroundStyle(.secondary)
+                        Text("\(conditionDefinitions.count+1)").font(.system(size:9)).foregroundStyle(.secondary)
                     }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8)
-                        .background(ink.opacity(0.025),in:RoundedRectangle(cornerRadius:8))
-                }.buttonStyle(.plain).accessibilityLabel("Conditions reference category")
+                        .background((conditionsReference ? accent:ink).opacity(conditionsReference ? 0.13:0.025),in:RoundedRectangle(cornerRadius:8))
+                }.buttonStyle(.plain).accessibilityLabel("Conditions reference category").accessibilityAddTraits(conditionsReference ? .isSelected:[])
             } }.accessibilityLabel("Compendium categories")
+            if conditionsReference {
+                ConditionsCompendiumPage(query:query)
+            } else {
             categoryFilters
             if selectionMode {
                 HStack(spacing:10) {
@@ -133,6 +139,7 @@ struct CompendiumView:View {
                     }
                     if matches.count > limit { Button("Show next \(min(100,matches.count-limit)) entries") { limit += 100 }.padding() }
                 }.id(category.rawValue+query)
+            }
             }
         }.padding(22).frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
     }

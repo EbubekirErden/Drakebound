@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Conditions is an inline Compendium category with searchable condition and exhaustion reference cards; switching categories no longer opens a sheet.
+
 - Compendium Conditions now sits after Backgrounds in the horizontally scrollable category row, with a visible scroll indicator when needed.
 
 - Sheet feature details open in anchored popovers without expanding the list. Combat spells group by level. The Spells tab uses a compact shared list with responsive metadata and direct casting options.

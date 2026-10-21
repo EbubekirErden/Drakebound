@@ -299,4 +299,4 @@ Combat’s support column starts with conditions, then six saving throw roll con
 
 Click a Sheet feature name to read its description and use controls in a popover; Done closes it without rearranging the list. Combat groups ready spells into Cantrips and ascending spell levels, keeping favorites first within each level. The Spells tab keeps preparation, concentration, and casting options in compact rows; click the name for full details and use the row menu to remove a spell.
 
-In Compendium, scroll the category row horizontally to reach Conditions after Backgrounds. Conditions opens the read-only rules reference.
+In Compendium, scroll the category row horizontally to reach Conditions after Backgrounds. Conditions displays searchable condition and exhaustion references directly in Compendium.

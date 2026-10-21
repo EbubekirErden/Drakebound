@@ -80,11 +80,7 @@ struct ConditionsReference:View {
             ScrollView {
                 VStack(alignment:.leading,spacing:14) {
                     ForEach(conditionDefinitions) { condition in ConditionRuleDetail(condition:condition).padding(12).background(surface,in:RoundedRectangle(cornerRadius:8)) }
-                    VStack(alignment:.leading,spacing:8) {
-                        Text("Exhaustion").font(.system(size:13,weight:.semibold))
-                        Text("2014: cumulative check disadvantage at 1; half speed at 2; attack/save disadvantage at 3; half maximum HP at 4; no movement at 5; death at 6.")
-                        Text("2024: −2 per level on typed D20 tests and −5 ft per level. Level 6 is fatal.")
-                    }.font(.system(size:12)).padding(12).background(surface,in:RoundedRectangle(cornerRadius:8))
+                    ExhaustionRuleDetail().padding(12).background(surface,in:RoundedRectangle(cornerRadius:8))
                     Text("Tracked effects update your stats and typed rolls. Incoming damage, target-dependent restrictions, senses and critical hits remain table decisions. Generic custom rolls use your selected ADV/DIS; assign a roll category for condition effects.").font(.system(size:11)).foregroundStyle(.secondary)
                 }
             }
@@ -93,5 +89,48 @@ struct ConditionsReference:View {
                 Link("2024 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary")!)
             }.font(.system(size:11))
         }.padding(20).frame(width:520,height:500).background(paper).foregroundStyle(ink).tint(accent)
+    }
+}
+
+struct ExhaustionRuleDetail:View {
+    var body:some View {
+        VStack(alignment:.leading,spacing:8) {
+            Text("Exhaustion").font(.system(size:13,weight:.semibold))
+            Text("2014: cumulative check disadvantage at 1; half speed at 2; attack/save disadvantage at 3; half maximum HP at 4; no movement at 5; death at 6.")
+            Text("2024: −2 per level on typed D20 tests and −5 ft per level. Level 6 is fatal.")
+        }.font(.system(size:12)).frame(maxWidth:.infinity,alignment:.leading).textSelection(.enabled)
+    }
+}
+
+struct ConditionsCompendiumPage:View {
+    var query:String
+    var matches:[ConditionDefinition] {
+        conditionDefinitions.filter { CompendiumSearch.matches(name:$0.name,summary:$0.summary,classes:"",source:"",description:$0.reminder,query:query,includeDescription:true) }
+    }
+    var showExhaustion:Bool {
+        CompendiumSearch.matches(name:"Exhaustion",summary:"2014 2024 cumulative levels speed D20 tests disadvantage maximum HP death",classes:"",source:"",query:query)
+    }
+    var body:some View {
+        VStack(alignment:.leading,spacing:12) {
+            Text("\(matches.count+(showExhaustion ? 1:0)) condition references").font(.system(size:11)).foregroundStyle(.secondary)
+            if matches.isEmpty && !showExhaustion {
+                ContentUnavailableView.search(text:query)
+            } else {
+                ScrollView {
+                    LazyVGrid(columns:[GridItem(.adaptive(minimum:280),spacing:10,alignment:.top)],alignment:.leading,spacing:10) {
+                        ForEach(matches) { condition in
+                            ConditionRuleDetail(condition:condition).padding(14).background(surface,in:RoundedRectangle(cornerRadius:8))
+                        }
+                        if showExhaustion { ExhaustionRuleDetail().padding(14).background(surface,in:RoundedRectangle(cornerRadius:8)) }
+                    }
+                    Text("Tracked effects update stats and typed rolls. Incoming damage, senses, target-dependent restrictions and critical hits remain table decisions.").font(.system(size:11)).foregroundStyle(.secondary).frame(maxWidth:.infinity,alignment:.leading).padding(.top,12)
+                    HStack {
+                        Link("2014 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/basic-rules-2014/appendix-a-conditions")!)
+                        Link("2024 rules",destination:URL(string:"https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary")!)
+                        Spacer()
+                    }.font(.system(size:11)).padding(.top,8)
+                }
+            }
+        }.frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.topLeading)
     }
 }
