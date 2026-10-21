@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Compendium Conditions now sits after Backgrounds in the horizontally scrollable category row, with a visible scroll indicator when needed.
+
 - Sheet feature details open in anchored popovers without expanding the list. Combat spells group by level. The Spells tab uses a compact shared list with responsive metadata and direct casting options.
 
 - Sheet features stay compact with on-demand descriptions. Filter menus fit their labels. Combat places compact conditions above saving throws and spell slots alongside ready actions. Dice result windows explicitly follow the selected app appearance.

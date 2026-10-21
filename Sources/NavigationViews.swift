@@ -88,7 +88,6 @@ struct CompendiumView:View {
                     .buttonStyle(PageButtonStyle(prominent:canInspect)).disabled(browserWidth < 950)
                     .help(browserWidth < 950 ? "Widen the window to preview beside results":"Show or hide preview beside results")
                     .accessibilityLabel("Preview beside results").accessibilityValue(inspectorEnabled ? "On":"Off")
-                Button("Conditions",systemImage:"waveform.path.ecg") { conditionsReference=true }.buttonStyle(PageButtonStyle())
                 Menu {
                     Button(selectionMode ? "Cancel selection":"Select multiple") { selectionMode.toggle(); if !selectionMode { picks = [] } }
                     Button("Import XML…") { store.importBackup() }.disabled(store.importingCompendium)
@@ -99,11 +98,18 @@ struct CompendiumView:View {
                 } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).menuIndicator(.hidden)
                     .frame(width:34,height:34).background(surface,in:RoundedRectangle(cornerRadius:8)).help("Compendium options").accessibilityLabel("Compendium options")
             }
-            ScrollView(.horizontal,showsIndicators:false) { HStack(spacing:6) {
+            ScrollView(.horizontal,showsIndicators:true) { HStack(spacing:6) {
                 ForEach(CompendiumCategory.allCases,id:\.self) { type in
                     Button { category = type; limit = 100; subgroup = "All"; school = "All schools"; spellClass = "All classes" } label: { VStack(spacing:5) { Text(type.rawValue).font(.system(size:11,weight:.medium)); Text("\(type == .spell && store.compendium.isEmpty ? store.library.count:sourceCounts[type,default:0])").font(.system(size:9)).foregroundStyle(.secondary) }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8).background((type == category ? accent:ink).opacity(type == category ? 0.13:0.025)).clipShape(RoundedRectangle(cornerRadius:8)) }.buttonStyle(.plain).accessibilityAddTraits(type == category ? .isSelected:[])
                 }
-            } }
+                Button { conditionsReference=true } label: {
+                    VStack(spacing:5) {
+                        Text("Conditions").font(.system(size:11,weight:.medium))
+                        Text("Rules").font(.system(size:9)).foregroundStyle(.secondary)
+                    }.frame(minWidth:86).padding(.horizontal,8).padding(.vertical,8)
+                        .background(ink.opacity(0.025),in:RoundedRectangle(cornerRadius:8))
+                }.buttonStyle(.plain).accessibilityLabel("Conditions reference category")
+            } }.accessibilityLabel("Compendium categories")
             categoryFilters
             if selectionMode {
                 HStack(spacing:10) {
