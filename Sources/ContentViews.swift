@@ -356,37 +356,57 @@ struct CreatureCard: View {
                 }.buttonStyle(.plain).help(cardExpanded ? "Collapse creature card":"Expand creature card").accessibilityLabel((cardExpanded ? "Collapse ":"Expand ")+creature.name).accessibilityValue(cardExpanded ? "Expanded":"Collapsed")
                 Spacer();Label("Active in play",systemImage:"checkmark.circle.fill").font(.caption).foregroundStyle(accent);Button(action:deactivate) { Label(creature.isSummon ? "Dismiss":"Deactivate",systemImage:"moon.zzz").padding(.horizontal,6).frame(minHeight:28).contentShape(Rectangle()) }.buttonStyle(.bordered).tint(gold).font(.caption).help("Move to Inactive without changing HP or notes").accessibilityLabel((creature.isSummon ? "Dismiss ":"Deactivate ")+creature.name) }
             if cardExpanded {
-            if creature.imageLayout == nil || creature.imageLayout == .banner { CreatureBanner(creature:$creature,edit:edit,remove:remove) }
+            if creature.imageLayout == nil || creature.imageLayout == .banner {
+                if creature.image != nil { CreatureBanner(creature:$creature,height:140,showsName:false,edit:edit,remove:remove) }
+                else { CreatureCompactHeader(creature:$creature,showsName:false,edit:edit,remove:remove) }
+            }
             if creature.imageLayout == nil || creature.imageLayout == .banner { creatureDetails }
-            else { HStack(alignment:.top,spacing:16) {
-                if creature.imageLayout == .left { sidePortrait }
-                VStack(alignment:.leading,spacing:12) { CreatureCompactHeader(creature:$creature,edit:edit,remove:remove);creatureDetails }.frame(maxWidth:.infinity)
-                if creature.imageLayout == .right { sidePortrait }
+            else { HStack(alignment:.top,spacing:12) {
+                if creature.imageLayout == .left && creature.image != nil { sidePortrait }
+                VStack(alignment:.leading,spacing:8) { CreatureCompactHeader(creature:$creature,showsName:false,edit:edit,remove:remove);creatureDetails }.frame(maxWidth:.infinity)
+                if creature.imageLayout == .right && creature.image != nil { sidePortrait }
             } }
             }
         }.popover(item:$detail) { attack in AttackDescription(name:attack.name,text:attack.description ?? "",edit:{ detail = nil; edit() }) }
     }
-    var sidePortrait:some View { CroppedImage(data:creature.image,crop:creature.bannerCrop ?? BannerCrop()).frame(width:150,height:250).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).accessibilityLabel(creature.name+" portrait") }
-    var creatureDetails:some View { VStack(alignment:.leading,spacing:12) {
+    var sidePortrait:some View { CroppedImage(data:creature.image,crop:creature.bannerCrop ?? BannerCrop()).frame(width:100,height:165).background(surface).clipShape(RoundedRectangle(cornerRadius:9)).accessibilityLabel(creature.name+" portrait") }
+    var creatureDetails:some View { VStack(alignment:.leading,spacing:8) {
             HStack {
-                Text("\(creature.hp)").font(.system(size:27,weight:.semibold,design:.rounded)).foregroundStyle(healthColor(creature.hp,creature.maximumHP)); Text("/ \(creature.maximumHP) HP").font(.caption).foregroundStyle(.secondary); Spacer()
+                Text("\(creature.hp)").font(.system(size:22,weight:.semibold,design:.rounded)).foregroundStyle(healthColor(creature.hp,creature.maximumHP)); Text("/ \(creature.maximumHP) HP").font(.caption).foregroundStyle(.secondary); Spacer()
                 Button { health = .damage } label: { Label("Damage",systemImage:"minus") }.tint(coral).popover(isPresented:Binding(get:{ health == .damage },set:{ if !$0 { health = nil } })) { CreatureHealthPopup(creature:$creature,healing:false) }
                 Button { health = .healing } label: { Label("Heal",systemImage:"plus") }.tint(leaf).popover(isPresented:Binding(get:{ health == .healing },set:{ if !$0 { health = nil } })) { CreatureHealthPopup(creature:$creature,healing:true) }
             }
-            HealthBar(hp:creature.hp,maximum:creature.maximumHP,height:6)
-            HStack(spacing:7) { ForEach(0..<6,id:\.self) { i in RollChoiceButton { mode in store.roll("1d20\(signed(creature.modifier(i)))","\(creature.name) · \(abilities[i])",mode:mode) } label: { VStack(spacing:4) { Text(String(abilities[i].prefix(3)).uppercased()).font(.system(size:9)).foregroundStyle(.secondary); Text(signed(creature.modifier(i))).font(.system(size:17,weight:.semibold,design:.rounded)) }.frame(maxWidth:.infinity).padding(.vertical,9).background(paper.opacity(0.6)).clipShape(RoundedRectangle(cornerRadius:7)) } } }.padding(.vertical,5)
+            HealthBar(hp:creature.hp,maximum:creature.maximumHP,height:4)
+            HStack(spacing:5) { ForEach(0..<6,id:\.self) { i in
+                RollChoiceButton { mode in store.roll("1d20\(signed(creature.modifier(i)))","\(creature.name) · \(abilities[i])",mode:mode) } label: {
+                    VStack(spacing:3) {
+                        Text(String(abilities[i].prefix(3)).uppercased()).font(.system(size:9)).foregroundStyle(.secondary)
+                        Text(signed(creature.modifier(i))).font(.system(size:13,weight:.semibold,design:.rounded))
+                    }.frame(maxWidth:.infinity).padding(.vertical,5).background(paper.opacity(0.4),in:RoundedRectangle(cornerRadius:5))
+                }.accessibilityLabel(creature.name+" · "+abilities[i]+" check")
+            } }
             if !creature.attacks.isEmpty {
                 Text("ATTACKS").font(.system(size:9,weight:.bold)).tracking(1).foregroundStyle(coral)
-                LazyVGrid(columns:Array(repeating:GridItem(.flexible(),spacing:10),count:min(2,creature.attacks.count)),alignment:.leading,spacing:10) {
+                VStack(spacing:4) {
                     ForEach(creature.attacks) { attack in
-                        VStack(alignment:.leading,spacing:10) {
-                            HStack { Button { detail = attack } label: { Label(attack.name,systemImage:"scope").font(.system(size:13,weight:.semibold)).frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle()) }.buttonStyle(.plain); Image(systemName:"info.circle").font(.caption).foregroundStyle(.secondary) }
+                        CombatRowLayout {
+                            Button { detail=attack } label: {
+                                HStack(spacing:6) {
+                                    Text(attack.name).font(.system(size:12,weight:.medium)).fixedSize(horizontal:false,vertical:true)
+                                    Image(systemName:"info.circle").font(.system(size:10)).foregroundStyle(.secondary)
+                                }.frame(maxWidth:.infinity,alignment:.leading).contentShape(Rectangle())
+                            }.buttonStyle(.plain).accessibilityLabel(attack.name+" details")
                             HStack(spacing:7) {
-                                if attack.resolution != .damage { RollChoiceButton { mode in store.roll("1d20\(signed(attack.bonus))","\(creature.name) · \(attack.name)",mode:mode) } label: { AttackRollField(title:"TO HIT",value:signed(attack.bonus),subtitle:store.rollMode.rawValue,color:sky) } }
-                                Button { store.roll(attack.damage,"\(creature.name) · \(attack.name) · damage") } label: { AttackRollField(title:"DAMAGE",value:attack.damage,color:coral) }.buttonStyle(.plain)
-                            }
-                            if let text = attack.description, !text.isEmpty { Text(text).font(.system(size:11)).foregroundStyle(.secondary).lineLimit(2) }
-                        }.padding(12).background(paper.opacity(0.5)).clipShape(RoundedRectangle(cornerRadius:9))
+                                if attack.resolution != .damage {
+                                    RollChoiceButton { mode in store.roll("1d20\(signed(attack.bonus))","\(creature.name) · \(attack.name)",mode:mode) } label: {
+                                        Text("Hit "+signed(attack.bonus)).font(.system(size:12,weight:.semibold)).foregroundStyle(sky).padding(.horizontal,8).frame(height:28).background(sky.opacity(0.08),in:RoundedRectangle(cornerRadius:5))
+                                    }.accessibilityLabel(attack.name+" attack")
+                                }
+                                Button { store.roll(attack.damage,"\(creature.name) · \(attack.name) · damage") } label: {
+                                    Text(attack.damage).font(.system(size:12,weight:.medium,design:.monospaced)).foregroundStyle(coral).padding(.horizontal,8).frame(height:28).background(coral.opacity(0.08),in:RoundedRectangle(cornerRadius:5))
+                                }.buttonStyle(.plain).accessibilityLabel(attack.name+" damage")
+                            }.fixedSize()
+                        }.padding(8).background(paper.opacity(0.4),in:RoundedRectangle(cornerRadius:6))
                     }
                 }
             }

@@ -176,7 +176,16 @@ struct HeroView: View {
     @Binding var hero: Hero
     @ObservedObject var store: Store
     var tab: String
-    @AppStorage("characterBannerExpanded") private var bannerExpanded = false
+    @AppStorage("characterBannerSizesByTab") private var bannerSizes=Data()
+    var bannerExpanded:Bool { (try? JSONDecoder().decode([String:Bool].self,from:bannerSizes))?[tab] ?? (tab == "Sheet") }
+    var bannerSizeBinding:Binding<Bool> { Binding(get:{ bannerExpanded },set:{ value in
+        var choices=(try? JSONDecoder().decode([String:Bool].self,from:bannerSizes)) ?? [:]
+        choices[tab]=value;bannerSizes=(try? JSONEncoder().encode(choices)) ?? Data()
+    }) }
+    func resetBannerSize() {
+        var choices=(try? JSONDecoder().decode([String:Bool].self,from:bannerSizes)) ?? [:]
+        choices.removeValue(forKey:tab);bannerSizes=(try? JSONEncoder().encode(choices)) ?? Data()
+    }
     @State var edit = false
     @State var adding: String?
     @State private var browsingSpells = false
@@ -223,7 +232,7 @@ struct HeroView: View {
                 VStack(alignment:.leading,spacing:-24) {
                     GeometryReader { position in
                         let y = position.frame(in:.named("heroScroll")).minY
-                        CharacterBanner(hero:$hero,expanded:$bannerExpanded,previewAspectRatio:max(1,(viewport.size.width-36)/bannerHeight),edit:{ edit = true },more:AnyView(Group {
+                        CharacterBanner(hero:$hero,expanded:bannerSizeBinding,previewAspectRatio:max(1,(viewport.size.width-36)/bannerHeight),edit:{ edit = true },more:AnyView(Group {
                             if tab == "Sheet" { SheetDisplayMenu();Divider() }
                             Button("Rest & recovery") { rest = true }
                             Button("Hit dice") { hitDice = true }
@@ -234,7 +243,7 @@ struct HeroView: View {
                             }
                             Button("Duplicate character") { var copy = hero; copy.id = UUID(); copy.name += " copy"; store.heroes.append(copy); store.selected = copy.id; store.save() }
                             Divider(); Button("Delete character…",role:.destructive) { delete = true }.disabled(store.heroes.count <= 1)
-                        }),levelUp:{ store.beginLevelUp(hero) })
+                        }),levelUp:{ store.beginLevelUp(hero) },resetSize:resetBannerSize)
                             .frame(height:bannerHeight).offset(y:max(0,-y*0.65))
                     }.frame(height:bannerHeight).padding(18).zIndex(0)
                     VStack(alignment:.leading,spacing:14) {

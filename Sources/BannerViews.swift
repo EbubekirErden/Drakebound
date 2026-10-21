@@ -22,6 +22,7 @@ struct CharacterBanner: View {
     var edit: ()->Void
     var more: AnyView
     var levelUp:(()->Void)? = nil
+    var resetSize:(()->Void)? = nil
     @State var cropping = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
@@ -44,7 +45,10 @@ struct CharacterBanner: View {
                 Button {
                     withAnimation(reduceMotion ? nil:.easeInOut(duration:0.2)) { expanded.toggle() }
                 } label: { Image(systemName:expanded ? "arrow.down.right.and.arrow.up.left":"arrow.up.left.and.arrow.down.right").frame(width:30,height:30) }
-                    .buttonStyle(.plain).help(expanded ? "Compact banner":"Expand banner").accessibilityLabel(expanded ? "Compact banner":"Expand banner")
+                    .buttonStyle(.plain).contextMenu {
+                        Button("Expanded") { expanded=true };Button("Compact") { expanded=false }
+                        if let resetSize { Divider();Button("Use page default",action:resetSize) }
+                    }.help(expanded ? "Compact banner":"Expand banner").accessibilityLabel(expanded ? "Compact banner":"Expand banner")
                 Menu {
                     if let levelUp { Button("Level up…",systemImage:"arrow.up",action:levelUp).disabled(hero.level >= 20) }
                     Button("Frame banner…",systemImage:"crop") { cropping = true }
@@ -82,6 +86,8 @@ struct BannerEditor: View {
 
 struct CreatureBanner:View {
     @Binding var creature:Creature
+    var height:CGFloat=250
+    var showsName=true
     var edit:()->Void
     var remove:()->Void
     @State private var framing = false
@@ -92,7 +98,7 @@ struct CreatureBanner:View {
             BannerImageOverlay(leadingOpacity:0.8,centerOpacity:0.12,bottomOpacity:0.65)
             HStack(alignment:.bottom) {
                 VStack(alignment:.leading,spacing:7) {
-                    Text(creature.name).font(.system(size:24,weight:.semibold)).foregroundStyle(bannerInk)
+                    if showsName { Text(creature.name).font(.system(size:24,weight:.semibold)).foregroundStyle(bannerInk) }
                     Text(creature.type.isEmpty ? "Custom creature":creature.type).font(.caption).foregroundStyle(bannerInk.opacity(0.8))
                     HStack(spacing:14) { Label("AC \(creature.ac)",systemImage:"shield"); Label("\(creature.speed) ft",systemImage:"figure.walk") }.font(.system(size:11)).foregroundStyle(sky)
                 }; Spacer()
@@ -100,7 +106,7 @@ struct CreatureBanner:View {
                 Button("Edit",action:edit)
                 Menu { CreatureLayoutPicker(creature:$creature);Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20)
             }.padding(18)
-        }.frame(height:250).contentShape(Rectangle()).clipShape(RoundedRectangle(cornerRadius:10))
+        }.frame(height:height).contentShape(Rectangle()).clipShape(RoundedRectangle(cornerRadius:10))
         .sheet(isPresented:$framing) { CreatureBannerEditor(creature:$creature) }
     }
 }
@@ -128,10 +134,11 @@ struct CreatureLayoutPicker:View {
 }
 struct CreatureCompactHeader:View {
     @Binding var creature:Creature
+    var showsName=true
     var edit:()->Void
     var remove:()->Void
     @State private var framing=false
     var body:some View {
-        HStack(alignment:.top) { VStack(alignment:.leading,spacing:7) { Text(creature.name).font(.title2.bold());Text(creature.type).font(.caption).foregroundStyle(.secondary);HStack { Label("AC \(creature.ac)",systemImage:"shield");Label("\(creature.speed) ft",systemImage:"figure.walk") }.font(.caption).foregroundStyle(sky) };Spacer();Button { framing=true } label: { Image(systemName:"crop") };Button("Edit",action:edit);Menu { CreatureLayoutPicker(creature:$creature);Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20) }.sheet(isPresented:$framing) { CreatureBannerEditor(creature:$creature) }
+        HStack(alignment:.top) { VStack(alignment:.leading,spacing:5) { if showsName { Text(creature.name).font(.title2.bold()) };Text(creature.type).font(.caption).foregroundStyle(.secondary);HStack { Label("AC \(creature.ac)",systemImage:"shield");Label("\(creature.speed) ft",systemImage:"figure.walk") }.font(.caption).foregroundStyle(sky) };Spacer();Button { framing=true } label: { Image(systemName:"crop") };Button("Edit",action:edit);Menu { CreatureLayoutPicker(creature:$creature);Button("Remove creature",role:.destructive,action:remove) } label: { Image(systemName:"ellipsis") }.menuStyle(.borderlessButton).frame(width:20) }.sheet(isPresented:$framing) { CreatureBannerEditor(creature:$creature) }
     }
 }

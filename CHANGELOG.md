@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Character banners default to expanded on Sheet and compact on other tabs, with independent per-tab overrides and a page-default reset in the size button’s context menu. Creature cards use compact attack rows and stat controls, smaller portraits, and a single name heading.
+
 - Unified sidebar search covers every character, journal titles/text/tags, companions (including inactive ones), owned spells and other character content before references. Results show their owner and open the actual character entry, including expanded journal notes and companion cards; duplicated content IDs remain isolated by owner.
 
 - Global search includes all condition references and exhaustion, with exact condition names ahead of partial reference names. Conditions supports Compendium’s resizable Preview sidebar and narrow-window detail overlay.
