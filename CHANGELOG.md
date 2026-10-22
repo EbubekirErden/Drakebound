@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Combat shows spell save DC and spell attack bonus together in a compact strip, including separate casting abilities and current attack-roll penalties.
+
 ## 1.1.0 — 2026-10-21
 
 - Dedicated Combat tab replaces Actions, with compact ready-action rows, spells grouped by level, saving throws, spell slots, resources, and condition controls. Existing numeric shortcuts keep their destinations.

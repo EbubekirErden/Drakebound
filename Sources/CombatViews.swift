@@ -23,6 +23,7 @@ struct CombatPanel:View {
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
             CombatVitals(hero:$hero,store:store,rest:rest)
+            CombatSpellcasting(hero:hero)
             if width >= 560 {
                 HStack(alignment:.top,spacing:16) {
                     actionList.frame(maxWidth:.infinity)
@@ -134,7 +135,6 @@ struct CombatVitals:View {
                     store.rollTyped(hero.expression("1d20",bonus:hero.initiative,targets:["initiative","checks","check.1"]),"Initiative",hero:hero,kind:.initiative,ability:1,mode:mode)
                 } label: { stat("INIT",signed(hero.initiative+hero.testPenalty),explanation:"Roll initiative") }
                 stat("SPEED","\(hero.movement)",explanation:"Current movement speed")
-                if hero.slots.contains(where:{ $0 > 0 }) || !hero.spells.isEmpty { stat("SAVE DC","\(hero.spellDC)",explanation:hero.spellDCExplanation) }
             }
             ControlFlowLayout(spacing:8) {
                 Button { adjustment = .damage } label: { Label("Damage",systemImage:"minus") }.buttonStyle(PageButtonStyle(color:coral)).foregroundStyle(coral)
@@ -155,6 +155,44 @@ struct CombatVitals:View {
             Text(title).font(.system(size:9,weight:.semibold)).foregroundStyle(.secondary)
             Text(value).font(.system(size:21,weight:.medium,design:.rounded)).monospacedDigit()
         }.frame(minWidth:55).help(explanation)
+    }
+}
+
+struct CombatSpellcasting:View {
+    var hero:Hero
+    private var castingAbilities:[Int] {
+        Set([hero.castingAbility]+hero.spells.compactMap(\.castingAbility)).filter { abilities.indices.contains($0) }.sorted()
+    }
+    var body:some View {
+        if hero.slots.contains(where:{ $0 > 0 }) || !hero.spells.isEmpty {
+            ControlFlowLayout(spacing:8) {
+                ForEach(castingAbilities,id:\.self) { ability in
+                    CombatSpellcastingStats(hero:hero,ability:ability)
+                }
+            }
+        }
+    }
+}
+
+private struct CombatSpellcastingStats:View {
+    var hero:Hero
+    var ability:Int
+    private var caster:Hero {
+        var value = hero
+        value.castingAbility = ability
+        return value
+    }
+    var body:some View {
+        HStack(spacing:12) {
+            Label("Spellcasting · "+String(abilities[ability].prefix(3)).uppercased(),systemImage:"sparkles")
+                .font(.system(size:11,weight:.medium)).foregroundStyle(sky)
+            Text("Save DC \(caster.spellDC)").help(caster.spellDCExplanation)
+                .accessibilityLabel(abilities[ability]+" spell save DC \(caster.spellDC)")
+            Text("Attack "+signed(caster.spellAttack+caster.testPenalty)).help(caster.spellAttackExplanation)
+                .accessibilityLabel(abilities[ability]+" spell attack bonus "+signed(caster.spellAttack+caster.testPenalty))
+        }.font(.system(size:12,weight:.semibold)).monospacedDigit()
+            .padding(.horizontal,12).padding(.vertical,9)
+            .background(surface,in:RoundedRectangle(cornerRadius:8))
     }
 }
 
