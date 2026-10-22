@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Combat shows spell save DC and spell attack bonus together in a compact strip, including separate casting abilities and current attack-roll penalties.
+- Combat shows spell save DC and spell attack bonus alongside conditions and exhaustion in one compact wrapping row, including separate casting abilities and current attack-roll penalties.
 
 ## 1.1.0 — 2026-10-21
 

@@ -23,7 +23,7 @@ struct CombatPanel:View {
     var body:some View {
         VStack(alignment:.leading,spacing:14) {
             CombatVitals(hero:$hero,store:store,rest:rest)
-            CombatSpellcasting(hero:hero)
+            CombatStatusRow(hero:$hero)
             if width >= 560 {
                 HStack(alignment:.top,spacing:16) {
                     actionList.frame(maxWidth:.infinity)
@@ -38,7 +38,7 @@ struct CombatPanel:View {
         }
     }
     @ViewBuilder var support:some View {
-        VStack(alignment:.leading,spacing:14) { CombatConditions(hero:$hero);ConcentrationStatus(hero:$hero,store:store);CombatSaves(hero:$hero,store:store);slots;resources }
+        VStack(alignment:.leading,spacing:14) { ConcentrationStatus(hero:$hero,store:store);CombatSaves(hero:$hero,store:store);slots;resources }
     }
     @ViewBuilder var slots:some View {
         if hero.slots.contains(where:{ $0 > 0 }) { SpellSlotGrid(hero:$hero,manage:nil) }
@@ -158,22 +158,6 @@ struct CombatVitals:View {
     }
 }
 
-struct CombatSpellcasting:View {
-    var hero:Hero
-    private var castingAbilities:[Int] {
-        Set([hero.castingAbility]+hero.spells.compactMap(\.castingAbility)).filter { abilities.indices.contains($0) }.sorted()
-    }
-    var body:some View {
-        if hero.slots.contains(where:{ $0 > 0 }) || !hero.spells.isEmpty {
-            ControlFlowLayout(spacing:8) {
-                ForEach(castingAbilities,id:\.self) { ability in
-                    CombatSpellcastingStats(hero:hero,ability:ability)
-                }
-            }
-        }
-    }
-}
-
 private struct CombatSpellcastingStats:View {
     var hero:Hero
     var ability:Int
@@ -196,11 +180,19 @@ private struct CombatSpellcastingStats:View {
     }
 }
 
-struct CombatConditions:View {
+struct CombatStatusRow:View {
     @Binding var hero:Hero
     @State private var manage = false
+    private var castingAbilities:[Int] {
+        Set([hero.castingAbility]+hero.spells.compactMap(\.castingAbility)).filter { abilities.indices.contains($0) }.sorted()
+    }
     var body:some View {
         ControlFlowLayout(spacing:8) {
+            if hero.slots.contains(where:{ $0 > 0 }) || !hero.spells.isEmpty {
+                ForEach(castingAbilities,id:\.self) { ability in
+                    CombatSpellcastingStats(hero:hero,ability:ability)
+                }
+            }
             Button { manage=true } label: { Label("Conditions",systemImage:"waveform.path.ecg") }.buttonStyle(.plain).font(.system(size:12,weight:.medium)).foregroundStyle(accent)
             if hero.conditions.isEmpty && (hero.exhaustionLevel ?? 0) == 0 { Text("None active").font(.system(size:11)).foregroundStyle(.secondary) }
             ForEach(hero.conditions,id:\.self) { name in
