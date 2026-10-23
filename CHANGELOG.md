@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Reworked Android interaction panels: bottom sheets for calculators and rest/recovery, a larger single animated dice total, a flatter keypad with quick amount steps, custom die sides, and one-tap Magic Missile casting with anchored damage. Rerolls retain their source and do not spend another slot.
+- Applied the compact Field journal design to Android: warm paper with dark chrome, inline slot tables on Play/Spells, six ability scores in one row, skill lists, same-row diamond equipment toggles, expanding sample descriptions, compact journal excerpts, and dice results anchored to the original roll control across rerolls.
+- Refined the Android draft into an open adventure sheet: aligned vitals, inline attack/damage formulas, resource marks, a roster home screen, and an animated tab underline with a backpack icon for Gear. Repeated rounded content cards were removed.
+- Added a separate native Android interaction draft with the compact Ink & copper design, five bottom tabs, companion drawer shortcuts, animated random dice, advantage/disadvantage, contextual calculators, and isolated sample saves. It does not yet import Mac characters or implement the complete ruleset; see `android/README.md`.
 - Combat shows spell save DC and spell attack bonus alongside conditions and exhaustion in one compact wrapping row, including separate casting abilities and current attack-roll penalties.
 
 ## 1.1.0 — 2026-10-21

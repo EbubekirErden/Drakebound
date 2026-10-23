@@ -14,6 +14,14 @@ output/
 *.xcuserstate
 xcuserdata/
 
+# Android local tools and generated outputs
+.gradle/
+.kotlin/
+local.properties
+captures/
+*.apk
+*.aab
+
 # Local credentials (keep documented examples shareable)
 .env
 .env.*

@@ -34,6 +34,8 @@ The app is created at `build/products.noindex/Drakebound.app`. See [Contributing
 
 [User guide](docs/USER_GUIDE.md) · [Changelog](CHANGELOG.md) · [Report an issue](https://github.com/EbubekirErden/Drakebound/issues)
 
+An experimental native [Android draft](android/README.md) lives in `android/`. It uses isolated fictional characters to explore the compact mobile layout, animated dice, and calculators; Mac character import and full feature parity are planned.
+
 ## Credits
 
 Independent project; not affiliated with Lion’s Den or Wizards of the Coast. Included SRD content is licensed under [CC BY 4.0](Resources/SRD/CC-BY-4.0.txt); see [attribution](Resources/SRD/ATTRIBUTION.txt). No license has been declared for the application code.
